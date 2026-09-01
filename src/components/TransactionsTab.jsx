@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
+import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 
 export default function TransactionsTab({ updateTrigger, allowedAccount }) {
     // Dropdown Data
@@ -9,23 +10,19 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
     const [allAccounts, setAllAccounts] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
 
-    // Helper for yesterday
-    const getYesterdayString = () => {
-        const d = new Date();
-        d.setDate(d.getDate() - 1);
-        return d.toISOString().split('T')[0];
-    };
+    const [fyOptions, setFyOptions] = useState([]);
+    const [selectedFYId, setSelectedFYId] = useState('');
 
     // Input States
-    const [inputStartDate, setInputStartDate] = useState(getYesterdayString());
-    const [inputEndDate, setInputEndDate] = useState(getYesterdayString());
+    const [inputStartDate, setInputStartDate] = useState('');
+    const [inputEndDate, setInputEndDate] = useState('');
     const [inputAccountName, setInputAccountName] = useState('');
     const [inputVoucherType, setInputVoucherType] = useState('');
 
     // Applied Filters (Updated on Search)
     const [appliedFilters, setAppliedFilters] = useState({
-        startDate: getYesterdayString(),
-        endDate: getYesterdayString(),
+        startDate: '',
+        endDate: '',
         accountName: '',
         voucherType: ''
     });
@@ -42,6 +39,26 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
         const fetchInitialData = async () => {
             setLoadingData(true);
             try {
+                // Fetch FYs
+                const fys = await fetchFiscalYears();
+                setFyOptions(fys);
+                const current = getCurrentFYObject(fys);
+                let initialStart = '';
+                let initialEnd = '';
+                if (current) {
+                    setSelectedFYId(current.id);
+                    initialStart = current.startDate;
+                    initialEnd = current.endDate;
+                }
+                
+                setInputStartDate(initialStart);
+                setInputEndDate(initialEnd);
+                setAppliedFilters(prev => ({
+                    ...prev,
+                    startDate: initialStart,
+                    endDate: initialEnd
+                }));
+
                 const accSnap = await getDocs(collection(db, 'accounts'));
                 const accs = [];
                 accSnap.forEach(d => accs.push(d.data().name));
@@ -62,7 +79,35 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
             setLoadingData(false);
         };
         fetchInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [updateTrigger]);
+
+    // Handle FY Dropdown changes AFTER initial load
+    const handleFYChange = (e) => {
+        const newFYId = e.target.value;
+        setSelectedFYId(newFYId);
+        if (newFYId) {
+            const activeFY = fyOptions.find(f => f.id === newFYId);
+            if (activeFY) {
+                setInputStartDate(activeFY.startDate);
+                setInputEndDate(activeFY.endDate);
+                setAppliedFilters(prev => ({
+                    ...prev,
+                    startDate: activeFY.startDate,
+                    endDate: activeFY.endDate
+                }));
+            }
+        } else {
+            setInputStartDate('');
+            setInputEndDate('');
+            setAppliedFilters(prev => ({
+                ...prev,
+                startDate: '',
+                endDate: ''
+            }));
+        }
+        setCurrentPage(1);
+    };
 
     const uniqueVoucherTypes = useMemo(() => {
         const types = new Set();
@@ -81,6 +126,7 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
     };
 
     const handleClear = () => {
+        setSelectedFYId('');
         setInputStartDate('');
         setInputEndDate('');
         setInputAccountName('');
@@ -154,6 +200,18 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
                 </div>
                 
                 <div className="flex flex-wrap items-end gap-4">
+                    <div className="flex flex-col gap-1 w-40">
+                        <label className="text-xs font-semibold text-gray-600">Fiscal Year</label>
+                        <select
+                            value={selectedFYId}
+                            onChange={handleFYChange}
+                            className="px-3 py-1.5 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-medium bg-blue-50 text-blue-800"
+                        >
+                            <option value="">All Years</option>
+                            {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
+                        </select>
+                    </div>
+
                     {!allowedAccount && (
                         <div className="flex flex-col gap-1 w-64">
                             <label className="text-xs font-semibold text-gray-600">Account Name</label>

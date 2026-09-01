@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or, getDoc } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from 'xlsx';
+import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 
 const formatCurrency = (num) => {
     const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num) || 0);
@@ -16,6 +17,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [view, setView] = useState('directory');
     
     // ----------- DIRECTORY VIEW STATE -----------
+    const [fyOptions, setFyOptions] = useState([]);
+    const [selectedFY, setSelectedFY] = useState('');
+    const [fyBalances, setFyBalances] = useState({});
     const [accounts, setAccounts] = useState([]);
     const [loadingAccounts, setLoadingAccounts] = useState(false);
     
@@ -35,6 +39,24 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
     // ----------- DETAILS VIEW STATE -----------
     const [selectedAccount, setSelectedAccount] = useState(null);
+    const [detailFY, setDetailFY] = useState('');
+    const [detailFYData, setDetailFYData] = useState(null);
+
+    useEffect(() => {
+        const loadFYs = async () => {
+            const fys = await fetchFiscalYears();
+            setFyOptions(fys);
+            const current = getCurrentFYObject(fys);
+            if (current) {
+                setSelectedFY(current.id);
+                setDetailFY(current.id);
+            } else if (fys.length > 0) {
+                setSelectedFY(fys[0].id);
+                setDetailFY(fys[0].id);
+            }
+        };
+        loadFYs();
+    }, []);
     const [accountTxns, setAccountTxns] = useState([]);
     const [loadingTxns, setLoadingTxns] = useState(false);
     const [lastVisibleTxn, setLastVisibleTxn] = useState(null);
@@ -56,6 +78,43 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         };
         fetchAccounts();
     }, [updateTrigger]);
+
+    useEffect(() => {
+        const fetchFYBalances = async () => {
+            if (accounts.length === 0) return;
+            const balances = {};
+            // Fetch FY balance for each account from sub-collection
+            const promises = accounts.map(async (acc) => {
+                try {
+                    const fyDoc = await getDoc(doc(db, 'accounts', acc.id, 'fiscalYears', selectedFY));
+                    if (fyDoc.exists()) {
+                        balances[acc.id] = fyDoc.data();
+                    }
+                } catch (e) {
+                    console.error(`Error fetching FY data for ${acc.name}:`, e);
+                }
+            });
+            await Promise.all(promises);
+            setFyBalances(balances);
+        };
+        fetchFYBalances();
+    }, [selectedFY, accounts]);
+
+    const getAccountBalance = (acc) => {
+        const fyData = fyBalances[acc.id];
+        if (fyData) {
+            return {
+                ...acc,
+                openingBalance: fyData.openingBalance ?? acc.openingBalance,
+                openingBalanceType: fyData.openingBalanceType ?? acc.openingBalanceType,
+                totalDebit: fyData.totalDebit ?? acc.totalDebit,
+                totalCredit: fyData.totalCredit ?? acc.totalCredit,
+                closingBalance: fyData.closingBalance ?? acc.closingBalance,
+                closingBalanceType: fyData.closingBalanceType ?? acc.closingBalanceType
+            };
+        }
+        return acc;
+    };
 
     const uniqueGroups = useMemo(() => {
         const groups = new Set();
@@ -81,14 +140,14 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             result = result.filter(a => !a.verifiedBy);
         }
         if (minBalance !== "") {
-            result = result.filter(a => (a.closingBalance || 0) >= parseFloat(minBalance));
+            result = result.filter(a => ((fyBalances[a.id]?.closingBalance ?? a.closingBalance) || 0) >= parseFloat(minBalance));
         }
         if (maxBalance !== "") {
-            result = result.filter(a => (a.closingBalance || 0) <= parseFloat(maxBalance));
+            result = result.filter(a => ((fyBalances[a.id]?.closingBalance ?? a.closingBalance) || 0) <= parseFloat(maxBalance));
         }
 
         return result;
-    }, [accounts, allowedAccount, searchTerm, selectedGroup, minBalance, maxBalance, verificationStatus]);
+    }, [accounts, allowedAccount, searchTerm, selectedGroup, minBalance, maxBalance, verificationStatus, fyBalances]);
 
     const sortedAccounts = useMemo(() => {
         const sorted = [...filteredAccounts].sort((a, b) => {
@@ -96,8 +155,8 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             let valB = b[sortConfig.key];
             
             if (['openingBalance', 'totalDebit', 'totalCredit', 'closingBalance'].includes(sortConfig.key)) {
-                valA = parseFloat(valA || 0);
-                valB = parseFloat(valB || 0);
+                valA = parseFloat((fyBalances[a.id]?.[sortConfig.key] ?? a[sortConfig.key]) || 0);
+                valB = parseFloat((fyBalances[b.id]?.[sortConfig.key] ?? b[sortConfig.key]) || 0);
             } else {
                 valA = (valA || '').toString().toLowerCase();
                 valB = (valB || '').toString().toLowerCase();
@@ -108,7 +167,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             return 0;
         });
         return sorted;
-    }, [filteredAccounts, sortConfig]);
+    }, [filteredAccounts, sortConfig, fyBalances]);
 
     const requestSort = (key) => {
         let direction = 'ascending';
@@ -179,7 +238,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         }
     };
 
-    const fetchAccountTransactions = async (accName, isLoadMore = false) => {
+    const fetchAccountTransactions = async (accName, isLoadMore = false, fyId = detailFY) => {
         setLoadingTxns(true);
         try {
             const accNameLower = accName.toLowerCase();
@@ -202,15 +261,23 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             const txns = [];
             snap.forEach(d => txns.push({ id: d.id, ...d.data() }));
 
+            const activeFY = fyOptions.find(f => f.id === fyId);
+            const start = activeFY?.startDate || '1900-01-01';
+            const end = activeFY?.endDate || '2100-12-31';
+
+            const fyFilteredTxns = txns.filter(t => t.date >= start && t.date <= end);
+
             // Sort Oldest to Newest for Running Balance
-            txns.sort((a, b) => new Date(a.date) - new Date(b.date));
+            fyFilteredTxns.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             // Merge with previous if load more
-            const combinedTxns = isLoadMore ? [...accountTxns, ...txns] : txns;
+            const combinedTxns = isLoadMore ? [...accountTxns, ...fyFilteredTxns] : fyFilteredTxns;
             
             // Calculate running balance based on opening balance
             // Ensure we use the correct opening balance sign (+ for Dr, - for Cr)
-            let runningVal = (selectedAccount?.openingBalanceType === 'Cr' ? -1 : 1) * parseFloat(selectedAccount?.openingBalance || 0);
+            let runningVal = detailFYData 
+                ? (detailFYData.openingBalanceType === 'Cr' ? -1 : 1) * parseFloat(detailFYData.openingBalance || 0)
+                : (selectedAccount?.openingBalanceType === 'Cr' ? -1 : 1) * parseFloat(selectedAccount?.openingBalance || 0);
             
             const processedTxns = combinedTxns.map(t => {
                 const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === accNameLower;
@@ -239,6 +306,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
     const openAccountDetails = (acc) => {
         setSelectedAccount(acc);
+        setDetailFY(selectedFY);
         setView('details');
         setAccountTxns([]);
         setLastVisibleTxn(null);
@@ -251,21 +319,43 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             fetchAccountTransactions(selectedAccount.name);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [view, selectedAccount]);
+    }, [view, selectedAccount, detailFY, detailFYData]);
+
+    useEffect(() => {
+        if (view !== 'details' || !selectedAccount) return;
+        const fetchFYData = async () => {
+            try {
+                const fyDoc = await getDoc(doc(db, 'accounts', selectedAccount.id, 'fiscalYears', detailFY));
+                if (fyDoc.exists()) {
+                    setDetailFYData(fyDoc.data());
+                } else {
+                    setDetailFYData(null);
+                }
+            } catch (e) {
+                console.error(e);
+                setDetailFYData(null);
+            }
+        };
+        fetchFYData();
+    }, [view, selectedAccount, detailFY]);
 
 
     const exportToPDF = () => {
         if (!selectedAccount) return;
+        const displayBalance = detailFYData || selectedAccount;
         const doc = new jsPDF();
         
+        const activeFY = fyOptions.find(f => f.id === detailFY);
+        const fyName = activeFY?.name || detailFY;
+        
         doc.setFontSize(14);
-        doc.text(`Ledger Account Statement`, 14, 15);
+        doc.text(`Ledger Account Statement (${fyName})`, 14, 15);
         
         doc.setFontSize(10);
         doc.text(`Account Name: ${selectedAccount.name}`, 14, 22);
         doc.text(`Account Group: ${selectedAccount.group || 'N/A'}`, 14, 28);
-        doc.text(`Opening Balance: ${selectedAccount.openingBalance || 0} ${selectedAccount.openingBalanceType || ''}`, 130, 22);
-        doc.text(`Closing Balance: ${selectedAccount.closingBalance || 0} ${selectedAccount.closingBalanceType || ''}`, 130, 28);
+        doc.text(`Opening Balance: ${displayBalance.openingBalance || 0} ${displayBalance.openingBalanceType || ''}`, 130, 22);
+        doc.text(`Closing Balance: ${displayBalance.closingBalance || 0} ${displayBalance.closingBalanceType || ''}`, 130, 28);
         
         const tableColumn = ["Date", "Particulars", "Vch Type", "Vch No", "Debit", "Credit", "Balance"];
         const tableRows = [];
@@ -311,11 +401,14 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             margin: { left: 14, right: 14 }
         });
 
-        doc.save(`${selectedAccount.name}_Statement.pdf`);
+        doc.save(`${selectedAccount.name}_Statement_FY${detailFY}.pdf`);
     };
 
     const exportToExcel = () => {
         if (!selectedAccount) return;
+        
+        const activeFY = fyOptions.find(f => f.id === detailFY);
+        const fyName = activeFY?.name || detailFY;
         
         const formattedData = accountTxns.map(t => {
             const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === selectedAccount.name.toLowerCase();
@@ -346,7 +439,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         const worksheet = XLSX.utils.json_to_sheet(formattedData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Statement");
-        XLSX.writeFile(workbook, `${selectedAccount.name}_Statement.xlsx`);
+        XLSX.writeFile(workbook, `${selectedAccount.name}_Statement_${fyName}.xlsx`);
     };
 
     if (view === 'details' && selectedAccount) {
@@ -362,6 +455,14 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             >
                                 ← Back to Accounts
                             </button>
+                            <select
+                                value={detailFY}
+                                onChange={(e) => { setDetailFY(e.target.value); setAccountTxns([]); setLastVisibleTxn(null); }}
+                                className="px-3 py-1.5 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-medium bg-blue-50 text-blue-800"
+                            >
+                                {fyOptions.length === 0 && <option value="">No Fiscal Years</option>}
+                                {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
+                            </select>
                             <h3 className="font-semibold text-xl text-gray-800">
                                 {selectedAccount.name}
                             </h3>
@@ -405,17 +506,26 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             </div>
                         </div>
                         <div>
-                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Balance Summary</h4>
-                            <div className="text-sm text-gray-700 grid grid-cols-2 gap-2">
-                                <div className="font-medium">Opening Balance:</div>
-                                <div className="text-right">{formatCurrency(selectedAccount.openingBalance)} {selectedAccount.openingBalanceType}</div>
-                                <div className="font-medium">Total Debit:</div>
-                                <div className="text-right text-red-600">{formatCurrency(selectedAccount.totalDebit)}</div>
-                                <div className="font-medium">Total Credit:</div>
-                                <div className="text-right text-green-600">{formatCurrency(selectedAccount.totalCredit)}</div>
-                                <div className="font-medium text-gray-900 border-t pt-1 mt-1">Closing Balance:</div>
-                                <div className="text-right font-bold text-gray-900 border-t pt-1 mt-1">{formatCurrency(selectedAccount.closingBalance)} {selectedAccount.closingBalanceType}</div>
-                            </div>
+                            {(() => {
+                                const displayBalance = detailFYData || selectedAccount;
+                                return (
+                                    <>
+                                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                            Balance Summary <span className="text-[10px] text-blue-500 normal-case ml-1">({detailFYData ? `${detailFYData.fyName || 'Selected FY'}` : 'Account Default'})</span>
+                                        </h4>
+                                        <div className="text-sm text-gray-700 grid grid-cols-2 gap-2">
+                                            <div className="font-medium">Opening Balance:</div>
+                                            <div className="text-right">{formatCurrency(displayBalance.openingBalance)} {displayBalance.openingBalanceType}</div>
+                                            <div className="font-medium">Total Debit:</div>
+                                            <div className="text-right text-red-600">{formatCurrency(displayBalance.totalDebit)}</div>
+                                            <div className="font-medium">Total Credit:</div>
+                                            <div className="text-right text-green-600">{formatCurrency(displayBalance.totalCredit)}</div>
+                                            <div className="font-medium text-gray-900 border-t pt-1 mt-1">Closing Balance:</div>
+                                            <div className="text-right font-bold text-gray-900 border-t pt-1 mt-1">{formatCurrency(displayBalance.closingBalance)} {displayBalance.closingBalanceType}</div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
 
@@ -455,7 +565,17 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             <div className="bg-white rounded-lg shadow border border-gray-200 flex flex-col h-full shrink-0">
                 <div className="p-4 border-b border-gray-200 flex flex-col gap-4 bg-gray-50 rounded-t-lg shrink-0">
                     <div className="flex justify-between items-center">
-                        <h3 className="font-semibold text-lg text-gray-800">Accounts Directory</h3>
+                        <div className="flex items-center gap-3">
+                            <h3 className="font-semibold text-lg text-gray-800">Accounts Directory</h3>
+                            <select
+                                value={selectedFY}
+                                onChange={(e) => setSelectedFY(e.target.value)}
+                                className="px-3 py-1.5 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-medium bg-blue-50 text-blue-800"
+                            >
+                                {fyOptions.length === 0 && <option value="">No Fiscal Years</option>}
+                                {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
+                            </select>
+                        </div>
                         <button 
                             onClick={handleVerifyAll}
                             disabled={verifying || paginatedAccounts.length === 0}
@@ -533,7 +653,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                         </td>
                                     </tr>
                                 ) : (
-                                    paginatedAccounts.map(acc => (
+                                    paginatedAccounts.map(acc => {
+                                        const bal = getAccountBalance(acc);
+                                        return (
                                         <tr 
                                             key={acc.id} 
                                             onClick={() => openAccountDetails(acc)}
@@ -544,12 +666,12 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                 <div className="text-xs text-gray-400 font-normal">{acc.group}</div>
                                             </td>
                                             <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">
-                                                {formatCurrency(acc.openingBalance)} <span className="text-xs font-semibold">{acc.openingBalanceType}</span>
+                                                {formatCurrency(bal.openingBalance)} <span className="text-xs font-semibold">{bal.openingBalanceType}</span>
                                             </td>
-                                            <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">{formatCurrency(acc.totalDebit)}</td>
-                                            <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">{formatCurrency(acc.totalCredit)}</td>
+                                            <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">{formatCurrency(bal.totalDebit)}</td>
+                                            <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">{formatCurrency(bal.totalCredit)}</td>
                                             <td className="px-4 py-2 text-right text-gray-900 font-bold whitespace-nowrap">
-                                                {formatCurrency(acc.closingBalance)} <span className="text-xs">{acc.closingBalanceType}</span>
+                                                {formatCurrency(bal.closingBalance)} <span className="text-xs">{bal.closingBalanceType}</span>
                                             </td>
                                             <td className="px-4 py-2 text-center whitespace-nowrap">
                                                 {acc.verifiedBy ? (
@@ -577,7 +699,8 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                 )}
                                             </td>
                                         </tr>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>

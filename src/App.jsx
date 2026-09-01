@@ -7,6 +7,7 @@ import AccountsTab from './components/AccountsTab';
 import TransactionsTab from './components/TransactionsTab';
 import LoginScreen from './components/LoginScreen';
 import UserManagementTab from './components/UserManagementTab';
+import SettingsTab from './components/SettingsTab';
 
 export default function App() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -134,12 +135,20 @@ export default function App() {
             
             <nav className="flex space-x-4 mb-6 border-b border-gray-200 pb-2">
                 {currentUser.role === 'admin' && (
-                    <button 
-                        onClick={() => setActiveTab('users')}
-                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'users' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
-                    >
-                        Users
-                    </button>
+                    <>
+                        <button 
+                            onClick={() => setActiveTab('users')}
+                            className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'users' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                        >
+                            Users
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('settings')}
+                            className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'settings' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                        >
+                            Settings
+                        </button>
+                    </>
                 )}
                 {hasTabAccess('accounts') && (
                     <button 
@@ -170,6 +179,9 @@ export default function App() {
             <main className="bg-transparent">
                 <div style={{ display: activeTab === 'users' && currentUser.role === 'admin' ? 'block' : 'none' }}>
                     <UserManagementTab updateTrigger={updateTrigger} />
+                </div>
+                <div style={{ display: activeTab === 'settings' && currentUser.role === 'admin' ? 'block' : 'none' }}>
+                    <SettingsTab currentUser={currentUser} />
                 </div>
                 <div style={{ display: activeTab === 'import' && hasTabAccess('import') ? 'block' : 'none' }}>
                     <ImportCenter setUpdateTrigger={setUpdateTrigger} />
