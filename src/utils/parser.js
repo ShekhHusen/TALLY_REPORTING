@@ -98,7 +98,7 @@ export function processTransactions(json) {
             const ledgers = toArray(m.ledgerentries);
             ledgers.forEach(processEntry);
             
-            // "show only primary account"
+            // Sort by amount descending for primary account display
             debitAccounts.sort((a, b) => b.amount - a.amount);
             creditAccounts.sort((a, b) => b.amount - a.amount);
 
@@ -107,6 +107,10 @@ export function processTransactions(json) {
             
             const primaryCredit = creditAccounts.length > 0 ? creditAccounts[0].name : '-';
             const totalCredit = creditAccounts.reduce((acc, curr) => acc + curr.amount, 0);
+
+            // Collect all unique account names for filtering & affected account processing
+            const allDebitAccountNames = [...new Set(debitAccounts.map(a => a.name).filter(n => n))];
+            const allCreditAccountNames = [...new Set(creditAccounts.map(a => a.name).filter(n => n))];
 
             return {
                 id: m.guid || crypto.randomUUID(),
@@ -117,9 +121,16 @@ export function processTransactions(json) {
                 debitAmount: totalDebit,
                 creditAccount: primaryCredit,
                 creditAmount: totalCredit,
+                // All individual entries for accurate per-account balance calculation
+                allDebitEntries: debitAccounts,   // [{ name, amount }, ...]
+                allCreditEntries: creditAccounts, // [{ name, amount }, ...]
+                // Unique account names for easy filtering
+                allDebitAccounts: allDebitAccountNames,
+                allCreditAccounts: allCreditAccountNames,
                 inventory,
                 narration,
                 enteredBy
             };
         });
 }
+

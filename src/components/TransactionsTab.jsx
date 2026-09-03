@@ -147,10 +147,17 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
         const targetAccount = allowedAccount || appliedFilters.accountName;
         if (targetAccount) {
             const lowerTarget = targetAccount.toLowerCase();
-            result = result.filter(t => 
-                (t.debitAccount && t.debitAccount.toLowerCase() === lowerTarget) || 
-                (t.creditAccount && t.creditAccount.toLowerCase() === lowerTarget)
-            );
+            result = result.filter(t => {
+                // Check primary accounts
+                if ((t.debitAccount && t.debitAccount.toLowerCase() === lowerTarget) || 
+                    (t.creditAccount && t.creditAccount.toLowerCase() === lowerTarget)) {
+                    return true;
+                }
+                // Also check allDebitAccounts/allCreditAccounts for multi-ledger journals
+                if (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === lowerTarget)) return true;
+                if (t.allCreditAccounts && t.allCreditAccounts.some(n => n.toLowerCase() === lowerTarget)) return true;
+                return false;
+            });
         }
 
         if (appliedFilters.startDate) {

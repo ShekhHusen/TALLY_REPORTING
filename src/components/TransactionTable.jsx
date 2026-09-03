@@ -67,8 +67,23 @@ export default function TransactionTable({ transactions, showFullDetails = false
                             <tr><td colSpan={showFullDetails ? "7" : "6"} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
                         ) : (
                             sortedTransactions.map((t, idx) => {
-                                const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === selectedAccountName.toLowerCase();
+                                // Check if selected account is in debit side (primary or allDebitAccounts)
+                                const isDebit = (t.debitAccount && t.debitAccount.toLowerCase() === selectedAccountName.toLowerCase()) ||
+                                    (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === selectedAccountName.toLowerCase()));
                                 const particulars = isDebit ? `To ${t.creditAccount}` : `By ${t.debitAccount}`;
+
+                                // Calculate per-account amount for multi-ledger journals
+                                let accountDebitAmt = t.debitAmount;
+                                let accountCreditAmt = t.creditAmount;
+                                if (isDebit && t.allDebitEntries && t.allDebitEntries.length > 0) {
+                                    accountDebitAmt = t.allDebitEntries
+                                        .filter(e => e.name && e.name.toLowerCase() === selectedAccountName.toLowerCase())
+                                        .reduce((sum, e) => sum + e.amount, 0);
+                                } else if (!isDebit && t.allCreditEntries && t.allCreditEntries.length > 0) {
+                                    accountCreditAmt = t.allCreditEntries
+                                        .filter(e => e.name && e.name.toLowerCase() === selectedAccountName.toLowerCase())
+                                        .reduce((sum, e) => sum + e.amount, 0);
+                                }
 
                                 return (
                                     <React.Fragment key={t.id || idx}>
@@ -79,17 +94,44 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                                 <div className="text-xs">No: {t.voucherNo}</div>
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-gray-900" title={particulars}>{particulars}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{isDebit && t.debitAmount ? formatCurrency(t.debitAmount) : ''}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{!isDebit && t.creditAmount ? formatCurrency(t.creditAmount) : ''}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{isDebit && accountDebitAmt ? formatCurrency(accountDebitAmt) : ''}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{!isDebit && accountCreditAmt ? formatCurrency(accountCreditAmt) : ''}</td>
                                             <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-bold">{formatCurrency(t.runningBalance)} <span className="text-xs font-normal text-gray-500">{t.runningBalanceType}</span></td>
                                             {showFullDetails && (
                                                 <td className="px-4 py-3 whitespace-nowrap text-gray-500">{t.enteredBy}</td>
                                             )}
                                         </tr>
-                                        {showFullDetails && (t.inventory?.length > 0 || t.narration) && (
+                                        {showFullDetails && (t.inventory?.length > 0 || t.narration || (t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1)) && (
                                             <tr className="bg-gray-50/50">
                                                 <td colSpan="7" className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
                                                     {t.narration && <div className="mb-1"><span className="font-semibold text-gray-800">Narration:</span> {t.narration}</div>}
+                                                    {(t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1) && (
+                                                        <div className="mb-1">
+                                                            <span className="font-semibold text-gray-800">All Entries: </span>
+                                                            <div className="flex gap-6 mt-1">
+                                                                {t.allDebitEntries?.length > 0 && (
+                                                                    <div>
+                                                                        <span className="font-semibold text-green-700">Dr:</span>
+                                                                        <ul className="list-disc pl-5 mt-0.5 space-y-0.5">
+                                                                            {t.allDebitEntries.map((e, i) => (
+                                                                                <li key={i}>{e.name} — {formatCurrency(e.amount)}</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
+                                                                {t.allCreditEntries?.length > 0 && (
+                                                                    <div>
+                                                                        <span className="font-semibold text-red-700">Cr:</span>
+                                                                        <ul className="list-disc pl-5 mt-0.5 space-y-0.5">
+                                                                            {t.allCreditEntries.map((e, i) => (
+                                                                                <li key={i}>{e.name} — {formatCurrency(e.amount)}</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     {t.inventory?.length > 0 && (
                                                         <div className="mt-1">
                                                             <span className="font-semibold text-gray-800">Inventory: </span>
@@ -151,10 +193,37 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                         <td className="px-4 py-3 whitespace-nowrap text-gray-500">{t.enteredBy}</td>
                                     )}
                                 </tr>
-                                {showFullDetails && (t.inventory?.length > 0 || t.narration) && (
+                                {showFullDetails && (t.inventory?.length > 0 || t.narration || (t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1)) && (
                                     <tr className="bg-gray-50/50">
                                         <td colSpan="7" className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
                                             {t.narration && <div className="mb-1"><span className="font-semibold text-gray-800">Narration:</span> {t.narration}</div>}
+                                            {(t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1) && (
+                                                <div className="mb-1">
+                                                    <span className="font-semibold text-gray-800">All Entries: </span>
+                                                    <div className="flex gap-6 mt-1">
+                                                        {t.allDebitEntries?.length > 0 && (
+                                                            <div>
+                                                                <span className="font-semibold text-green-700">Dr:</span>
+                                                                <ul className="list-disc pl-5 mt-0.5 space-y-0.5">
+                                                                    {t.allDebitEntries.map((e, i) => (
+                                                                        <li key={i}>{e.name} — {formatCurrency(e.amount)}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
+                                                        {t.allCreditEntries?.length > 0 && (
+                                                            <div>
+                                                                <span className="font-semibold text-red-700">Cr:</span>
+                                                                <ul className="list-disc pl-5 mt-0.5 space-y-0.5">
+                                                                    {t.allCreditEntries.map((e, i) => (
+                                                                        <li key={i}>{e.name} — {formatCurrency(e.amount)}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                             {t.inventory?.length > 0 && (
                                                 <div className="mt-1">
                                                     <span className="font-semibold text-gray-800">Inventory: </span>

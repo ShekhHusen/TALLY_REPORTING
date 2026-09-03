@@ -54,8 +54,18 @@ export default function ImportCenter({ setUpdateTrigger }) {
     const processAffectedAccounts = async (parsedTransactions) => {
         const affectedAccountNames = new Set();
         parsedTransactions.forEach(t => {
-            if (t.debitAccount && t.debitAccount !== '-') affectedAccountNames.add(t.debitAccount);
-            if (t.creditAccount && t.creditAccount !== '-') affectedAccountNames.add(t.creditAccount);
+            // Use allDebitAccounts/allCreditAccounts arrays to capture ALL accounts
+            // (not just primary), important for multi-ledger journal vouchers
+            if (t.allDebitAccounts && t.allDebitAccounts.length > 0) {
+                t.allDebitAccounts.forEach(name => { if (name && name !== '-') affectedAccountNames.add(name); });
+            } else if (t.debitAccount && t.debitAccount !== '-') {
+                affectedAccountNames.add(t.debitAccount);
+            }
+            if (t.allCreditAccounts && t.allCreditAccounts.length > 0) {
+                t.allCreditAccounts.forEach(name => { if (name && name !== '-') affectedAccountNames.add(name); });
+            } else if (t.creditAccount && t.creditAccount !== '-') {
+                affectedAccountNames.add(t.creditAccount);
+            }
         });
 
         const snap = await getDocs(query(collection(db, 'accounts')));
@@ -258,10 +268,30 @@ export default function ImportCenter({ setUpdateTrigger }) {
                 let totalCredit = 0;
                 
                 txns.forEach(t => {
-                    if (t.debitAccount && t.debitAccount.toLowerCase() === accName) {
+                    // Use allDebitEntries/allCreditEntries for accurate per-account amounts
+                    // This correctly handles multi-ledger journal vouchers
+                    const debitEntries = t.allDebitEntries || [];
+                    const creditEntries = t.allCreditEntries || [];
+                    
+                    if (debitEntries.length > 0) {
+                        debitEntries.forEach(entry => {
+                            if (entry.name && entry.name.toLowerCase() === accName) {
+                                totalDebit += parseFloat(entry.amount || 0);
+                            }
+                        });
+                    } else if (t.debitAccount && t.debitAccount.toLowerCase() === accName) {
+                        // Fallback for old data without allDebitEntries
                         totalDebit += parseFloat(t.debitAmount || 0);
                     }
-                    if (t.creditAccount && t.creditAccount.toLowerCase() === accName) {
+                    
+                    if (creditEntries.length > 0) {
+                        creditEntries.forEach(entry => {
+                            if (entry.name && entry.name.toLowerCase() === accName) {
+                                totalCredit += parseFloat(entry.amount || 0);
+                            }
+                        });
+                    } else if (t.creditAccount && t.creditAccount.toLowerCase() === accName) {
+                        // Fallback for old data without allCreditEntries
                         totalCredit += parseFloat(t.creditAmount || 0);
                     }
                 });
