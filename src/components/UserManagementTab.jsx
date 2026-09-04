@@ -24,9 +24,14 @@ export default function UserManagementTab({ updateTrigger }) {
     const fetchAccounts = async () => {
         try {
             const snap = await getDocs(query(collection(db, 'accounts')));
-            const accs = [];
-            snap.forEach(d => accs.push({ id: d.id, name: d.data().name }));
-            // sort by name
+            const nameMap = new Map();
+            snap.forEach(d => {
+                const name = d.data().name ? d.data().name.trim() : '';
+                if (name && !nameMap.has(name.toLowerCase())) {
+                    nameMap.set(name.toLowerCase(), { id: d.id, name });
+                }
+            });
+            const accs = Array.from(nameMap.values());
             accs.sort((a, b) => a.name.localeCompare(b.name));
             setAccounts(accs);
         } catch (error) {

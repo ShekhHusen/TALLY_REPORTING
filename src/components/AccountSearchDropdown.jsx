@@ -12,15 +12,22 @@ const fetchAllAccountNames = async () => {
 
     cachePromise = (async () => {
         const snap = await getDocs(collection(db, 'accounts'));
-        const names = [];
+        const nameMap = new Map();
         snap.forEach(d => {
             const data = d.data();
-            if (data.name) names.push(data.name);
+            if (data.name && data.name.trim()) {
+                const trimmed = data.name.trim();
+                const lower = trimmed.toLowerCase();
+                if (!nameMap.has(lower)) {
+                    nameMap.set(lower, trimmed);
+                }
+            }
         });
-        names.sort((a, b) => a.localeCompare(b));
-        cachedAccountNames = names;
+        const uniqueNames = Array.from(nameMap.values());
+        uniqueNames.sort((a, b) => a.localeCompare(b));
+        cachedAccountNames = uniqueNames;
         cachePromise = null;
-        return names;
+        return uniqueNames;
     })();
 
     return cachePromise;

@@ -62,97 +62,107 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [hasMoreTxns, setHasMoreTxns] = useState(true);
     const [showFullDetails, setShowFullDetails] = useState(false);
 
-    // Page-based pagination state
+    // All data state
+    const [allAccounts, setAllAccounts] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageCursors, setPageCursors] = useState([null]); // Index 0 = page 1 cursor (null = start)
-    const [hasNextPage, setHasNextPage] = useState(false);
-
-    const fetchAccountsPage = async (pageNumber = 1) => {
-        setLoadingAccounts(true);
-
-        try {
-            let accRef = collection(db, 'accounts');
-            // Fetch 11 to know if there's a next page
-            let q = query(accRef, limit(11));
-            
-            // Server side search for name and group
-            if (searchTerm) {
-                q = query(q, where("name", ">=", searchTerm), where("name", "<=", searchTerm + '\uf8ff'));
-            }
-            if (selectedGroup) {
-                q = query(q, where("group", "==", selectedGroup));
-            }
-
-            // Note: minBalance, maxBalance, and verificationStatus rely on subcollections or complex data
-            // so they will still act as client-side filters on the fetched subset for now.
-
-            // Use stored cursor for the requested page
-            const cursor = pageCursors[pageNumber - 1];
-            if (cursor) {
-                q = query(q, startAfter(cursor));
-            }
-
-            const snap = await getDocs(q);
-            const allDocs = snap.docs;
-            
-            // Take only 10, use 11th to determine hasNext
-            const pageDocs = allDocs.slice(0, 10);
-            setHasNextPage(allDocs.length > 10);
-            
-            const accs = [];
-            pageDocs.forEach(d => accs.push({ id: d.id, ...d.data() }));
-            setAccounts(accs);
-
-            // Store cursor for next page (last doc of current page)
-            if (pageDocs.length > 0) {
-                setPageCursors(prev => {
-                    const updated = [...prev];
-                    updated[pageNumber] = pageDocs[pageDocs.length - 1];
-                    return updated;
-                });
-            }
-            
-            setCurrentPage(pageNumber);
-        } catch (err) {
-            console.error("Error fetching accounts:", err);
-        }
-        
-        setLoadingAccounts(false);
-    };
+    const pageSize = 15;
 
     useEffect(() => {
-        fetchAccountsPage(1);
+        const loadAllAccounts = async () => {
+            setLoadingAccounts(true);
+            try {
+                const snap = await getDocs(collection(db, 'accounts'));
+                const accMap = new Map();
+                snap.forEach(d => {
+                    const data = d.data();
+                    const name = (data.name || '').trim();
+                    if (!name) return;
+                    const key = name.toLowerCase();
+
+                    if (!accMap.has(key)) {
+                        accMap.set(key, {
+                            id: d.id,
+                            ...data,
+                            name,
+                            allDocIds: [d.id]
+                        });
+                    } else {
+                        const existing = accMap.get(key);
+                        const allDocIds = [...new Set([...(existing.allDocIds || [existing.id]), d.id])];
+                        const preferCurrent = existing.isNewAutoCreated && !data.isNewAutoCreated;
+                        accMap.set(key, {
+                            ...(preferCurrent ? data : existing),
+                            id: preferCurrent ? d.id : existing.id,
+                            name: existing.name || name,
+                            group: data.group || existing.group || '',
+                            openingBalance: (data.openingBalance !== undefined && data.openingBalance !== 0) ? data.openingBalance : (existing.openingBalance || 0),
+                            openingBalanceType: data.openingBalanceType || existing.openingBalanceType || '',
+                            address: data.address || existing.address || '',
+                            contact: data.contact || existing.contact || '',
+                            verifiedBy: data.verifiedBy || existing.verifiedBy || null,
+                            verifiedAt: data.verifiedAt || existing.verifiedAt || null,
+                            isNewAutoCreated: existing.isNewAutoCreated && data.isNewAutoCreated,
+                            allDocIds
+                        });
+                    }
+                });
+                const accs = Array.from(accMap.values());
+                accs.sort((a, b) => a.name.localeCompare(b.name));
+                setAllAccounts(accs);
+            } catch (err) {
+                console.error("Error fetching all accounts:", err);
+            }
+            setLoadingAccounts(false);
+        };
+        loadAllAccounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [updateTrigger]);
 
-    // Handle search triggers - reset to page 1
-    const handleAccountSearch = () => {
-        setPageCursors([null]);
+    useEffect(() => {
+        const fetchAllFYBalances = async () => {
+            if (allAccounts.length === 0 || !selectedFY) return;
+            setLoadingAccounts(true);
+            const balances = {};
+            const chunkSize = 100;
+            for (let i = 0; i < allAccounts.length; i += chunkSize) {
+                const chunk = allAccounts.slice(i, i + chunkSize);
+                const promises = chunk.map(async (acc) => {
+                    try {
+                        const ids = acc.allDocIds && acc.allDocIds.length > 0 ? acc.allDocIds : [acc.id];
+                        for (const docId of ids) {
+                            const fyDoc = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', selectedFY));
+                            if (fyDoc.exists()) {
+                                balances[acc.id] = fyDoc.data();
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Error fetching FY data for ${acc.name}:`, e);
+                    }
+                });
+                await Promise.all(promises);
+            }
+            setFyBalances(balances);
+            setLoadingAccounts(false);
+        };
+        fetchAllFYBalances();
+    }, [selectedFY, allAccounts]);
+
+    // When any filter changes, reset to page 1
+    useEffect(() => {
         setCurrentPage(1);
-        // Need to fetch after state update - use setTimeout to let state settle
-        setTimeout(() => fetchAccountsPage(1), 0);
+    }, [searchTerm, selectedGroup, minBalance, maxBalance, verificationStatus, showIgnored]);
+
+    const handleAccountSearch = () => {
+        setCurrentPage(1);
     };
 
-    useEffect(() => {
-        const fetchFYBalances = async () => {
-            if (accounts.length === 0) return;
-            const balances = {};
-            // Fetch FY balance for each account from sub-collection
-            const promises = accounts.map(async (acc) => {
-                try {
-                    const fyDoc = await getDoc(doc(db, 'accounts', acc.id, 'fiscalYears', selectedFY));
-                    if (fyDoc.exists()) {
-                        balances[acc.id] = fyDoc.data();
-                    }
-                } catch (e) {
-                    console.error(`Error fetching FY data for ${acc.name}:`, e);
-                }
-            });
-            await Promise.all(promises);
-            setFyBalances(balances);
-        };
-        fetchFYBalances();
-    }, [selectedFY, accounts]);
+    const isAccountIgnored = (acc) => {
+        const ignoredList = currentUser?.ignoredAccounts || [];
+        if (ignoredList.includes(acc.id)) return true;
+        if (acc.allDocIds && acc.allDocIds.some(id => ignoredList.includes(id))) return true;
+        return false;
+    };
 
     const getAccountBalance = (acc) => {
         const fyData = fyBalances[acc.id];
@@ -174,25 +184,29 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
     const uniqueGroups = useMemo(() => {
         const groups = new Set();
-        accounts.forEach(a => { if (a.group) groups.add(a.group); });
+        allAccounts.forEach(a => { if (a.group) groups.add(a.group); });
         return Array.from(groups).sort();
-    }, [accounts]);
+    }, [allAccounts]);
 
     const filteredAccounts = useMemo(() => {
-        let result = accounts;
+        let result = allAccounts;
         
         if (allowedAccount) {
             result = result.filter(a => a.name.toLowerCase() === allowedAccount.toLowerCase());
         }
         
-        const ignoredList = currentUser?.ignoredAccounts || [];
         if (!showIgnored) {
-            result = result.filter(a => !ignoredList.includes(a.id));
+            result = result.filter(a => !isAccountIgnored(a));
         }
-        // If showIgnored is true, we keep all accounts (including ignored ones) as per user feedback
+
+        if (searchTerm) {
+            const lowerTerm = searchTerm.toLowerCase().trim();
+            result = result.filter(a => a.name.toLowerCase().includes(lowerTerm));
+        }
         
-        // searchTerm and selectedGroup are handled server-side in fetchAccounts()
-        // so no client-side filtering needed for those
+        if (selectedGroup) {
+            result = result.filter(a => a.group === selectedGroup);
+        }
 
         if (verificationStatus === 'verified') {
             result = result.filter(a => !!(fyBalances[a.id]?.verifiedBy || a.verifiedBy));
@@ -207,7 +221,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         }
 
         return result;
-    }, [accounts, allowedAccount, minBalance, maxBalance, verificationStatus, fyBalances, currentUser?.ignoredAccounts, showIgnored]);
+    }, [allAccounts, allowedAccount, minBalance, maxBalance, verificationStatus, fyBalances, currentUser?.ignoredAccounts, showIgnored, searchTerm, selectedGroup]);
 
     const sortedAccounts = useMemo(() => {
         const sorted = [...filteredAccounts].sort((a, b) => {
@@ -242,23 +256,34 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         return sortConfig.direction === 'ascending' ? ' ↑' : ' ↓';
     };
 
-    const handleVerify = async (accountId) => {
+    const paginatedAccounts = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return sortedAccounts.slice(start, start + pageSize);
+    }, [sortedAccounts, currentPage]);
+
+    const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / pageSize));
+    const hasNextPage = currentPage < totalPages;
+
+    const handleVerify = async (acc) => {
         const userName = currentUser?.name || 'System';
         try {
             setVerifying(true);
-            const ref = doc(db, 'accounts', accountId, 'fiscalYears', selectedFY);
             const now = new Date().toLocaleString('en-IN');
+            const ids = acc.allDocIds && acc.allDocIds.length > 0 ? acc.allDocIds : [acc.id];
             
-            await setDoc(ref, {
-                verifiedBy: userName,
-                verifiedAt: now
-            }, { merge: true });
+            for (const docId of ids) {
+                const ref = doc(db, 'accounts', docId, 'fiscalYears', selectedFY);
+                await setDoc(ref, {
+                    verifiedBy: userName,
+                    verifiedAt: now
+                }, { merge: true });
+            }
             
             // Update fyBalances locally to reflect immediately without needing a full refetch
             setFyBalances(prev => ({
                 ...prev,
-                [accountId]: {
-                    ...(prev[accountId] || {}),
+                [acc.id]: {
+                    ...(prev[acc.id] || {}),
                     verifiedBy: userName,
                     verifiedAt: now
                 }
@@ -273,7 +298,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
     const handleVerifyAll = async () => {
         const userName = currentUser?.name || 'System';
-        if(!window.confirm(`Are you sure you want to mark all ${sortedAccounts.length} accounts on this page as verified by ${userName}?`)) return;
+        if(!window.confirm(`Are you sure you want to mark all ${paginatedAccounts.length} accounts on this page as verified by ${userName}?`)) return;
 
         try {
             setVerifying(true);
@@ -281,12 +306,15 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             const batch = writeBatch(db);
             const newBalances = { ...fyBalances };
             
-            sortedAccounts.forEach(acc => {
-                const ref = doc(db, 'accounts', acc.id, 'fiscalYears', selectedFY);
-                batch.set(ref, {
-                    verifiedBy: userName,
-                    verifiedAt: now
-                }, { merge: true });
+            paginatedAccounts.forEach(acc => {
+                const ids = acc.allDocIds && acc.allDocIds.length > 0 ? acc.allDocIds : [acc.id];
+                ids.forEach(docId => {
+                    const ref = doc(db, 'accounts', docId, 'fiscalYears', selectedFY);
+                    batch.set(ref, {
+                        verifiedBy: userName,
+                        verifiedAt: now
+                    }, { merge: true });
+                });
                 
                 newBalances[acc.id] = {
                     ...(newBalances[acc.id] || {}),
@@ -304,21 +332,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         }
     };
 
-    const handleIgnoreToggle = async (accountId, isCurrentlyIgnored) => {
+    const handleIgnoreToggle = async (acc, isCurrentlyIgnored) => {
         try {
             const userRef = doc(db, 'users', currentUser.uid);
             const ignoredList = currentUser.ignoredAccounts || [];
+            const ids = acc.allDocIds && acc.allDocIds.length > 0 ? acc.allDocIds : [acc.id];
             const newList = isCurrentlyIgnored
-                ? ignoredList.filter(id => id !== accountId)
-                : [...ignoredList, accountId];
+                ? ignoredList.filter(id => !ids.includes(id))
+                : [...new Set([...ignoredList, ...ids])];
                 
             await updateDoc(userRef, { ignoredAccounts: newList });
             if (setCurrentUser) {
                 setCurrentUser(prev => ({ ...prev, ignoredAccounts: newList }));
             }
-        } catch (error) {
-            console.error(error);
-            alert("Error updating ignore list: " + error.message);
         }
     };
 
@@ -672,7 +698,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             </label>
                             <button 
                                 onClick={handleVerifyAll}
-                                disabled={verifying || sortedAccounts.length === 0}
+                                disabled={verifying || paginatedAccounts.length === 0}
                                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-sm font-medium transition disabled:opacity-50"
                             >
                                 {verifying ? 'Processing...' : 'Verify Visible Page'}
@@ -717,12 +743,29 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             onChange={(e) => setMaxBalance(e.target.value)}
                             className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                         />
-                        <button
-                            onClick={handleAccountSearch}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-medium transition"
-                        >
-                            Search
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleAccountSearch}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition flex-1"
+                            >
+                                Search
+                            </button>
+                            {(searchTerm || selectedGroup || minBalance || maxBalance || verificationStatus !== 'all') && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        setSelectedGroup('');
+                                        setMinBalance('');
+                                        setMaxBalance('');
+                                        setVerificationStatus('all');
+                                    }}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm font-medium transition"
+                                    title="Reset all filters"
+                                >
+                                    Reset
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
                 
@@ -744,17 +787,18 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
-                                    {sortedAccounts.length === 0 ? (
+                                    {paginatedAccounts.length === 0 ? (
                                         <tr>
                                             <td colSpan="7" className="px-4 py-6 text-center text-gray-500">
-                                                No accounts found. {accounts.length > 0 && accounts[0].closingBalance === undefined && (
+                                                No accounts found. {allAccounts.length > 0 && allAccounts[0].closingBalance === undefined && (
                                                     <span className="block mt-2 text-red-500 font-bold">Have you synced Account Balances in the Import Center?</span>
                                                 )}
                                             </td>
                                         </tr>
                                     ) : (
-                                        sortedAccounts.map(acc => {
+                                        paginatedAccounts.map(acc => {
                                             const bal = getAccountBalance(acc);
+                                            const isIgnored = isAccountIgnored(acc);
                                             return (
                                             <tr 
                                                 key={acc.id} 
@@ -791,7 +835,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                 <td className="px-4 py-2 text-center whitespace-nowrap flex gap-2 justify-center">
                                                     {!bal.verifiedBy && (
                                                         <button 
-                                                            onClick={(e) => { e.stopPropagation(); handleVerify(acc.id); }}
+                                                            onClick={(e) => { e.stopPropagation(); handleVerify(acc); }}
                                                             className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 border border-blue-200 rounded hover:bg-blue-50 transition"
                                                         >
                                                             Verify
@@ -800,12 +844,15 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                     <button
                                                         onClick={(e) => { 
                                                             e.stopPropagation(); 
-                                                            const isIgnored = currentUser?.ignoredAccounts?.includes(acc.id);
-                                                            handleIgnoreToggle(acc.id, isIgnored); 
+                                                            handleIgnoreToggle(acc, isIgnored); 
                                                         }}
-                                                        className="text-gray-600 hover:text-gray-800 text-xs font-medium px-2 py-1 border border-gray-200 rounded hover:bg-gray-100 transition"
+                                                        className={`text-xs font-medium px-2 py-1 border rounded transition ${
+                                                            isIgnored 
+                                                                ? 'text-green-700 border-green-300 hover:bg-green-50' 
+                                                                : 'text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-800'
+                                                        }`}
                                                     >
-                                                        {currentUser?.ignoredAccounts?.includes(acc.id) ? 'Unignore' : 'Ignore'}
+                                                        {isIgnored ? 'Unignore' : 'Ignore'}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -819,26 +866,42 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 </div>
 
                 <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-t border-gray-200 shrink-0">
-                    <span className="text-sm text-gray-700">
-                        Showing {sortedAccounts.length} entries (Page {currentPage})
+                    <span className="text-sm text-gray-700 font-medium">
+                        Showing {sortedAccounts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, sortedAccounts.length)} of {sortedAccounts.length} accounts
                     </span>
-                    <div className="flex gap-2 items-center">
+                    <div className="flex gap-1.5 items-center">
                         <button 
                             disabled={currentPage === 1 || loadingAccounts}
-                            onClick={() => fetchAccountsPage(currentPage - 1)}
-                            className="px-4 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-sm font-medium border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            onClick={() => setCurrentPage(1)}
+                            className="px-2.5 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-xs font-bold border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            title="First Page"
+                        >
+                            ««
+                        </button>
+                        <button 
+                            disabled={currentPage === 1 || loadingAccounts}
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            className="px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-sm font-medium border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
                         >
                             ← Previous
                         </button>
                         <span className="text-sm font-semibold text-gray-800 px-2">
-                            Page {currentPage}
+                            Page {currentPage} of {totalPages}
                         </span>
                         <button 
                             disabled={!hasNextPage || loadingAccounts}
-                            onClick={() => fetchAccountsPage(currentPage + 1)}
-                            className="px-4 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-sm font-medium border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            onClick={() => setCurrentPage(p => p + 1)}
+                            className="px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-sm font-medium border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
                         >
                             Next →
+                        </button>
+                        <button 
+                            disabled={!hasNextPage || loadingAccounts}
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="px-2.5 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-xs font-bold border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            title="Last Page"
+                        >
+                            »»
                         </button>
                     </div>
                 </div>
