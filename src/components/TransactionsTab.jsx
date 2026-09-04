@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, limit, startAfter } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 
 export default function TransactionsTab({ updateTrigger, allowedAccount }) {
     // Dropdown Data
-    const [allTransactions, setAllTransactions] = useState([]);
-    const [allAccounts, setAllAccounts] = useState([]);
+    const [transactions, setTransactions] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
 
     const [fyOptions, setFyOptions] = useState([]);
     const [selectedFYId, setSelectedFYId] = useState('');
@@ -19,17 +19,10 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
     const [inputAccountName, setInputAccountName] = useState('');
     const [inputVoucherType, setInputVoucherType] = useState('');
 
-    // Applied Filters (Updated on Search)
-    const [appliedFilters, setAppliedFilters] = useState({
-        startDate: '',
-        endDate: '',
-        accountName: '',
-        voucherType: ''
-    });
-    
     // Pagination state
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 50;
+    const [lastVisible, setLastVisible] = useState(null);
+    const [hasMore, setHasMore] = useState(true);
+    const limitCount = 50;
     
     // Toggle state
     const [showFullDetails, setShowFullDetails] = useState(false);
@@ -43,36 +36,22 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
                 const fys = await fetchFiscalYears();
                 setFyOptions(fys);
                 const current = getCurrentFYObject(fys);
-                let initialStart = '';
-                let initialEnd = '';
                 if (current) {
                     setSelectedFYId(current.id);
-                    initialStart = current.startDate;
-                    initialEnd = current.endDate;
                 }
-                
-                setInputStartDate(initialStart);
-                setInputEndDate(initialEnd);
-                setAppliedFilters(prev => ({
-                    ...prev,
-                    startDate: initialStart,
-                    endDate: initialEnd
-                }));
 
-                const accSnap = await getDocs(collection(db, 'accounts'));
-                const accs = [];
-                accSnap.forEach(d => accs.push(d.data().name));
-                accs.sort((a, b) => a.localeCompare(b));
-                setAllAccounts(accs);
+                // Default to Yesterday
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yyyy = yesterday.getFullYear();
+                const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+                const dd = String(yesterday.getDate()).padStart(2, '0');
+                const yesterdayStr = `${yyyy}-${mm}-${dd}`;
+                
+                setInputStartDate(yesterdayStr);
+                setInputEndDate(yesterdayStr);
 
-                const txnsSnap = await getDocs(collection(db, 'transactions'));
-                const txns = [];
-                txnsSnap.forEach(d => txns.push({ id: d.id, ...d.data() }));
-                
-                // Pre-sort by date descending
-                txns.sort((a, b) => new Date(b.date) - new Date(a.date));
-                setAllTransactions(txns);
-                
+                await fetchTransactions(yesterdayStr, yesterdayStr, '', '', false);
             } catch (error) {
                 console.error("Error fetching initial data:", error);
             }
@@ -82,7 +61,73 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [updateTrigger]);
 
-    // Handle FY Dropdown changes AFTER initial load
+    const fetchTransactions = async (startDate, endDate, accountName, voucherType, isLoadMore = false) => {
+        if (isLoadMore) {
+            setLoadingMore(true);
+        } else {
+            setLoadingData(true);
+        }
+
+        try {
+            let txnsRef = collection(db, 'transactions');
+            // Build query constraints dynamically
+            let constraints = [orderBy("date", "desc"), limit(limitCount)];
+            
+            if (startDate) {
+                constraints.push(where("date", ">=", startDate));
+            }
+            if (endDate) {
+                constraints.push(where("date", "<=", endDate));
+            }
+            if (voucherType) {
+                constraints.push(where("type", "==", voucherType));
+            }
+
+            if (isLoadMore && lastVisible) {
+                constraints.push(startAfter(lastVisible));
+            }
+
+            let q = query(txnsRef, ...constraints);
+
+            const snap = await getDocs(q);
+            
+            let fetched = [];
+            snap.forEach(d => fetched.push({ id: d.id, ...d.data() }));
+
+            // Client side filtering for account name if specified, because Firestore OR queries (debitAccount == X OR creditAccount == X) 
+            // are limited, especially with other inequalities.
+            const targetAccount = allowedAccount || accountName;
+            if (targetAccount) {
+                const lowerTarget = targetAccount.toLowerCase();
+                fetched = fetched.filter(t => {
+                    if ((t.debitAccount && t.debitAccount.toLowerCase() === lowerTarget) || 
+                        (t.creditAccount && t.creditAccount.toLowerCase() === lowerTarget)) {
+                        return true;
+                    }
+                    if (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === lowerTarget)) return true;
+                    if (t.allCreditAccounts && t.allCreditAccounts.some(n => n.toLowerCase() === lowerTarget)) return true;
+                    return false;
+                });
+            }
+
+            if (isLoadMore) {
+                setTransactions(prev => [...prev, ...fetched]);
+            } else {
+                setTransactions(fetched);
+            }
+
+            setLastVisible(snap.docs[snap.docs.length - 1]);
+            setHasMore(snap.docs.length === limitCount);
+
+        } catch (error) {
+            console.error("Error fetching transactions:", error);
+            alert("Error fetching transactions. You might need to build a Firestore index. Check console for the link.");
+        }
+
+        setLoadingData(false);
+        setLoadingMore(false);
+    };
+
     const handleFYChange = (e) => {
         const newFYId = e.target.value;
         setSelectedFYId(newFYId);
@@ -91,38 +136,15 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
             if (activeFY) {
                 setInputStartDate(activeFY.startDate);
                 setInputEndDate(activeFY.endDate);
-                setAppliedFilters(prev => ({
-                    ...prev,
-                    startDate: activeFY.startDate,
-                    endDate: activeFY.endDate
-                }));
             }
         } else {
             setInputStartDate('');
             setInputEndDate('');
-            setAppliedFilters(prev => ({
-                ...prev,
-                startDate: '',
-                endDate: ''
-            }));
         }
-        setCurrentPage(1);
     };
 
-    const uniqueVoucherTypes = useMemo(() => {
-        const types = new Set();
-        allTransactions.forEach(t => { if (t.type) types.add(t.type); });
-        return Array.from(types).sort();
-    }, [allTransactions]);
-
     const handleSearch = () => {
-        setAppliedFilters({
-            startDate: inputStartDate,
-            endDate: inputEndDate,
-            accountName: inputAccountName,
-            voucherType: inputVoucherType
-        });
-        setCurrentPage(1);
+        fetchTransactions(inputStartDate, inputEndDate, inputAccountName, inputVoucherType, false);
     };
 
     const handleClear = () => {
@@ -131,55 +153,17 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
         setInputEndDate('');
         setInputAccountName('');
         setInputVoucherType('');
-        setAppliedFilters({
-            startDate: '',
-            endDate: '',
-            accountName: '',
-            voucherType: ''
-        });
-        setCurrentPage(1);
-    };
-
-    // Client-Side Filtering based on appliedFilters
-    const filteredTransactions = useMemo(() => {
-        let result = allTransactions;
         
-        const targetAccount = allowedAccount || appliedFilters.accountName;
-        if (targetAccount) {
-            const lowerTarget = targetAccount.toLowerCase();
-            result = result.filter(t => {
-                // Check primary accounts
-                if ((t.debitAccount && t.debitAccount.toLowerCase() === lowerTarget) || 
-                    (t.creditAccount && t.creditAccount.toLowerCase() === lowerTarget)) {
-                    return true;
-                }
-                // Also check allDebitAccounts/allCreditAccounts for multi-ledger journals
-                if (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === lowerTarget)) return true;
-                if (t.allCreditAccounts && t.allCreditAccounts.some(n => n.toLowerCase() === lowerTarget)) return true;
-                return false;
-            });
-        }
-
-        if (appliedFilters.startDate) {
-            result = result.filter(t => t.date >= appliedFilters.startDate);
-        }
-        if (appliedFilters.endDate) {
-            result = result.filter(t => t.date <= appliedFilters.endDate);
-        }
-
-        if (appliedFilters.voucherType) {
-            result = result.filter(t => t.type === appliedFilters.voucherType);
-        }
-
-        return result;
-    }, [allTransactions, allowedAccount, appliedFilters]);
-
-    const paginatedTransactions = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        return filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
-    }, [filteredTransactions, currentPage]);
-
-    const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+        // Default to Yesterday again
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yyyy = yesterday.getFullYear();
+        const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+        const dd = String(yesterday.getDate()).padStart(2, '0');
+        const yesterdayStr = `${yyyy}-${mm}-${dd}`;
+        
+        fetchTransactions(yesterdayStr, yesterdayStr, '', '', false);
+    };
 
     if (loadingData) {
         return (
@@ -224,15 +208,11 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
                             <label className="text-xs font-semibold text-gray-600">Account Name</label>
                             <input 
                                 type="text"
-                                list="allAccountsList"
                                 value={inputAccountName}
                                 onChange={(e) => setInputAccountName(e.target.value)}
                                 placeholder="Any Account..."
                                 className="px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                             />
-                            <datalist id="allAccountsList">
-                                {allAccounts.map(acc => <option key={acc} value={acc} />)}
-                            </datalist>
                         </div>
                     )}
                     
@@ -240,15 +220,11 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
                         <label className="text-xs font-semibold text-gray-600">Voucher Type</label>
                         <input 
                             type="text"
-                            list="allVoucherTypes"
                             value={inputVoucherType}
                             onChange={(e) => setInputVoucherType(e.target.value)}
-                            placeholder="Any Type..."
+                            placeholder="e.g. Sales, Receipt..."
                             className="px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                         />
-                        <datalist id="allVoucherTypes">
-                            {uniqueVoucherTypes.map(type => <option key={type} value={type} />)}
-                        </datalist>
                     </div>
 
                     <div className="flex flex-col gap-1 w-40">
@@ -288,36 +264,33 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
             </div>
             
             <div className="flex-1 overflow-y-auto p-0 relative">
-                {paginatedTransactions.length === 0 ? (
+                {transactions.length === 0 && !loadingData && !loadingMore ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                         <svg className="w-12 h-12 mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         <p>No transactions found matching your filters.</p>
                     </div>
                 ) : (
-                    <TransactionTable transactions={paginatedTransactions} showFullDetails={showFullDetails} />
+                    <TransactionTable transactions={transactions} showFullDetails={showFullDetails} />
+                )}
+                {loadingMore && (
+                    <div className="text-center p-4 text-gray-500 text-sm animate-pulse">Loading more...</div>
                 )}
             </div>
 
             <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-t border-gray-200 shrink-0">
                 <span className="text-sm text-gray-700">
-                    Showing {filteredTransactions.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length} entries
+                    Showing {transactions.length} entries
                 </span>
                 <div className="flex gap-2 items-center">
-                    <button 
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        className="px-3 py-1 text-sm border rounded hover:bg-gray-200 disabled:opacity-50"
-                    >
-                        Previous
-                    </button>
-                    <span className="px-3 py-1 text-sm">Page {currentPage} of {totalPages === 0 ? 1 : totalPages}</span>
-                    <button 
-                        disabled={currentPage === totalPages || totalPages === 0}
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        className="px-3 py-1 text-sm border rounded hover:bg-gray-200 disabled:opacity-50"
-                    >
-                        Next
-                    </button>
+                    {hasMore && (
+                        <button 
+                            disabled={loadingMore}
+                            onClick={() => fetchTransactions(inputStartDate, inputEndDate, inputAccountName, inputVoucherType, true)}
+                            className="px-4 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium border border-blue-200 rounded disabled:opacity-50"
+                        >
+                            Load More
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

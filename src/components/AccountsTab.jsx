@@ -33,9 +33,6 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     
     // Sorting
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
-
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 50;
     const [verifying, setVerifying] = useState(false);
 
     // ----------- DETAILS VIEW STATE -----------
@@ -64,21 +61,66 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [hasMoreTxns, setHasMoreTxns] = useState(true);
     const [showFullDetails, setShowFullDetails] = useState(false);
 
-    useEffect(() => {
-        const fetchAccounts = async () => {
+    const [lastVisibleAcc, setLastVisibleAcc] = useState(null);
+    const [hasMoreAccounts, setHasMoreAccounts] = useState(true);
+    const [loadingMoreAcc, setLoadingMoreAcc] = useState(false);
+
+    const fetchAccounts = async (isLoadMore = false, forceSearch = false) => {
+        if (isLoadMore) {
+            setLoadingMoreAcc(true);
+        } else {
             setLoadingAccounts(true);
-            try {
-                const snap = await getDocs(collection(db, 'accounts'));
-                const accs = [];
-                snap.forEach(d => accs.push({ id: d.id, ...d.data() }));
-                setAccounts(accs);
-            } catch (err) {
-                console.error("Error fetching accounts:", err);
+        }
+
+        try {
+            let accRef = collection(db, 'accounts');
+            let q = query(accRef, limit(10));
+            
+            // Server side search for name and group
+            if (searchTerm) {
+                // Prefix search
+                q = query(q, where("name", ">=", searchTerm), where("name", "<=", searchTerm + '\uf8ff'));
             }
-            setLoadingAccounts(false);
-        };
+            if (selectedGroup) {
+                q = query(q, where("group", "==", selectedGroup));
+            }
+
+            // Note: minBalance, maxBalance, and verificationStatus rely on subcollections or complex data
+            // so they will still act as client-side filters on the fetched subset for now.
+
+            if (isLoadMore && lastVisibleAcc) {
+                q = query(q, startAfter(lastVisibleAcc));
+            }
+
+            const snap = await getDocs(q);
+            const accs = [];
+            snap.forEach(d => accs.push({ id: d.id, ...d.data() }));
+            
+            if (isLoadMore) {
+                setAccounts(prev => [...prev, ...accs]);
+            } else {
+                setAccounts(accs);
+            }
+
+            setLastVisibleAcc(snap.docs[snap.docs.length - 1]);
+            setHasMoreAccounts(snap.docs.length === 10);
+        } catch (err) {
+            console.error("Error fetching accounts:", err);
+        }
+        
+        setLoadingAccounts(false);
+        setLoadingMoreAcc(false);
+    };
+
+    useEffect(() => {
         fetchAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [updateTrigger]);
+
+    // Handle search triggers
+    const handleAccountSearch = () => {
+        fetchAccounts(false, true);
+    };
 
     useEffect(() => {
         const fetchFYBalances = async () => {
@@ -138,12 +180,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         }
         // If showIgnored is true, we keep all accounts (including ignored ones) as per user feedback
         
-        if (searchTerm) {
-            result = result.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
-        }
-        if (selectedGroup) {
-            result = result.filter(a => a.group === selectedGroup);
-        }
+        // searchTerm and selectedGroup are handled server-side in fetchAccounts()
+        // so no client-side filtering needed for those
+
         if (verificationStatus === 'verified') {
             result = result.filter(a => !!(fyBalances[a.id]?.verifiedBy || a.verifiedBy));
         } else if (verificationStatus === 'unverified') {
@@ -157,7 +196,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         }
 
         return result;
-    }, [accounts, allowedAccount, searchTerm, selectedGroup, minBalance, maxBalance, verificationStatus, fyBalances, currentUser?.ignoredAccounts, showIgnored]);
+    }, [accounts, allowedAccount, minBalance, maxBalance, verificationStatus, fyBalances, currentUser?.ignoredAccounts, showIgnored]);
 
     const sortedAccounts = useMemo(() => {
         const sorted = [...filteredAccounts].sort((a, b) => {
@@ -192,17 +231,6 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         return sortConfig.direction === 'ascending' ? ' ↑' : ' ↓';
     };
 
-    const paginatedAccounts = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        return sortedAccounts.slice(startIndex, startIndex + itemsPerPage);
-    }, [sortedAccounts, currentPage]);
-
-    const totalPages = Math.ceil(sortedAccounts.length / itemsPerPage);
-
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, selectedGroup, minBalance, maxBalance, verificationStatus]);
-
     const handleVerify = async (accountId) => {
         const userName = currentUser?.name || 'System';
         try {
@@ -234,7 +262,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
     const handleVerifyAll = async () => {
         const userName = currentUser?.name || 'System';
-        if(!window.confirm(`Are you sure you want to mark all ${paginatedAccounts.length} accounts on this page as verified by ${userName}?`)) return;
+        if(!window.confirm(`Are you sure you want to mark all ${sortedAccounts.length} accounts on this page as verified by ${userName}?`)) return;
 
         try {
             setVerifying(true);
@@ -242,7 +270,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             const batch = writeBatch(db);
             const newBalances = { ...fyBalances };
             
-            paginatedAccounts.forEach(acc => {
+            sortedAccounts.forEach(acc => {
                 const ref = doc(db, 'accounts', acc.id, 'fiscalYears', selectedFY);
                 batch.set(ref, {
                     verifiedBy: userName,
@@ -633,7 +661,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             </label>
                             <button 
                                 onClick={handleVerifyAll}
-                                disabled={verifying || paginatedAccounts.length === 0}
+                                disabled={verifying || sortedAccounts.length === 0}
                                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-sm font-medium transition disabled:opacity-50"
                             >
                                 {verifying ? 'Processing...' : 'Verify Visible Page'}
@@ -641,10 +669,10 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
                         <input 
                             type="text" 
-                            placeholder="Search by Name..." 
+                            placeholder="Search by Name (prefix)..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
@@ -680,6 +708,12 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             onChange={(e) => setMaxBalance(e.target.value)}
                             className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                         />
+                        <button
+                            onClick={handleAccountSearch}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-medium transition"
+                        >
+                            Search
+                        </button>
                     </div>
                 </div>
                 
@@ -687,112 +721,111 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     {loadingAccounts ? (
                         <div className="flex justify-center items-center h-full text-gray-500">Loading accounts...</div>
                     ) : (
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead className="bg-white sticky top-0 shadow-sm z-10">
-                                <tr>
-                                    <th className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('name')}>Account Name{getSortIndicator('name')}</th>
-                                    <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('openingBalance')}>Opening Bal{getSortIndicator('openingBalance')}</th>
-                                    <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('totalDebit')}>Total Dr{getSortIndicator('totalDebit')}</th>
-                                    <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('totalCredit')}>Total Cr{getSortIndicator('totalCredit')}</th>
-                                    <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('closingBalance')}>Closing Bal{getSortIndicator('closingBalance')}</th>
-                                    <th className="px-4 py-2 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('verifiedBy')}>Verification{getSortIndicator('verifiedBy')}</th>
-                                    <th className="px-4 py-2 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-100">
-                                {paginatedAccounts.length === 0 ? (
+                        <>
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead className="bg-white sticky top-0 shadow-sm z-10">
                                     <tr>
-                                        <td colSpan="7" className="px-4 py-6 text-center text-gray-500">
-                                            No accounts found. {accounts.length > 0 && accounts[0].closingBalance === undefined && (
-                                                <span className="block mt-2 text-red-500 font-bold">Have you synced Account Balances in the Import Center?</span>
-                                            )}
-                                        </td>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('name')}>Account Name{getSortIndicator('name')}</th>
+                                        <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('openingBalance')}>Opening Bal{getSortIndicator('openingBalance')}</th>
+                                        <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('totalDebit')}>Total Dr{getSortIndicator('totalDebit')}</th>
+                                        <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('totalCredit')}>Total Cr{getSortIndicator('totalCredit')}</th>
+                                        <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('closingBalance')}>Closing Bal{getSortIndicator('closingBalance')}</th>
+                                        <th className="px-4 py-2 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('verifiedBy')}>Verification{getSortIndicator('verifiedBy')}</th>
+                                        <th className="px-4 py-2 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
                                     </tr>
-                                ) : (
-                                    paginatedAccounts.map(acc => {
-                                        const bal = getAccountBalance(acc);
-                                        return (
-                                        <tr 
-                                            key={acc.id} 
-                                            onClick={() => openAccountDetails(acc)}
-                                            className="cursor-pointer hover:bg-blue-50 transition"
-                                        >
-                                            <td className="px-4 py-2 text-gray-900 font-medium whitespace-nowrap">
-                                                {acc.name}
-                                                <div className="text-xs text-gray-400 font-normal">{acc.group}</div>
-                                            </td>
-                                            <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">
-                                                {formatCurrency(bal.openingBalance)} <span className="text-xs font-semibold">{bal.openingBalanceType}</span>
-                                            </td>
-                                            <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">{formatCurrency(bal.totalDebit)}</td>
-                                            <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">{formatCurrency(bal.totalCredit)}</td>
-                                            <td className="px-4 py-2 text-right text-gray-900 font-bold whitespace-nowrap">
-                                                {formatCurrency(bal.closingBalance)} <span className="text-xs">{bal.closingBalanceType}</span>
-                                            </td>
-                                            <td className="px-4 py-2 text-center whitespace-nowrap">
-                                                {acc.verifiedBy ? (
-                                                    <div className="inline-flex flex-col items-center">
-                                                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                                            ✓ Verified
-                                                        </span>
-                                                        <span className="text-[10px] text-gray-500 mt-1">{acc.verifiedBy}</span>
-                                                        <span className="text-[10px] text-gray-400">{acc.verifiedAt}</span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                                        Pending
-                                                    </span>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-100">
+                                    {sortedAccounts.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="7" className="px-4 py-6 text-center text-gray-500">
+                                                No accounts found. {accounts.length > 0 && accounts[0].closingBalance === undefined && (
+                                                    <span className="block mt-2 text-red-500 font-bold">Have you synced Account Balances in the Import Center?</span>
                                                 )}
-                                            </td>
-                                            <td className="px-4 py-2 text-center whitespace-nowrap flex gap-2 justify-center">
-                                                {!acc.verifiedBy && (
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); handleVerify(acc.id); }}
-                                                        className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 border border-blue-200 rounded hover:bg-blue-50 transition"
-                                                    >
-                                                        Verify
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={(e) => { 
-                                                        e.stopPropagation(); 
-                                                        const isIgnored = currentUser?.ignoredAccounts?.includes(acc.id);
-                                                        handleIgnoreToggle(acc.id, isIgnored); 
-                                                    }}
-                                                    className="text-gray-600 hover:text-gray-800 text-xs font-medium px-2 py-1 border border-gray-200 rounded hover:bg-gray-100 transition"
-                                                >
-                                                    {currentUser?.ignoredAccounts?.includes(acc.id) ? 'Unignore' : 'Ignore'}
-                                                </button>
                                             </td>
                                         </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        sortedAccounts.map(acc => {
+                                            const bal = getAccountBalance(acc);
+                                            return (
+                                            <tr 
+                                                key={acc.id} 
+                                                onClick={() => openAccountDetails(acc)}
+                                                className="cursor-pointer hover:bg-blue-50 transition"
+                                            >
+                                                <td className="px-4 py-2 text-gray-900 font-medium whitespace-nowrap">
+                                                    {acc.name}
+                                                    <div className="text-xs text-gray-400 font-normal">{acc.group}</div>
+                                                </td>
+                                                <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">
+                                                    {formatCurrency(bal.openingBalance)} <span className="text-xs font-semibold">{bal.openingBalanceType}</span>
+                                                </td>
+                                                <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">{formatCurrency(bal.totalDebit)}</td>
+                                                <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">{formatCurrency(bal.totalCredit)}</td>
+                                                <td className="px-4 py-2 text-right text-gray-900 font-bold whitespace-nowrap">
+                                                    {formatCurrency(bal.closingBalance)} <span className="text-xs">{bal.closingBalanceType}</span>
+                                                </td>
+                                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                                    {bal.verifiedBy ? (
+                                                        <div className="inline-flex flex-col items-center">
+                                                            <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                                                ✓ Verified
+                                                            </span>
+                                                            <span className="text-[10px] text-gray-500 mt-1">{bal.verifiedBy}</span>
+                                                            <span className="text-[10px] text-gray-400">{bal.verifiedAt}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                                            Pending
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2 text-center whitespace-nowrap flex gap-2 justify-center">
+                                                    {!bal.verifiedBy && (
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleVerify(acc.id); }}
+                                                            className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 border border-blue-200 rounded hover:bg-blue-50 transition"
+                                                        >
+                                                            Verify
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            const isIgnored = currentUser?.ignoredAccounts?.includes(acc.id);
+                                                            handleIgnoreToggle(acc.id, isIgnored); 
+                                                        }}
+                                                        className="text-gray-600 hover:text-gray-800 text-xs font-medium px-2 py-1 border border-gray-200 rounded hover:bg-gray-100 transition"
+                                                    >
+                                                        {currentUser?.ignoredAccounts?.includes(acc.id) ? 'Unignore' : 'Ignore'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                            {loadingMoreAcc && (
+                                <div className="text-center p-4 text-gray-500 text-sm animate-pulse">Loading more accounts...</div>
+                            )}
+                        </>
                     )}
                 </div>
 
                 <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-t border-gray-200 shrink-0">
                     <span className="text-sm text-gray-700">
-                        Showing {sortedAccounts.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, sortedAccounts.length)} of {sortedAccounts.length} entries
+                        Showing {sortedAccounts.length} entries
                     </span>
                     <div className="flex gap-2 items-center">
-                        <button 
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            className="px-3 py-1 text-sm border rounded hover:bg-gray-200 disabled:opacity-50"
-                        >
-                            Previous
-                        </button>
-                        <span className="px-3 py-1 text-sm">Page {currentPage} of {totalPages === 0 ? 1 : totalPages}</span>
-                        <button 
-                            disabled={currentPage === totalPages || totalPages === 0}
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            className="px-3 py-1 text-sm border rounded hover:bg-gray-200 disabled:opacity-50"
-                        >
-                            Next
-                        </button>
+                        {hasMoreAccounts && (
+                            <button 
+                                disabled={loadingMoreAcc}
+                                onClick={() => fetchAccounts(true, false)}
+                                className="px-4 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium border border-blue-200 rounded disabled:opacity-50"
+                            >
+                                Load More
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
