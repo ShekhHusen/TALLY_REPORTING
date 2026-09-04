@@ -192,6 +192,7 @@ export default function App() {
                         setUpdateTrigger={setUpdateTrigger}
                         allowedAccount={currentUser.allowedAccount}
                         currentUser={currentUser}
+                        setCurrentUser={setCurrentUser}
                     />
                 </div>
                 <div style={{ display: activeTab === 'transactions' && hasTabAccess('transactions') ? 'block' : 'none' }}>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or, getDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -12,9 +12,10 @@ const formatCurrency = (num) => {
     return `Rs. ${num < 0 ? '-' : ''}${formatted}`;
 };
 
-export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAccount, currentUser }) {
+export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAccount, currentUser, setCurrentUser }) {
     // Top level views: 'directory' | 'details'
     const [view, setView] = useState('directory');
+    const [showIgnored, setShowIgnored] = useState(false);
     
     // ----------- DIRECTORY VIEW STATE -----------
     const [fyOptions, setFyOptions] = useState([]);
@@ -110,7 +111,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 totalDebit: fyData.totalDebit ?? acc.totalDebit,
                 totalCredit: fyData.totalCredit ?? acc.totalCredit,
                 closingBalance: fyData.closingBalance ?? acc.closingBalance,
-                closingBalanceType: fyData.closingBalanceType ?? acc.closingBalanceType
+                closingBalanceType: fyData.closingBalanceType ?? acc.closingBalanceType,
+                verifiedBy: fyData.verifiedBy || acc.verifiedBy,
+                verifiedAt: fyData.verifiedAt || acc.verifiedAt
             };
         }
         return acc;
@@ -128,6 +131,13 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         if (allowedAccount) {
             result = result.filter(a => a.name.toLowerCase() === allowedAccount.toLowerCase());
         }
+        
+        const ignoredList = currentUser?.ignoredAccounts || [];
+        if (!showIgnored) {
+            result = result.filter(a => !ignoredList.includes(a.id));
+        }
+        // If showIgnored is true, we keep all accounts (including ignored ones) as per user feedback
+        
         if (searchTerm) {
             result = result.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
         }
@@ -135,9 +145,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             result = result.filter(a => a.group === selectedGroup);
         }
         if (verificationStatus === 'verified') {
-            result = result.filter(a => !!a.verifiedBy);
+            result = result.filter(a => !!(fyBalances[a.id]?.verifiedBy || a.verifiedBy));
         } else if (verificationStatus === 'unverified') {
-            result = result.filter(a => !a.verifiedBy);
+            result = result.filter(a => !(fyBalances[a.id]?.verifiedBy || a.verifiedBy));
         }
         if (minBalance !== "") {
             result = result.filter(a => ((fyBalances[a.id]?.closingBalance ?? a.closingBalance) || 0) >= parseFloat(minBalance));
@@ -147,7 +157,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         }
 
         return result;
-    }, [accounts, allowedAccount, searchTerm, selectedGroup, minBalance, maxBalance, verificationStatus, fyBalances]);
+    }, [accounts, allowedAccount, searchTerm, selectedGroup, minBalance, maxBalance, verificationStatus, fyBalances, currentUser?.ignoredAccounts, showIgnored]);
 
     const sortedAccounts = useMemo(() => {
         const sorted = [...filteredAccounts].sort((a, b) => {
@@ -197,14 +207,23 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         const userName = currentUser?.name || 'System';
         try {
             setVerifying(true);
-            const ref = doc(db, 'accounts', accountId);
+            const ref = doc(db, 'accounts', accountId, 'fiscalYears', selectedFY);
             const now = new Date().toLocaleString('en-IN');
             
-            await writeBatch(db).update(ref, {
+            await setDoc(ref, {
                 verifiedBy: userName,
                 verifiedAt: now
-            }).commit();
-            setUpdateTrigger(prev => prev + 1);
+            }, { merge: true });
+            
+            // Update fyBalances locally to reflect immediately without needing a full refetch
+            setFyBalances(prev => ({
+                ...prev,
+                [accountId]: {
+                    ...(prev[accountId] || {}),
+                    verifiedBy: userName,
+                    verifiedAt: now
+                }
+            }));
         } catch (error) {
             console.error(error);
             alert("Error verifying account: " + error.message);
@@ -221,20 +240,46 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             setVerifying(true);
             const now = new Date().toLocaleString('en-IN');
             const batch = writeBatch(db);
+            const newBalances = { ...fyBalances };
+            
             paginatedAccounts.forEach(acc => {
-                const ref = doc(db, 'accounts', acc.id);
-                batch.update(ref, {
+                const ref = doc(db, 'accounts', acc.id, 'fiscalYears', selectedFY);
+                batch.set(ref, {
                     verifiedBy: userName,
                     verifiedAt: now
-                });
+                }, { merge: true });
+                
+                newBalances[acc.id] = {
+                    ...(newBalances[acc.id] || {}),
+                    verifiedBy: userName,
+                    verifiedAt: now
+                };
             });
             await batch.commit();
-            setUpdateTrigger(prev => prev + 1);
+            setFyBalances(newBalances);
         } catch (error) {
             console.error(error);
             alert("Error verifying accounts: " + error.message);
         } finally {
             setVerifying(false);
+        }
+    };
+
+    const handleIgnoreToggle = async (accountId, isCurrentlyIgnored) => {
+        try {
+            const userRef = doc(db, 'users', currentUser.uid);
+            const ignoredList = currentUser.ignoredAccounts || [];
+            const newList = isCurrentlyIgnored
+                ? ignoredList.filter(id => id !== accountId)
+                : [...ignoredList, accountId];
+                
+            await updateDoc(userRef, { ignoredAccounts: newList });
+            if (setCurrentUser) {
+                setCurrentUser(prev => ({ ...prev, ignoredAccounts: newList }));
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Error updating ignore list: " + error.message);
         }
     };
 
@@ -576,13 +621,24 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                 {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
                             </select>
                         </div>
-                        <button 
-                            onClick={handleVerifyAll}
-                            disabled={verifying || paginatedAccounts.length === 0}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-sm font-medium transition disabled:opacity-50"
-                        >
-                            {verifying ? 'Processing...' : 'Verify Visible Page'}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer mr-4">
+                                <input 
+                                    type="checkbox" 
+                                    checked={showIgnored}
+                                    onChange={(e) => setShowIgnored(e.target.checked)}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                Include Ignored Accounts
+                            </label>
+                            <button 
+                                onClick={handleVerifyAll}
+                                disabled={verifying || paginatedAccounts.length === 0}
+                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-sm font-medium transition disabled:opacity-50"
+                            >
+                                {verifying ? 'Processing...' : 'Verify Visible Page'}
+                            </button>
+                        </div>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -688,7 +744,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-2 text-center whitespace-nowrap">
+                                            <td className="px-4 py-2 text-center whitespace-nowrap flex gap-2 justify-center">
                                                 {!acc.verifiedBy && (
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); handleVerify(acc.id); }}
@@ -697,6 +753,16 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                         Verify
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={(e) => { 
+                                                        e.stopPropagation(); 
+                                                        const isIgnored = currentUser?.ignoredAccounts?.includes(acc.id);
+                                                        handleIgnoreToggle(acc.id, isIgnored); 
+                                                    }}
+                                                    className="text-gray-600 hover:text-gray-800 text-xs font-medium px-2 py-1 border border-gray-200 rounded hover:bg-gray-100 transition"
+                                                >
+                                                    {currentUser?.ignoredAccounts?.includes(acc.id) ? 'Unignore' : 'Ignore'}
+                                                </button>
                                             </td>
                                         </tr>
                                         );
