@@ -10,7 +10,12 @@ import UserManagementTab from './components/UserManagementTab';
 import SettingsTab from './components/SettingsTab';
 
 export default function App() {
-    const [currentUser, setCurrentUser] = useState(null);
+    const [currentUser, setCurrentUser] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('currentUser');
+            return saved ? JSON.parse(saved) : null;
+        } catch { return null; }
+    });
     const [activeTab, setActiveTab] = useState('');
     
     // For updating user's custom password
@@ -18,6 +23,19 @@ export default function App() {
     const [newPassword, setNewPassword] = useState('');
 
     const [updateTrigger, setUpdateTrigger] = useState(0);
+
+    // Wrapper to sync user state with sessionStorage
+    const handleSetCurrentUser = (valOrFn) => {
+        setCurrentUser(prev => {
+            const next = typeof valOrFn === 'function' ? valOrFn(prev) : valOrFn;
+            if (next) {
+                sessionStorage.setItem('currentUser', JSON.stringify(next));
+            } else {
+                sessionStorage.removeItem('currentUser');
+            }
+            return next;
+        });
+    };
 
     // Initial default tab when user logs in
     useEffect(() => {
@@ -36,7 +54,7 @@ export default function App() {
         } catch (e) {
             console.error(e);
         }
-        setCurrentUser(null);
+        handleSetCurrentUser(null);
         setActiveTab('');
     };
 
@@ -45,7 +63,7 @@ export default function App() {
         try {
             const userRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userRef, { customPassword: newPassword });
-            setCurrentUser(prev => ({ ...prev, customPassword: newPassword }));
+            handleSetCurrentUser(prev => ({ ...prev, customPassword: newPassword }));
             alert("Password updated successfully!");
             setShowChangePassword(false);
             setNewPassword('');
@@ -56,7 +74,7 @@ export default function App() {
     };
 
     if (!currentUser) {
-        return <LoginScreen onLoginSuccess={setCurrentUser} />;
+        return <LoginScreen onLoginSuccess={handleSetCurrentUser} />;
     }
 
     const hasTabAccess = (tabId) => {
@@ -192,7 +210,7 @@ export default function App() {
                         setUpdateTrigger={setUpdateTrigger}
                         allowedAccount={currentUser.allowedAccount}
                         currentUser={currentUser}
-                        setCurrentUser={setCurrentUser}
+                        setCurrentUser={handleSetCurrentUser}
                     />
                 </div>
                 <div style={{ display: activeTab === 'transactions' && hasTabAccess('transactions') ? 'block' : 'none' }}>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, where, orderBy, limit, startAfter } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
+import AccountSearchDropdown from './AccountSearchDropdown';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 
 export default function TransactionsTab({ updateTrigger, allowedAccount }) {
@@ -206,12 +207,10 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
                     {!allowedAccount && (
                         <div className="flex flex-col gap-1 w-64">
                             <label className="text-xs font-semibold text-gray-600">Account Name</label>
-                            <input 
-                                type="text"
+                            <AccountSearchDropdown
                                 value={inputAccountName}
-                                onChange={(e) => setInputAccountName(e.target.value)}
+                                onChange={(val) => setInputAccountName(val)}
                                 placeholder="Any Account..."
-                                className="px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                             />
                         </div>
                     )}

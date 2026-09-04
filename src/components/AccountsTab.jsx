@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
+import AccountSearchDropdown from './AccountSearchDropdown';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from 'xlsx';
@@ -61,24 +62,21 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [hasMoreTxns, setHasMoreTxns] = useState(true);
     const [showFullDetails, setShowFullDetails] = useState(false);
 
-    const [lastVisibleAcc, setLastVisibleAcc] = useState(null);
-    const [hasMoreAccounts, setHasMoreAccounts] = useState(true);
-    const [loadingMoreAcc, setLoadingMoreAcc] = useState(false);
+    // Page-based pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageCursors, setPageCursors] = useState([null]); // Index 0 = page 1 cursor (null = start)
+    const [hasNextPage, setHasNextPage] = useState(false);
 
-    const fetchAccounts = async (isLoadMore = false, forceSearch = false) => {
-        if (isLoadMore) {
-            setLoadingMoreAcc(true);
-        } else {
-            setLoadingAccounts(true);
-        }
+    const fetchAccountsPage = async (pageNumber = 1) => {
+        setLoadingAccounts(true);
 
         try {
             let accRef = collection(db, 'accounts');
-            let q = query(accRef, limit(10));
+            // Fetch 11 to know if there's a next page
+            let q = query(accRef, limit(11));
             
             // Server side search for name and group
             if (searchTerm) {
-                // Prefix search
                 q = query(q, where("name", ">=", searchTerm), where("name", "<=", searchTerm + '\uf8ff'));
             }
             if (selectedGroup) {
@@ -88,38 +86,51 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             // Note: minBalance, maxBalance, and verificationStatus rely on subcollections or complex data
             // so they will still act as client-side filters on the fetched subset for now.
 
-            if (isLoadMore && lastVisibleAcc) {
-                q = query(q, startAfter(lastVisibleAcc));
+            // Use stored cursor for the requested page
+            const cursor = pageCursors[pageNumber - 1];
+            if (cursor) {
+                q = query(q, startAfter(cursor));
             }
 
             const snap = await getDocs(q);
-            const accs = [];
-            snap.forEach(d => accs.push({ id: d.id, ...d.data() }));
+            const allDocs = snap.docs;
             
-            if (isLoadMore) {
-                setAccounts(prev => [...prev, ...accs]);
-            } else {
-                setAccounts(accs);
-            }
+            // Take only 10, use 11th to determine hasNext
+            const pageDocs = allDocs.slice(0, 10);
+            setHasNextPage(allDocs.length > 10);
+            
+            const accs = [];
+            pageDocs.forEach(d => accs.push({ id: d.id, ...d.data() }));
+            setAccounts(accs);
 
-            setLastVisibleAcc(snap.docs[snap.docs.length - 1]);
-            setHasMoreAccounts(snap.docs.length === 10);
+            // Store cursor for next page (last doc of current page)
+            if (pageDocs.length > 0) {
+                setPageCursors(prev => {
+                    const updated = [...prev];
+                    updated[pageNumber] = pageDocs[pageDocs.length - 1];
+                    return updated;
+                });
+            }
+            
+            setCurrentPage(pageNumber);
         } catch (err) {
             console.error("Error fetching accounts:", err);
         }
         
         setLoadingAccounts(false);
-        setLoadingMoreAcc(false);
     };
 
     useEffect(() => {
-        fetchAccounts();
+        fetchAccountsPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [updateTrigger]);
 
-    // Handle search triggers
+    // Handle search triggers - reset to page 1
     const handleAccountSearch = () => {
-        fetchAccounts(false, true);
+        setPageCursors([null]);
+        setCurrentPage(1);
+        // Need to fetch after state update - use setTimeout to let state settle
+        setTimeout(() => fetchAccountsPage(1), 0);
     };
 
     useEffect(() => {
@@ -670,12 +681,10 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                        <input 
-                            type="text" 
-                            placeholder="Search by Name (prefix)..." 
+                        <AccountSearchDropdown
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                            onChange={(val) => setSearchTerm(val)}
+                            placeholder="Search account name..."
                         />
                         <select
                             value={selectedGroup}
@@ -805,27 +814,32 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                     )}
                                 </tbody>
                             </table>
-                            {loadingMoreAcc && (
-                                <div className="text-center p-4 text-gray-500 text-sm animate-pulse">Loading more accounts...</div>
-                            )}
                         </>
                     )}
                 </div>
 
                 <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-t border-gray-200 shrink-0">
                     <span className="text-sm text-gray-700">
-                        Showing {sortedAccounts.length} entries
+                        Showing {sortedAccounts.length} entries (Page {currentPage})
                     </span>
                     <div className="flex gap-2 items-center">
-                        {hasMoreAccounts && (
-                            <button 
-                                disabled={loadingMoreAcc}
-                                onClick={() => fetchAccounts(true, false)}
-                                className="px-4 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium border border-blue-200 rounded disabled:opacity-50"
-                            >
-                                Load More
-                            </button>
-                        )}
+                        <button 
+                            disabled={currentPage === 1 || loadingAccounts}
+                            onClick={() => fetchAccountsPage(currentPage - 1)}
+                            className="px-4 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-sm font-medium border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        >
+                            ← Previous
+                        </button>
+                        <span className="text-sm font-semibold text-gray-800 px-2">
+                            Page {currentPage}
+                        </span>
+                        <button 
+                            disabled={!hasNextPage || loadingAccounts}
+                            onClick={() => fetchAccountsPage(currentPage + 1)}
+                            className="px-4 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-sm font-medium border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        >
+                            Next →
+                        </button>
                     </div>
                 </div>
             </div>
