@@ -22,7 +22,6 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [fyOptions, setFyOptions] = useState([]);
     const [selectedFY, setSelectedFY] = useState('');
     const [fyBalances, setFyBalances] = useState({});
-    const [accounts, setAccounts] = useState([]);
     const [loadingAccounts, setLoadingAccounts] = useState(false);
     
     // Filters
@@ -345,6 +344,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             if (setCurrentUser) {
                 setCurrentUser(prev => ({ ...prev, ignoredAccounts: newList }));
             }
+        } catch (error) {
+            console.error("Error updating ignore list:", error);
+            alert("Error updating ignore list: " + error.message);
         }
     };
 
