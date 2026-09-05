@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, writeBatch, doc, getDocs, query, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, writeBatch, doc, getDocs, query, getDoc } from 'firebase/firestore';
 import { processMaster, processTransactions } from '../utils/parser';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 
@@ -51,7 +51,7 @@ export default function ImportCenter({ setUpdateTrigger }) {
         return JSON.parse(text);
     };
 
-    const processAffectedAccounts = async (parsedTransactions) => {
+    const processAffectedAccounts = async (parsedTransactions, activeFY) => {
         const affectedAccountNames = new Set();
         parsedTransactions.forEach(t => {
             // Use allDebitAccounts/allCreditAccounts arrays to capture ALL accounts
@@ -69,24 +69,41 @@ export default function ImportCenter({ setUpdateTrigger }) {
         });
 
         const snap = await getDocs(query(collection(db, 'accounts')));
-        const existingAccounts = new Map();
+        const existingAccounts = new Map(); // lowercase name -> array of doc IDs
         snap.forEach(d => {
             const data = d.data();
-            existingAccounts.set((data.name || '').toLowerCase(), d);
+            const key = (data.name || '').toLowerCase().trim();
+            if (!key) return;
+            if (!existingAccounts.has(key)) {
+                existingAccounts.set(key, []);
+            }
+            existingAccounts.get(key).push(d.id);
         });
 
         const batchOps = [];
         for (const accName of affectedAccountNames) {
-            const key = accName.toLowerCase();
+            const key = accName.toLowerCase().trim();
+            if (!key) continue;
+
             if (existingAccounts.has(key)) {
-                const existingDoc = existingAccounts.get(key);
-                batchOps.push({
-                    type: 'update',
-                    ref: existingDoc.ref,
-                    data: { verifiedBy: null, verifiedAt: null }
+                const docIds = existingAccounts.get(key);
+                docIds.forEach(docId => {
+                    // Tag only THIS fiscal year's account subcollection as unverified
+                    batchOps.push({
+                        type: 'set',
+                        ref: doc(db, 'accounts', docId, 'fiscalYears', activeFY.id),
+                        data: {
+                            fyId: activeFY.id,
+                            fyName: activeFY.name,
+                            verifiedBy: null,
+                            verifiedAt: null
+                        },
+                        merge: true
+                    });
                 });
             } else {
                 const newId = crypto.randomUUID();
+                // 1. Root account document
                 batchOps.push({
                     type: 'set',
                     ref: doc(db, 'accounts', newId),
@@ -98,11 +115,30 @@ export default function ImportCenter({ setUpdateTrigger }) {
                         openingBalanceType: '',
                         address: '',
                         contact: '',
-                        verifiedBy: null,
-                        verifiedAt: null,
                         isNewAutoCreated: true
-                    }
+                    },
+                    merge: false
                 });
+                // 2. Active fiscal year subcollection document
+                batchOps.push({
+                    type: 'set',
+                    ref: doc(db, 'accounts', newId, 'fiscalYears', activeFY.id),
+                    data: {
+                        fyId: activeFY.id,
+                        fyName: activeFY.name,
+                        openingBalance: 0,
+                        openingBalanceType: '',
+                        totalDebit: 0,
+                        totalCredit: 0,
+                        closingBalance: 0,
+                        closingBalanceType: '',
+                        verifiedBy: null,
+                        verifiedAt: null
+                    },
+                    merge: false
+                });
+                // Track so other references to the same new account name in this batch don't create duplicate docs
+                existingAccounts.set(key, [newId]);
             }
         }
 
@@ -111,6 +147,7 @@ export default function ImportCenter({ setUpdateTrigger }) {
             const batch = writeBatch(db);
             chunk.forEach(op => {
                 if (op.type === 'update') batch.update(op.ref, op.data);
+                else if (op.merge) batch.set(op.ref, op.data, { merge: true });
                 else batch.set(op.ref, op.data);
             });
             await batch.commit();
@@ -198,7 +235,7 @@ export default function ImportCenter({ setUpdateTrigger }) {
                         await batch.commit();
                     }
 
-                    const affectedCount = await processAffectedAccounts(validTransactions);
+                    const affectedCount = await processAffectedAccounts(validTransactions, activeFY);
 
                     let msg = `Successfully imported ${validTransactions.length} transactions.`;
                     if (invalidCount > 0) {
@@ -344,12 +381,6 @@ export default function ImportCenter({ setUpdateTrigger }) {
         } finally {
             setClearing(false);
         }
-    };
-
-    const handleCarryForward = async () => {
-        alert("This feature has been removed as it requires specific mapping for dynamic FYs. Please use Master Import for new FYs.");
-        // We can add it back later if needed, but since FYs are dynamic now, 
-        // we'd need a dropdown to select the target FY instead of hardcoded 'nextFY' logic.
     };
 
     const clearAllData = async () => {

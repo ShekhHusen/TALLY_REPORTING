@@ -30,6 +30,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [minBalance, setMinBalance] = useState("");
     const [maxBalance, setMaxBalance] = useState("");
     const [verificationStatus, setVerificationStatus] = useState("all"); 
+    const [skipZeroClosingBalance, setSkipZeroClosingBalance] = useState(false);
     
     // Sorting
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
@@ -119,8 +120,12 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
     useEffect(() => {
         const fetchAllFYBalances = async () => {
-            if (allAccounts.length === 0 || !selectedFY) return;
+            if (allAccounts.length === 0 || !selectedFY) {
+                setFyBalances({});
+                return;
+            }
             setLoadingAccounts(true);
+            setFyBalances({});
             const balances = {};
             const chunkSize = 100;
             for (let i = 0; i < allAccounts.length; i += chunkSize) {
@@ -147,10 +152,10 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         fetchAllFYBalances();
     }, [selectedFY, allAccounts]);
 
-    // When any filter changes, reset to page 1
+    // When any filter or FY changes, reset to page 1
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, selectedGroup, minBalance, maxBalance, verificationStatus, showIgnored]);
+    }, [searchTerm, selectedGroup, minBalance, maxBalance, verificationStatus, showIgnored, skipZeroClosingBalance, selectedFY]);
 
     const handleAccountSearch = () => {
         setCurrentPage(1);
@@ -168,34 +173,59 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         if (fyData) {
             return {
                 ...acc,
-                openingBalance: fyData.openingBalance ?? acc.openingBalance,
-                openingBalanceType: fyData.openingBalanceType ?? acc.openingBalanceType,
-                totalDebit: fyData.totalDebit ?? acc.totalDebit,
-                totalCredit: fyData.totalCredit ?? acc.totalCredit,
-                closingBalance: fyData.closingBalance ?? acc.closingBalance,
-                closingBalanceType: fyData.closingBalanceType ?? acc.closingBalanceType,
-                verifiedBy: fyData.verifiedBy || acc.verifiedBy,
-                verifiedAt: fyData.verifiedAt || acc.verifiedAt
+                openingBalance: fyData.openingBalance ?? 0,
+                openingBalanceType: fyData.openingBalanceType ?? '',
+                totalDebit: fyData.totalDebit ?? 0,
+                totalCredit: fyData.totalCredit ?? 0,
+                closingBalance: fyData.closingBalance ?? 0,
+                closingBalanceType: fyData.closingBalanceType ?? '',
+                verifiedBy: fyData.verifiedBy || null,
+                verifiedAt: fyData.verifiedAt || null
             };
         }
-        return acc;
+        return {
+            ...acc,
+            openingBalance: 0,
+            openingBalanceType: '',
+            totalDebit: 0,
+            totalCredit: 0,
+            closingBalance: 0,
+            closingBalanceType: '',
+            verifiedBy: null,
+            verifiedAt: null
+        };
     };
 
     const uniqueGroups = useMemo(() => {
         const groups = new Set();
-        allAccounts.forEach(a => { if (a.group) groups.add(a.group); });
+        allAccounts.forEach(a => {
+            if (selectedFY && !fyBalances[a.id]) return;
+            if (a.group) groups.add(a.group);
+        });
         return Array.from(groups).sort();
-    }, [allAccounts]);
+    }, [allAccounts, selectedFY, fyBalances]);
 
     const filteredAccounts = useMemo(() => {
         let result = allAccounts;
         
+        // When a fiscal year is selected, only show accounts that exist in this fiscal year
+        if (selectedFY) {
+            result = result.filter(a => !!fyBalances[a.id]);
+        }
+
         if (allowedAccount) {
             result = result.filter(a => a.name.toLowerCase() === allowedAccount.toLowerCase());
         }
         
         if (!showIgnored) {
             result = result.filter(a => !isAccountIgnored(a));
+        }
+
+        if (skipZeroClosingBalance) {
+            result = result.filter(a => {
+                const bal = getAccountBalance(a);
+                return Math.abs(bal.closingBalance || 0) > 0.0001;
+            });
         }
 
         if (searchTerm) {
@@ -208,19 +238,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         }
 
         if (verificationStatus === 'verified') {
-            result = result.filter(a => !!(fyBalances[a.id]?.verifiedBy || a.verifiedBy));
+            result = result.filter(a => !!fyBalances[a.id]?.verifiedBy);
         } else if (verificationStatus === 'unverified') {
-            result = result.filter(a => !(fyBalances[a.id]?.verifiedBy || a.verifiedBy));
+            result = result.filter(a => !fyBalances[a.id]?.verifiedBy);
         }
         if (minBalance !== "") {
-            result = result.filter(a => ((fyBalances[a.id]?.closingBalance ?? a.closingBalance) || 0) >= parseFloat(minBalance));
+            result = result.filter(a => ((fyBalances[a.id]?.closingBalance) || 0) >= parseFloat(minBalance));
         }
         if (maxBalance !== "") {
-            result = result.filter(a => ((fyBalances[a.id]?.closingBalance ?? a.closingBalance) || 0) <= parseFloat(maxBalance));
+            result = result.filter(a => ((fyBalances[a.id]?.closingBalance) || 0) <= parseFloat(maxBalance));
         }
 
         return result;
-    }, [allAccounts, allowedAccount, minBalance, maxBalance, verificationStatus, fyBalances, currentUser?.ignoredAccounts, showIgnored, searchTerm, selectedGroup]);
+    }, [allAccounts, selectedFY, fyBalances, allowedAccount, showIgnored, skipZeroClosingBalance, searchTerm, selectedGroup, verificationStatus, minBalance, maxBalance, currentUser?.ignoredAccounts]);
 
     const sortedAccounts = useMemo(() => {
         const sorted = [...filteredAccounts].sort((a, b) => {
@@ -228,8 +258,11 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             let valB = b[sortConfig.key];
             
             if (['openingBalance', 'totalDebit', 'totalCredit', 'closingBalance'].includes(sortConfig.key)) {
-                valA = parseFloat((fyBalances[a.id]?.[sortConfig.key] ?? a[sortConfig.key]) || 0);
-                valB = parseFloat((fyBalances[b.id]?.[sortConfig.key] ?? b[sortConfig.key]) || 0);
+                valA = parseFloat(fyBalances[a.id]?.[sortConfig.key] || 0);
+                valB = parseFloat(fyBalances[b.id]?.[sortConfig.key] || 0);
+            } else if (sortConfig.key === 'verifiedBy') {
+                valA = fyBalances[a.id]?.verifiedBy || '';
+                valB = fyBalances[b.id]?.verifiedBy || '';
             } else {
                 valA = (valA || '').toString().toLowerCase();
                 valB = (valB || '').toString().toLowerCase();
@@ -297,7 +330,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
     const handleVerifyAll = async () => {
         const userName = currentUser?.name || 'System';
-        if(!window.confirm(`Are you sure you want to mark all ${paginatedAccounts.length} accounts on this page as verified by ${userName}?`)) return;
+        const accountsToVerify = skipZeroClosingBalance
+            ? paginatedAccounts.filter(acc => {
+                const bal = getAccountBalance(acc);
+                return Math.abs(bal.closingBalance || 0) > 0.0001;
+            })
+            : paginatedAccounts;
+
+        if (accountsToVerify.length === 0) {
+            alert("No eligible accounts to verify on this page.");
+            return;
+        }
+
+        if(!window.confirm(`Are you sure you want to mark all ${accountsToVerify.length} accounts on this page as verified by ${userName}?`)) return;
 
         try {
             setVerifying(true);
@@ -305,7 +350,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             const batch = writeBatch(db);
             const newBalances = { ...fyBalances };
             
-            paginatedAccounts.forEach(acc => {
+            accountsToVerify.forEach(acc => {
                 const ids = acc.allDocIds && acc.allDocIds.length > 0 ? acc.allDocIds : [acc.id];
                 ids.forEach(docId => {
                     const ref = doc(db, 'accounts', docId, 'fiscalYears', selectedFY);
@@ -389,7 +434,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             // Ensure we use the correct opening balance sign (+ for Dr, - for Cr)
             let runningVal = detailFYData 
                 ? (detailFYData.openingBalanceType === 'Cr' ? -1 : 1) * parseFloat(detailFYData.openingBalance || 0)
-                : (selectedAccount?.openingBalanceType === 'Cr' ? -1 : 1) * parseFloat(selectedAccount?.openingBalance || 0);
+                : 0;
             
             const processedTxns = combinedTxns.map(t => {
                 const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === accNameLower;
@@ -434,15 +479,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     }, [view, selectedAccount, detailFY, detailFYData]);
 
     useEffect(() => {
-        if (view !== 'details' || !selectedAccount) return;
+        if (view !== 'details' || !selectedAccount || !detailFY) return;
         const fetchFYData = async () => {
             try {
-                const fyDoc = await getDoc(doc(db, 'accounts', selectedAccount.id, 'fiscalYears', detailFY));
-                if (fyDoc.exists()) {
-                    setDetailFYData(fyDoc.data());
-                } else {
-                    setDetailFYData(null);
+                const ids = selectedAccount.allDocIds && selectedAccount.allDocIds.length > 0 ? selectedAccount.allDocIds : [selectedAccount.id];
+                let found = null;
+                for (const docId of ids) {
+                    const fyDoc = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', detailFY));
+                    if (fyDoc.exists()) {
+                        found = fyDoc.data();
+                        break;
+                    }
                 }
+                setDetailFYData(found);
             } catch (e) {
                 console.error(e);
                 setDetailFYData(null);
@@ -454,7 +503,12 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
     const exportToPDF = () => {
         if (!selectedAccount) return;
-        const displayBalance = detailFYData || selectedAccount;
+        const displayBalance = detailFYData || {
+            openingBalance: 0,
+            openingBalanceType: '',
+            closingBalance: 0,
+            closingBalanceType: ''
+        };
         const doc = new jsPDF();
         
         const activeFY = fyOptions.find(f => f.id === detailFY);
@@ -619,11 +673,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         </div>
                         <div>
                             {(() => {
-                                const displayBalance = detailFYData || selectedAccount;
+                                const displayBalance = detailFYData || {
+                                    openingBalance: 0,
+                                    openingBalanceType: '',
+                                    totalDebit: 0,
+                                    totalCredit: 0,
+                                    closingBalance: 0,
+                                    closingBalanceType: '',
+                                    fyName: fyOptions.find(f => f.id === detailFY)?.name || 'Selected FY'
+                                };
                                 return (
                                     <>
                                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                                            Balance Summary <span className="text-[10px] text-blue-500 normal-case ml-1">({detailFYData ? `${detailFYData.fyName || 'Selected FY'}` : 'Account Default'})</span>
+                                            Balance Summary <span className="text-[10px] text-blue-500 normal-case ml-1">({displayBalance.fyName || 'Selected FY'})</span>
                                         </h4>
                                         <div className="text-sm text-gray-700 grid grid-cols-2 gap-2">
                                             <div className="font-medium">Opening Balance:</div>
@@ -689,7 +751,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             </select>
                         </div>
                         <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer mr-4">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer mr-2">
                                 <input 
                                     type="checkbox" 
                                     checked={showIgnored}
@@ -698,6 +760,18 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                 />
                                 Include Ignored Accounts
                             </label>
+                            <button
+                                type="button"
+                                onClick={() => setSkipZeroClosingBalance(prev => !prev)}
+                                className={`px-3 py-1.5 rounded text-sm font-medium transition border ${
+                                    skipZeroClosingBalance
+                                        ? 'bg-amber-100 text-amber-900 border-amber-400 hover:bg-amber-200 font-semibold'
+                                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                                }`}
+                                title="Toggle to skip accounts with 0 closing balance"
+                            >
+                                {skipZeroClosingBalance ? '✓ Skip 0 Balances' : 'Skip 0 Balances'}
+                            </button>
                             <button 
                                 onClick={handleVerifyAll}
                                 disabled={verifying || paginatedAccounts.length === 0}
@@ -792,8 +866,8 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                     {paginatedAccounts.length === 0 ? (
                                         <tr>
                                             <td colSpan="7" className="px-4 py-6 text-center text-gray-500">
-                                                No accounts found. {allAccounts.length > 0 && allAccounts[0].closingBalance === undefined && (
-                                                    <span className="block mt-2 text-red-500 font-bold">Have you synced Account Balances in the Import Center?</span>
+                                                No accounts found{selectedFY ? ' for the selected fiscal year' : ''}. {allAccounts.length > 0 && Object.keys(fyBalances).length === 0 && (
+                                                    <span className="block mt-2 text-red-500 font-bold">Please ensure Master or Transactions have been imported and Balances synced for this Fiscal Year in the Import Center.</span>
                                                 )}
                                             </td>
                                         </tr>
