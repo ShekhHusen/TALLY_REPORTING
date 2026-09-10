@@ -4,12 +4,15 @@ import { collection, getDocs, query, where, orderBy, limit, startAfter } from 'f
 import TransactionTable from './TransactionTable';
 import AccountSearchDropdown from './AccountSearchDropdown';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
+import PushTransactionModal from './PushTransactionModal';
+import { PlusCircle } from 'lucide-react';
 
-export default function TransactionsTab({ updateTrigger, allowedAccount }) {
+export default function TransactionsTab({ updateTrigger, allowedAccount, currentUser, setUpdateTrigger }) {
     // Dropdown Data
     const [transactions, setTransactions] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [showPushModal, setShowPushModal] = useState(false);
 
     const [fyOptions, setFyOptions] = useState([]);
     const [selectedFYId, setSelectedFYId] = useState('');
@@ -180,15 +183,25 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col gap-4">
                 <div className="flex justify-between items-center">
                     <h2 className="text-xl font-bold text-gray-800">All Transactions Directory</h2>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
-                        <input 
-                            type="checkbox" 
-                            checked={showFullDetails}
-                            onChange={(e) => setShowFullDetails(e.target.checked)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        Show full details
-                    </label>
+                    <div className="flex items-center gap-4">
+                        <button 
+                            type="button"
+                            onClick={() => setShowPushModal(true)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded text-sm font-medium transition flex items-center gap-1.5 shadow-sm"
+                        >
+                            <PlusCircle size={16} />
+                            Push Transaction
+                        </button>
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={showFullDetails}
+                                onChange={(e) => setShowFullDetails(e.target.checked)}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Show full details
+                        </label>
+                    </div>
                 </div>
                 
                 <div className="flex flex-wrap items-end gap-4">
@@ -292,6 +305,17 @@ export default function TransactionsTab({ updateTrigger, allowedAccount }) {
                     )}
                 </div>
             </div>
+            <PushTransactionModal
+                isOpen={showPushModal}
+                onClose={() => setShowPushModal(false)}
+                currentUser={currentUser}
+                onSave={() => {
+                    fetchTransactions(inputStartDate, inputEndDate, inputAccountName, inputVoucherType, false);
+                    if (setUpdateTrigger) {
+                        setUpdateTrigger(prev => prev + 1);
+                    }
+                }}
+            />
         </div>
     );
 }

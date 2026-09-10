@@ -208,7 +208,7 @@ export default function UserManagementTab({ updateTrigger }) {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Allowed Tabs</label>
                                 <div className="space-y-2">
-                                    {['accounts', 'transactions', 'import'].map(tab => (
+                                    {['accounts', 'transactions', 'followups', 'import'].map(tab => (
                                         <label key={tab} className="flex items-center">
                                             <input 
                                                 type="checkbox" 

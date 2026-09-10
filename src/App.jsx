@@ -8,6 +8,7 @@ import TransactionsTab from './components/TransactionsTab';
 import LoginScreen from './components/LoginScreen';
 import UserManagementTab from './components/UserManagementTab';
 import SettingsTab from './components/SettingsTab';
+import FollowUpsTab from './components/FollowUpsTab';
 
 export default function App() {
     const [currentUser, setCurrentUser] = useState(() => {
@@ -184,6 +185,14 @@ export default function App() {
                         Transactions
                     </button>
                 )}
+                {hasTabAccess('followups') && (
+                    <button 
+                        onClick={() => setActiveTab('followups')}
+                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'followups' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                        Follow-ups
+                    </button>
+                )}
                 {hasTabAccess('import') && (
                     <button 
                         onClick={() => setActiveTab('import')}
@@ -216,8 +225,13 @@ export default function App() {
                 <div style={{ display: activeTab === 'transactions' && hasTabAccess('transactions') ? 'block' : 'none' }}>
                     <TransactionsTab 
                         updateTrigger={updateTrigger}
+                        setUpdateTrigger={setUpdateTrigger}
                         allowedAccount={currentUser.allowedAccount}
+                        currentUser={currentUser}
                     />
+                </div>
+                <div style={{ display: activeTab === 'followups' && hasTabAccess('followups') ? 'block' : 'none' }}>
+                    <FollowUpsTab currentUser={currentUser} />
                 </div>
             </main>
         </div>

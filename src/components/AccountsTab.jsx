@@ -7,6 +7,9 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from 'xlsx';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
+import EditAccountModal from './EditAccountModal';
+import FollowUpModal from './FollowUpModal';
+import { Pencil, ClipboardList } from 'lucide-react';
 
 const formatCurrency = (num) => {
     const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num) || 0);
@@ -35,6 +38,42 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     // Sorting
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
     const [verifying, setVerifying] = useState(false);
+
+    // Modal states for Edit Account & Follow-ups
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingAccount, setEditingAccount] = useState(null);
+    const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
+    const [followUpAccount, setFollowUpAccount] = useState(null);
+
+    const handleOpenEdit = (acc) => {
+        setEditingAccount(acc);
+        setEditModalOpen(true);
+    };
+
+    const handleOpenFollowUp = (acc) => {
+        setFollowUpAccount(acc);
+        setFollowUpModalOpen(true);
+    };
+
+    const handleAccountSave = (updatedData) => {
+        if (editingAccount && updatedData) {
+            setFyBalances(prev => ({
+                ...prev,
+                [editingAccount.id]: {
+                    ...(prev[editingAccount.id] || {}),
+                    openingBalance: updatedData.openingBalance,
+                    openingBalanceType: updatedData.openingBalanceType,
+                    closingBalance: updatedData.closingBalance,
+                    closingBalanceType: updatedData.closingBalanceType,
+                    verifiedBy: null,
+                    verifiedAt: null
+                }
+            }));
+            if (setUpdateTrigger) {
+                setUpdateTrigger(prev => prev + 1);
+            }
+        }
+    };
 
     // ----------- DETAILS VIEW STATE -----------
     const [selectedAccount, setSelectedAccount] = useState(null);
@@ -853,6 +892,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             <table className="min-w-full divide-y divide-gray-200 text-sm">
                                 <thead className="bg-white sticky top-0 shadow-sm z-10">
                                     <tr>
+                                        <th className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Menu</th>
                                         <th className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('name')}>Account Name{getSortIndicator('name')}</th>
                                         <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('openingBalance')}>Opening Bal{getSortIndicator('openingBalance')}</th>
                                         <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('totalDebit')}>Total Dr{getSortIndicator('totalDebit')}</th>
@@ -865,7 +905,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                 <tbody className="bg-white divide-y divide-gray-100">
                                     {paginatedAccounts.length === 0 ? (
                                         <tr>
-                                            <td colSpan="7" className="px-4 py-6 text-center text-gray-500">
+                                            <td colSpan="8" className="px-4 py-6 text-center text-gray-500">
                                                 No accounts found{selectedFY ? ' for the selected fiscal year' : ''}. {allAccounts.length > 0 && Object.keys(fyBalances).length === 0 && (
                                                     <span className="block mt-2 text-red-500 font-bold">Please ensure Master or Transactions have been imported and Balances synced for this Fiscal Year in the Import Center.</span>
                                                 )}
@@ -881,6 +921,26 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                 onClick={() => openAccountDetails(acc)}
                                                 className="cursor-pointer hover:bg-blue-50 transition"
                                             >
+                                                <td className="px-3 py-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handleOpenEdit(acc)}
+                                                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition border border-blue-200"
+                                                            title="Edit Account / Opening Balance"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handleOpenFollowUp(acc)}
+                                                            className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-100 rounded transition border border-purple-200"
+                                                            title="Follow-ups"
+                                                        >
+                                                            <ClipboardList size={14} />
+                                                        </button>
+                                                    </div>
+                                                </td>
                                                 <td className="px-4 py-2 text-gray-900 font-medium whitespace-nowrap">
                                                     {acc.name}
                                                     <div className="text-xs text-gray-400 font-normal">{acc.group}</div>
@@ -982,6 +1042,22 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     </div>
                 </div>
             </div>
+
+            <EditAccountModal
+                isOpen={editModalOpen}
+                onClose={() => { setEditModalOpen(false); setEditingAccount(null); }}
+                account={editingAccount}
+                fyOptions={fyOptions}
+                selectedFY={selectedFY}
+                onSave={handleAccountSave}
+            />
+
+            <FollowUpModal
+                isOpen={followUpModalOpen}
+                onClose={() => { setFollowUpModalOpen(false); setFollowUpAccount(null); }}
+                account={followUpAccount}
+                currentUser={currentUser}
+            />
         </div>
     );
 }
