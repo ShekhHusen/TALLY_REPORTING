@@ -85,7 +85,7 @@ export default function App() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <header className="mb-8 flex justify-between items-end border-b border-gray-300 pb-4">
+            <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 border-b border-gray-300 pb-4">
                 <div>
                     <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Tally Analyzer</h1>
                     <p className="text-sm text-gray-500 mt-1">Deep analysis of Master and Transaction exports</p>
@@ -102,10 +102,10 @@ export default function App() {
                             {currentUser.role === 'admin' && <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold">ADMIN</span>}
                         </div>
                         <div className="relative group">
-                            <button className="text-sm text-gray-500 hover:text-gray-900 focus:outline-none pb-2">
+                            <button className="text-sm text-gray-500 hover:text-gray-900 focus:outline-none pb-2 cursor-pointer">
                                 Settings ▼
                             </button>
-                            <div className="absolute right-0 top-full w-48 pt-1 z-50 hidden group-hover:block">
+                            <div className="absolute right-0 top-full w-48 pt-1 z-50 hidden group-hover:block group-focus-within:block">
                                 <div className="bg-white rounded-md shadow-lg border border-gray-200 py-1">
                                     <button 
                                         onClick={() => setShowChangePassword(true)}
@@ -152,18 +152,18 @@ export default function App() {
                 </div>
             )}
             
-            <nav className="flex space-x-4 mb-6 border-b border-gray-200 pb-2">
+            <nav className="flex space-x-2 sm:space-x-4 mb-6 border-b border-gray-200 pb-2 overflow-x-auto">
                 {currentUser.role === 'admin' && (
                     <>
                         <button 
                             onClick={() => setActiveTab('users')}
-                            className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'users' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-md font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'users' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                         >
                             Users
                         </button>
                         <button 
                             onClick={() => setActiveTab('settings')}
-                            className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'settings' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-md font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'settings' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                         >
                             Settings
                         </button>
@@ -172,7 +172,7 @@ export default function App() {
                 {hasTabAccess('accounts') && (
                     <button 
                         onClick={() => setActiveTab('accounts')}
-                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'accounts' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                        className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-md font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'accounts' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Accounts
                     </button>
@@ -180,7 +180,7 @@ export default function App() {
                 {hasTabAccess('transactions') && (
                     <button 
                         onClick={() => setActiveTab('transactions')}
-                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'transactions' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                        className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-md font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'transactions' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Transactions
                     </button>
@@ -188,7 +188,7 @@ export default function App() {
                 {hasTabAccess('followups') && (
                     <button 
                         onClick={() => setActiveTab('followups')}
-                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'followups' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                        className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-md font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'followups' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Follow-ups
                     </button>
@@ -196,7 +196,7 @@ export default function App() {
                 {hasTabAccess('import') && (
                     <button 
                         onClick={() => setActiveTab('import')}
-                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'import' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
+                        className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-md font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'import' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Import Center
                     </button>

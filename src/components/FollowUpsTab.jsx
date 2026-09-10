@@ -255,9 +255,9 @@ export default function FollowUpsTab({ currentUser }) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] gap-3">
+    <div className="flex flex-col min-h-0 md:h-[calc(100vh-10rem)] gap-3">
       {/* Quick Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 shrink-0">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 shrink-0 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <button
           onClick={() => handleStatusCardClick('Active')}
           className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
@@ -339,7 +339,7 @@ export default function FollowUpsTab({ currentUser }) {
         {/* Filter Bar */}
         <div className="bg-gray-50 border-b border-gray-200 p-3.5 shrink-0">
           <div className="flex flex-wrap gap-3 items-end">
-            <div className="w-48">
+            <div className="w-full sm:w-48">
               <label className="block text-xs font-semibold text-gray-700 mb-1">Account Name</label>
               <input 
                 type="text" 
@@ -350,7 +350,7 @@ export default function FollowUpsTab({ currentUser }) {
               />
             </div>
             
-            <div className="w-44">
+            <div className="w-full sm:w-44">
               <label className="block text-xs font-semibold text-gray-700 mb-1">Status Filter</label>
               <select
                 className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
@@ -368,7 +368,7 @@ export default function FollowUpsTab({ currentUser }) {
             </div>
 
             {currentUser?.role === 'admin' && (
-              <div className="w-40">
+              <div className="w-full sm:w-40">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Assigned To</label>
                 <select
                   className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
@@ -383,7 +383,7 @@ export default function FollowUpsTab({ currentUser }) {
               </div>
             )}
 
-            <div className="w-32">
+            <div className="w-full sm:w-32">
               <label className="block text-xs font-semibold text-gray-700 mb-1">From Date</label>
               <input 
                 type="date" 
@@ -393,7 +393,7 @@ export default function FollowUpsTab({ currentUser }) {
               />
             </div>
             
-            <div className="w-32">
+            <div className="w-full sm:w-32">
               <label className="block text-xs font-semibold text-gray-700 mb-1">To Date</label>
               <input 
                 type="date" 
@@ -403,7 +403,7 @@ export default function FollowUpsTab({ currentUser }) {
               />
             </div>
             
-            <div className="flex gap-2 ml-auto">
+            <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
               <button 
                 onClick={handleSearch}
                 className="px-3 py-1.5 rounded text-sm font-semibold transition bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-xs"
@@ -425,7 +425,7 @@ export default function FollowUpsTab({ currentUser }) {
           {loading ? (
             <div className="p-8 text-center text-gray-500">Loading follow-ups...</div>
           ) : (
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm hidden md:table">
               <thead className="bg-gray-100/80 sticky top-0 shadow-xs z-10">
                 <tr>
                   <th className="px-4 py-2.5 text-left font-semibold text-gray-600 uppercase tracking-wider text-xs whitespace-nowrap">Date</th>
@@ -551,11 +551,104 @@ export default function FollowUpsTab({ currentUser }) {
               </tbody>
             </table>
           )}
+          {/* Mobile Card View */}
+          <div className="block md:hidden divide-y divide-gray-200">
+            {currentData.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <Clock className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                <p className="font-medium">No follow-ups found.</p>
+              </div>
+            ) : (
+              currentData.map(fu => {
+                const status = getStatus(fu);
+                const historyCount = Array.isArray(fu.history) && fu.history.length > 0 ? fu.history.length : 1;
+                const statusColors = {
+                  'Today': 'border-l-amber-500 bg-amber-50/30',
+                  'Overdue': 'border-l-red-500 bg-red-50/30',
+                  'Upcoming': 'border-l-blue-500 bg-blue-50/20',
+                  'Completed': 'border-l-green-500 bg-gray-50/50',
+                  'Pending': 'border-l-gray-400 bg-white'
+                };
+                return (
+                  <div key={fu.id} className={`p-3 border-l-4 ${statusColors[status] || 'border-l-gray-300 bg-white'}`}>
+                    {/* Top row: Account name + Status badge */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h4 className="font-bold text-sm text-gray-900 leading-tight">{fu.accountName}</h4>
+                      {getStatusBadge(status)}
+                    </div>
+                    {/* Meta row */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-2">
+                      <span>{fu.date}</span>
+                      <span>by {fu.userName}</span>
+                      {fu.assignedTo && (
+                        <span className="inline-flex items-center gap-1">
+                          <User className="w-3 h-3" /> {fu.assignedTo}
+                        </span>
+                      )}
+                      {fu.nextFollowUpDate && (
+                        <span className={`font-semibold ${status === 'Today' ? 'text-amber-700' : status === 'Overdue' ? 'text-red-600' : 'text-gray-700'}`}>
+                          Next: {fu.nextFollowUpDate}
+                        </span>
+                      )}
+                    </div>
+                    {/* Message */}
+                    <div className="text-xs text-gray-700 mb-2">{fu.message}</div>
+                    {fu.lastCallNote && (
+                      <div className="text-[11px] text-blue-900 bg-blue-100/70 p-2 rounded border border-blue-200 flex items-start gap-1 mb-2">
+                        <PhoneCall className="w-3 h-3 text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-semibold">Latest Call:</span> {fu.lastCallNote}{' '}
+                          <span className="text-blue-600 font-medium">({fu.lastCallBy || 'User'} on {fu.lastCallDate})</span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {!fu.completed && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenUpdate(fu)}
+                          className="min-h-[44px] px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition inline-flex items-center gap-1.5 shadow-sm"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5" /> Reschedule
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenUpdate(fu)}
+                        className="min-h-[44px] px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded text-xs font-medium transition inline-flex items-center gap-1.5 shadow-sm"
+                      >
+                        <History className="w-3.5 h-3.5 text-gray-500" />
+                        History
+                        <span className="bg-gray-200 text-gray-700 text-[10px] px-1.5 rounded-full font-bold">{historyCount}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenStatement(fu.accountName)}
+                        className="min-h-[44px] px-3 py-2 bg-white hover:bg-gray-50 text-blue-600 border border-blue-300 rounded text-xs font-medium transition inline-flex items-center gap-1.5 shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> Statement
+                      </button>
+                      {!fu.completed && (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkComplete(fu)}
+                          className="min-h-[44px] px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition inline-flex items-center gap-1.5 shadow-sm"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Complete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
 
         {/* Pagination Bar */}
         {!loading && filteredFollowUps.length > 0 && (
-          <div className="bg-gray-50 border-t border-gray-200 p-3 flex items-center justify-between shrink-0">
+          <div className="bg-gray-50 border-t border-gray-200 p-3 flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0">
             <div className="text-sm text-gray-600">
               Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredFollowUps.length)}</span> of <span className="font-medium">{filteredFollowUps.length}</span> results
             </div>
