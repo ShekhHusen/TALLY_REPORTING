@@ -3,11 +3,14 @@ import { db } from '../firebase';
 import { collection, writeBatch, doc, getDocs, query, getDoc } from 'firebase/firestore';
 import { processMaster, processTransactions } from '../utils/parser';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
+import PushTransactionModal from './PushTransactionModal';
+import { PlusCircle } from 'lucide-react';
 
-export default function ImportCenter({ setUpdateTrigger }) {
+export default function ImportCenter({ setUpdateTrigger, currentUser }) {
     const [loadingMaster, setLoadingMaster] = useState(false);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
     const [clearing, setClearing] = useState(false);
+    const [showPushModal, setShowPushModal] = useState(false);
     
     const [selectedFYId, setSelectedFYId] = useState('');
     const [fyOptions, setFyOptions] = useState([]);
@@ -403,7 +406,17 @@ export default function ImportCenter({ setUpdateTrigger }) {
 
     return (
         <div className="p-6 max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Import Center</h2>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Import Center</h2>
+                <button 
+                    type="button"
+                    onClick={() => setShowPushModal(true)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow font-medium transition flex items-center gap-2 text-sm"
+                >
+                    <PlusCircle size={18} />
+                    Push Transaction
+                </button>
+            </div>
             
             <div className="mb-6 flex items-center gap-4">
                 <label className="text-sm font-semibold text-gray-700">Fiscal Year for Import:</label>
@@ -470,6 +483,17 @@ export default function ImportCenter({ setUpdateTrigger }) {
                     </button>
                 </div>
             </div>
+
+            <PushTransactionModal
+                isOpen={showPushModal}
+                onClose={() => setShowPushModal(false)}
+                currentUser={currentUser}
+                onSave={() => {
+                    if (setUpdateTrigger) {
+                        setUpdateTrigger(prev => prev + 1);
+                    }
+                }}
+            />
         </div>
     );
 }

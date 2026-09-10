@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
-import { Search, X, Check, Clock, AlertCircle, AlertTriangle } from 'lucide-react';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { Search, X, Check, Clock, AlertCircle, AlertTriangle, FileText } from 'lucide-react';
+import AccountStatementModal from './AccountStatementModal';
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
@@ -10,6 +11,15 @@ export default function FollowUpsTab({ currentUser }) {
   const [filteredFollowUps, setFilteredFollowUps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
+
+  // Statement modal state
+  const [statementAccountName, setStatementAccountName] = useState('');
+  const [isStatementOpen, setIsStatementOpen] = useState(false);
+
+  const handleOpenStatement = (accName) => {
+    setStatementAccountName(accName);
+    setIsStatementOpen(true);
+  };
   
   // Filters
   const [searchAccount, setSearchAccount] = useState('');
@@ -31,12 +41,12 @@ export default function FollowUpsTab({ currentUser }) {
 
   const fetchUsers = async () => {
     try {
-      const usersQuery = query(collection(db, 'users'), orderBy('name', 'asc'));
-      const snapshot = await getDocs(usersQuery);
+      const snapshot = await getDocs(collection(db, 'users'));
       const usersList = snapshot.docs.map(doc => ({
         uid: doc.id,
         ...doc.data()
       }));
+      usersList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setUsers(usersList);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -46,21 +56,32 @@ export default function FollowUpsTab({ currentUser }) {
   const fetchFollowUps = async () => {
     setLoading(true);
     try {
-      let q;
-      if (currentUser?.role === 'admin') {
-        q = query(collection(db, 'followUps'), orderBy('createdAt', 'desc'));
-      } else {
-        q = query(
-          collection(db, 'followUps'),
-          where('assignedToUid', '==', currentUser?.uid),
-          orderBy('createdAt', 'desc')
-        );
-      }
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({
+      const snapshot = await getDocs(collection(db, 'followUps'));
+      let data = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+
+      // Role-based filtering:
+      // Admin sees ALL follow-ups.
+      // Normal user sees ONLY follow-ups assigned to them (by UID or by Name).
+      if (currentUser?.role !== 'admin') {
+        const userUid = currentUser?.uid;
+        const userNameLower = (currentUser?.name || '').trim().toLowerCase();
+        data = data.filter(fu => {
+          const matchesUid = userUid && fu.assignedToUid === userUid;
+          const matchesName = fu.assignedTo && fu.assignedTo.trim().toLowerCase() === userNameLower;
+          return matchesUid || matchesName;
+        });
+      }
+
+      // Sort client-side descending by createdAt or date
+      data.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.date ? new Date(a.date).getTime() : 0);
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.date ? new Date(b.date).getTime() : 0);
+        return timeB - timeA;
+      });
+
       setFollowUps(data);
       applyFilters(data, searchAccount, statusFilter, assignedFilter, dateFrom, dateTo);
     } catch (error) {
@@ -286,15 +307,26 @@ export default function FollowUpsTab({ currentUser }) {
                         <td className="px-4 py-2 whitespace-nowrap">{fu.assignedTo || '-'}</td>
                         <td className="px-4 py-2 whitespace-nowrap">{getStatusBadge(status)}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-center">
-                          {!fu.completed && (
+                          <div className="flex items-center justify-center gap-1.5">
                             <button
-                              onClick={() => handleMarkComplete(fu.id)}
-                              className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition inline-flex items-center gap-1"
-                              title="Mark as Complete"
+                              type="button"
+                              onClick={() => handleOpenStatement(fu.accountName)}
+                              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition inline-flex items-center gap-1 shadow-sm"
+                              title="View Account Statement"
                             >
-                              <Check className="w-3 h-3" /> Complete
+                              <FileText className="w-3 h-3" /> Statement
                             </button>
-                          )}
+                            {!fu.completed && (
+                              <button
+                                type="button"
+                                onClick={() => handleMarkComplete(fu.id)}
+                                className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition inline-flex items-center gap-1 shadow-sm"
+                                title="Mark as Complete"
+                              >
+                                <Check className="w-3 h-3" /> Complete
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -330,6 +362,12 @@ export default function FollowUpsTab({ currentUser }) {
           </div>
         )}
       </div>
+
+      <AccountStatementModal 
+        isOpen={isStatementOpen}
+        onClose={() => { setIsStatementOpen(false); setStatementAccountName(''); }}
+        accountName={statementAccountName}
+      />
     </div>
   );
 }

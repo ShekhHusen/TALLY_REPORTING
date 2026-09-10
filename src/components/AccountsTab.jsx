@@ -10,6 +10,7 @@ import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import EditAccountModal from './EditAccountModal';
 import FollowUpModal from './FollowUpModal';
 import { Pencil, ClipboardList } from 'lucide-react';
+import { deleteTransactionRecord } from '../utils/transactionOperations';
 
 const formatCurrency = (num) => {
     const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num) || 0);
@@ -256,7 +257,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             result = result.filter(a => a.name.toLowerCase() === allowedAccount.toLowerCase());
         }
         
-        if (!showIgnored) {
+        if (verificationStatus === 'ignored') {
+            result = result.filter(a => isAccountIgnored(a));
+        } else if (!showIgnored) {
             result = result.filter(a => !isAccountIgnored(a));
         }
 
@@ -498,6 +501,16 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             alert("Error fetching transactions. You might need to create a Firestore Index. Check console.");
         }
         setLoadingTxns(false);
+    };
+
+    const handleDeleteStatementTransaction = async (t) => {
+        const ok = await deleteTransactionRecord(t);
+        if (ok && selectedAccount) {
+            setAccountTxns([]);
+            setLastVisibleTxn(null);
+            fetchAccountTransactions(selectedAccount.name, false, detailFY);
+            if (setUpdateTrigger) setUpdateTrigger(prev => prev + 1);
+        }
     };
 
     const openAccountDetails = (acc) => {
@@ -748,6 +761,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             showFullDetails={showFullDetails} 
                             isStatementView={true} 
                             selectedAccountName={selectedAccount.name} 
+                            onDeleteTransaction={handleDeleteStatementTransaction}
                         />
                         
                         {loadingTxns && <div className="text-center p-4 text-gray-500">Loading more transactions...</div>}
@@ -843,6 +857,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             <option value="all">All Verification Status</option>
                             <option value="verified">Verified</option>
                             <option value="unverified">Unverified</option>
+                            <option value="ignored">Ignored</option>
                         </select>
                         <input 
                             type="number" 

@@ -211,7 +211,7 @@ export default function App() {
                     <SettingsTab currentUser={currentUser} />
                 </div>
                 <div style={{ display: activeTab === 'import' && hasTabAccess('import') ? 'block' : 'none' }}>
-                    <ImportCenter setUpdateTrigger={setUpdateTrigger} />
+                    <ImportCenter setUpdateTrigger={setUpdateTrigger} currentUser={currentUser} />
                 </div>
                 <div style={{ display: activeTab === 'accounts' && hasTabAccess('accounts') ? 'block' : 'none' }}>
                     <AccountsTab 

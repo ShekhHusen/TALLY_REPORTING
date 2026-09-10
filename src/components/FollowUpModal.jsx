@@ -36,16 +36,28 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
     if (!account) return;
     setLoading(true);
     try {
-      const q = query(
-        collection(db, 'followUps'),
-        where('accountName', '==', account.name),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const snapshot = await getDocs(collection(db, 'followUps'));
+      const accNameLower = (account.name || '').trim().toLowerCase();
+      const accountIds = account.allDocIds || (account.id ? [account.id] : []);
+
+      const data = [];
+      snapshot.forEach(d => {
+        const item = d.data();
+        const itemAccName = (item.accountName || '').trim().toLowerCase();
+        const matchesName = itemAccName === accNameLower;
+        const matchesId = item.accountId && accountIds.includes(item.accountId);
+        if (matchesName || matchesId) {
+          data.push({ id: d.id, ...item });
+        }
+      });
+
+      // Sort client-side descending by createdAt or date
+      data.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.date ? new Date(a.date).getTime() : 0);
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.date ? new Date(b.date).getTime() : 0);
+        return timeB - timeA;
+      });
+
       setFollowUps(data);
     } catch (error) {
       console.error("Error fetching follow-ups:", error);

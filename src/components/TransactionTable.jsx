@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
+import { Trash2 } from 'lucide-react';
 
 const formatCurrency = (num) => {
     const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num) || 0);
     return `Rs. ${num < 0 ? '-' : ''}${formatted}`;
 };
 
-export default function TransactionTable({ transactions, showFullDetails = false, isStatementView = false, selectedAccountName = '' }) {
+export default function TransactionTable({ transactions, showFullDetails = false, isStatementView = false, selectedAccountName = '', onDeleteTransaction = null }) {
     const [sortConfig, setSortConfig] = useState(null);
 
     const sortedTransactions = useMemo(() => {
@@ -60,11 +61,14 @@ export default function TransactionTable({ transactions, showFullDetails = false
                             {showFullDetails && (
                                 <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('enteredBy')}>Entered By{getSortIndicator('enteredBy')}</th>
                             )}
+                            {onDeleteTransaction && (
+                                <th className="px-3 py-3 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
+                            )}
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {sortedTransactions.length === 0 ? (
-                            <tr><td colSpan={showFullDetails ? "7" : "6"} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
+                            <tr><td colSpan={6 + (showFullDetails ? 1 : 0) + (onDeleteTransaction ? 1 : 0)} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
                         ) : (
                             sortedTransactions.map((t, idx) => {
                                 // Check if selected account is in debit side (primary or allDebitAccounts)
@@ -100,10 +104,22 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                             {showFullDetails && (
                                                 <td className="px-4 py-3 whitespace-nowrap text-gray-500">{t.enteredBy}</td>
                                             )}
+                                            {onDeleteTransaction && (
+                                                <td className="px-3 py-3 whitespace-nowrap text-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); onDeleteTransaction(t); }}
+                                                        className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition inline-flex items-center justify-center"
+                                                        title="Delete Transaction"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
                                         {showFullDetails && (t.inventory?.length > 0 || t.narration || (t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1)) && (
                                             <tr className="bg-gray-50/50">
-                                                <td colSpan="7" className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
+                                                <td colSpan={6 + (showFullDetails ? 1 : 0) + (onDeleteTransaction ? 1 : 0)} className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
                                                     {t.narration && <div className="mb-1"><span className="font-semibold text-gray-800">Narration:</span> {t.narration}</div>}
                                                     {(t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1) && (
                                                         <div className="mb-1">
@@ -171,11 +187,14 @@ export default function TransactionTable({ transactions, showFullDetails = false
                         {showFullDetails && (
                             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('enteredBy')}>Entered By{getSortIndicator('enteredBy')}</th>
                         )}
+                        {onDeleteTransaction && (
+                            <th className="px-3 py-3 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
+                        )}
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {sortedTransactions.length === 0 ? (
-                        <tr><td colSpan={showFullDetails ? "7" : "6"} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
+                        <tr><td colSpan={6 + (showFullDetails ? 1 : 0) + (onDeleteTransaction ? 1 : 0)} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
                     ) : (
                         sortedTransactions.map((t, idx) => (
                             <React.Fragment key={t.id || idx}>
@@ -192,10 +211,22 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                     {showFullDetails && (
                                         <td className="px-4 py-3 whitespace-nowrap text-gray-500">{t.enteredBy}</td>
                                     )}
+                                    {onDeleteTransaction && (
+                                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); onDeleteTransaction(t); }}
+                                                className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition inline-flex items-center justify-center"
+                                                title="Delete Transaction"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </td>
+                                    )}
                                 </tr>
                                 {showFullDetails && (t.inventory?.length > 0 || t.narration || (t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1)) && (
                                     <tr className="bg-gray-50/50">
-                                        <td colSpan="7" className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
+                                        <td colSpan={6 + (showFullDetails ? 1 : 0) + (onDeleteTransaction ? 1 : 0)} className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
                                             {t.narration && <div className="mb-1"><span className="font-semibold text-gray-800">Narration:</span> {t.narration}</div>}
                                             {(t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1) && (
                                                 <div className="mb-1">
