@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { X } from 'lucide-react';
 
-export default function EditAccountModal({ isOpen, onClose, account, fyOptions, selectedFY, onSave }) {
+export default function EditAccountModal({ isOpen, onClose, account, fyOptions, selectedFY, onSave, groupOptions = [] }) {
   const [currentFY, setCurrentFY] = useState(selectedFY);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -13,10 +13,12 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
   const [openingBalanceType, setOpeningBalanceType] = useState('Dr');
   const [totalDebit, setTotalDebit] = useState(0);
   const [totalCredit, setTotalCredit] = useState(0);
+  const [selectedGroup, setSelectedGroup] = useState('');
 
   useEffect(() => {
     if (isOpen && account) {
       setCurrentFY(selectedFY);
+      setSelectedGroup(account.group || '');
       fetchAccountData(selectedFY);
     }
   }, [isOpen, account, selectedFY]);
@@ -101,15 +103,26 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
         verifiedAt: null
       };
 
-      const promises = account.allDocIds.map(docId => {
+      const promises = [];
+
+      // Update fiscal year sub-documents
+      for (const docId of account.allDocIds) {
         const fyDocRef = doc(db, 'accounts', docId, 'fiscalYears', currentFY);
-        return setDoc(fyDocRef, updateData, { merge: true });
-      });
+        promises.push(setDoc(fyDocRef, updateData, { merge: true }));
+      }
+
+      // Update group on root account documents if changed
+      if (selectedGroup !== (account.group || '')) {
+        for (const docId of account.allDocIds) {
+          const accDocRef = doc(db, 'accounts', docId);
+          promises.push(setDoc(accDocRef, { group: selectedGroup }, { merge: true }));
+        }
+      }
 
       await Promise.all(promises);
       
       alert("Account updated successfully");
-      if (onSave) onSave({ ...updateData, fyId: currentFY });
+      if (onSave) onSave({ ...updateData, fyId: currentFY, group: selectedGroup });
       onClose();
     } catch (err) {
       console.error("Error saving account data:", err);
@@ -159,6 +172,25 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
                     {account?.guid || 'N/A'}
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Account Group</label>
+                <select
+                  value={selectedGroup}
+                  onChange={(e) => setSelectedGroup(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                >
+                  <option value="">-- No Group --</option>
+                  {groupOptions.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+                {selectedGroup !== (account?.group || '') && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Group will be changed from "<b>{account?.group || 'None'}</b>" to "<b>{selectedGroup || 'None'}</b>"
+                  </p>
+                )}
               </div>
 
               <div>
