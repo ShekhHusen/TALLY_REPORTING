@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
@@ -973,16 +974,17 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         />
 
                         {/* Bottom Sheet for advanced filters on mobile */}
-                        {showMobileFilters && (
-                            <>
+                        {showMobileFilters && createPortal(
+                            <div className="md:hidden">
                                 {/* Backdrop */}
                                 <div 
-                                    className="fixed inset-0 bg-black/40 z-40 md:hidden transition-opacity"
+                                    className="fixed inset-0 bg-black/50 z-[100] transition-opacity"
                                     onClick={() => setShowMobileFilters(false)}
                                 ></div>
                                 {/* Sheet */}
-                                <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl z-50 p-5 pb-safe flex flex-col gap-4 md:hidden max-h-[85vh] overflow-y-auto">
-                                    <div className="flex justify-between items-center mb-1 border-b border-gray-100 pb-3">
+                                <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl z-[101] flex flex-col max-h-[85vh]">
+                                    {/* Header (Fixed) */}
+                                    <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 shrink-0">
                                         <h3 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
                                             <Filter size={18} className="text-blue-600" /> Filters & Sort
                                         </h3>
@@ -991,115 +993,118 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                         </button>
                                     </div>
                                     
-                                    {/* Group & Verification Status in 2 columns */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Group</label>
-                                            <select
-                                                value={selectedGroup}
-                                                onChange={(e) => setSelectedGroup(e.target.value)}
-                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
-                                            >
-                                                <option value="">All Groups</option>
-                                                {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
-                                            </select>
+                                    {/* Scrollable Body */}
+                                    <div className="p-5 flex-1 overflow-y-auto flex flex-col gap-4">
+                                        {/* Group & Verification Status in 2 columns */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Group</label>
+                                                <select
+                                                    value={selectedGroup}
+                                                    onChange={(e) => setSelectedGroup(e.target.value)}
+                                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                                >
+                                                    <option value="">All Groups</option>
+                                                    {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</label>
+                                                <select
+                                                    value={verificationStatus}
+                                                    onChange={(e) => setVerificationStatus(e.target.value)}
+                                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                                >
+                                                    <option value="all">All</option>
+                                                    <option value="verified">Verified</option>
+                                                    <option value="unverified">Unverified</option>
+                                                    <option value="ignored">Ignored</option>
+                                                </select>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</label>
-                                            <select
-                                                value={verificationStatus}
-                                                onChange={(e) => setVerificationStatus(e.target.value)}
-                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
-                                            >
-                                                <option value="all">All</option>
-                                                <option value="verified">Verified</option>
-                                                <option value="unverified">Unverified</option>
-                                                <option value="ignored">Ignored</option>
-                                            </select>
+
+                                        {/* Min & Max Balance */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Min Bal</label>
+                                                <input 
+                                                    type="number" 
+                                                    placeholder="0" 
+                                                    value={minBalance}
+                                                    onChange={(e) => setMinBalance(e.target.value)}
+                                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Max Bal</label>
+                                                <input 
+                                                    type="number" 
+                                                    placeholder="Any" 
+                                                    value={maxBalance}
+                                                    onChange={(e) => setMaxBalance(e.target.value)}
+                                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Sort controls for mobile */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Sort By</label>
+                                                <select
+                                                    value={sortConfig.key}
+                                                    onChange={(e) => setSortConfig(prev => ({ ...prev, key: e.target.value }))}
+                                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                                >
+                                                    <option value="name">Name</option>
+                                                    <option value="closingBalance">Closing Bal</option>
+                                                    <option value="openingBalance">Opening Bal</option>
+                                                    <option value="totalDebit">Total Dr</option>
+                                                    <option value="totalCredit">Total Cr</option>
+                                                    <option value="verifiedBy">Verified By</option>
+                                                </select>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Order</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'ascending' ? 'descending' : 'ascending' }))}
+                                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-800 font-bold shadow-sm"
+                                                >
+                                                    {sortConfig.direction === 'ascending' ? 'Ascending ↑' : 'Descending ↓'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Toggles */}
+                                        <div className="flex flex-col gap-3 py-3 border-y border-gray-100 my-1">
+                                            <label className="flex items-center justify-between text-sm text-gray-800 font-semibold cursor-pointer">
+                                                <span>Include Ignored Accounts</span>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={showIgnored}
+                                                    onChange={(e) => setShowIgnored(e.target.checked)}
+                                                    className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-50"
+                                                />
+                                            </label>
+                                            <label className="flex items-center justify-between text-sm text-gray-800 font-semibold cursor-pointer">
+                                                <span>Skip 0 Balances</span>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={skipZeroClosingBalance}
+                                                    onChange={(e) => setSkipZeroClosingBalance(e.target.checked)}
+                                                    className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-50"
+                                                />
+                                            </label>
                                         </div>
                                     </div>
 
-                                    {/* Min & Max Balance */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Min Bal</label>
-                                            <input 
-                                                type="number" 
-                                                placeholder="0" 
-                                                value={minBalance}
-                                                onChange={(e) => setMinBalance(e.target.value)}
-                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Max Bal</label>
-                                            <input 
-                                                type="number" 
-                                                placeholder="Any" 
-                                                value={maxBalance}
-                                                onChange={(e) => setMaxBalance(e.target.value)}
-                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Sort controls for mobile */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Sort By</label>
-                                            <select
-                                                value={sortConfig.key}
-                                                onChange={(e) => setSortConfig(prev => ({ ...prev, key: e.target.value }))}
-                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
-                                            >
-                                                <option value="name">Name</option>
-                                                <option value="closingBalance">Closing Bal</option>
-                                                <option value="openingBalance">Opening Bal</option>
-                                                <option value="totalDebit">Total Dr</option>
-                                                <option value="totalCredit">Total Cr</option>
-                                                <option value="verifiedBy">Verified By</option>
-                                            </select>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Order</label>
-                                            <button
-                                                type="button"
-                                                onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'ascending' ? 'descending' : 'ascending' }))}
-                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-800 font-bold shadow-sm"
-                                            >
-                                                {sortConfig.direction === 'ascending' ? 'Ascending ↑' : 'Descending ↓'}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Toggles */}
-                                    <div className="flex flex-col gap-3 py-3 border-y border-gray-100 my-1">
-                                        <label className="flex items-center justify-between text-sm text-gray-800 font-semibold cursor-pointer">
-                                            <span>Include Ignored Accounts</span>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={showIgnored}
-                                                onChange={(e) => setShowIgnored(e.target.checked)}
-                                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-50"
-                                            />
-                                        </label>
-                                        <label className="flex items-center justify-between text-sm text-gray-800 font-semibold cursor-pointer">
-                                            <span>Skip 0 Balances</span>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={skipZeroClosingBalance}
-                                                onChange={(e) => setSkipZeroClosingBalance(e.target.checked)}
-                                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-50"
-                                            />
-                                        </label>
-                                    </div>
-
-                                    {/* Action buttons */}
-                                    <div className="flex flex-col gap-2 mt-2">
+                                    {/* Action buttons (Fixed Footer) */}
+                                    <div className="flex flex-col gap-2 p-5 pt-3 border-t border-gray-100 bg-white shrink-0 pb-safe">
                                         <button 
                                             onClick={() => { handleVerifyAll(); setShowMobileFilters(false); }}
                                             disabled={verifying || paginatedAccounts.length === 0}
-                                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3.5 rounded-xl text-sm font-bold shadow-sm disabled:opacity-50 transition"
+                                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl text-sm font-bold shadow-sm disabled:opacity-50 transition"
                                         >
                                             {verifying ? 'Processing...' : 'Verify Visible Page'}
                                         </button>
@@ -1130,7 +1135,8 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                         </div>
                                     </div>
                                 </div>
-                            </>
+                            </div>,
+                            document.body
                         )}
                     </div>
                 </div>

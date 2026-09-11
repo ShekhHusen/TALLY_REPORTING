@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { 
@@ -463,14 +464,15 @@ export default function FollowUpsTab({ currentUser }) {
         </div>
 
         {/* Mobile Bottom Sheet Filters */}
-        {showMobileFilters && (
-          <>
+        {showMobileFilters && createPortal(
+          <div className="md:hidden">
             <div 
-              className="fixed inset-0 bg-black/40 z-40 md:hidden transition-opacity"
+              className="fixed inset-0 bg-black/50 z-[100] transition-opacity"
               onClick={() => setShowMobileFilters(false)}
             ></div>
-            <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl z-50 p-5 pb-safe flex flex-col gap-4 md:hidden max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-full duration-200">
-              <div className="flex justify-between items-center mb-1 border-b border-gray-100 pb-3">
+            <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl z-[101] flex flex-col max-h-[85vh] animate-in slide-in-from-bottom-full duration-200">
+              {/* Header (Fixed) */}
+              <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 shrink-0">
                 <h3 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
                   <Filter size={18} className="text-blue-600" /> Filters & Search
                 </h3>
@@ -479,7 +481,8 @@ export default function FollowUpsTab({ currentUser }) {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-3">
+              {/* Scrollable Body */}
+              <div className="p-5 flex-1 overflow-y-auto flex flex-col gap-4">
                 <div>
                   <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">Account Name</label>
                   <input 
@@ -546,7 +549,8 @@ export default function FollowUpsTab({ currentUser }) {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-gray-100">
+              {/* Action buttons (Fixed Footer) */}
+              <div className="flex flex-col gap-2 p-5 pt-3 border-t border-gray-100 bg-white shrink-0 pb-safe">
                 <button 
                   onClick={() => { handleSearch(); setShowMobileFilters(false); }}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl text-sm font-bold shadow-sm transition-colors flex justify-center items-center gap-2"
@@ -561,7 +565,8 @@ export default function FollowUpsTab({ currentUser }) {
                 </button>
               </div>
             </div>
-          </>
+          </div>,
+          document.body
         )}
 
         {/* Table Area */}
