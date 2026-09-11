@@ -269,128 +269,123 @@ export default function FollowUpsTab({ currentUser }) {
   return (
     <div className="flex flex-col min-h-0 md:h-[calc(100vh-10rem)] gap-2.5 sm:gap-3">
       {/* Quick Summary Bar - Compact on mobile */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2 shrink-0 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 shrink-0 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <button
           onClick={() => handleStatusCardClick('Active')}
-          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-3 sm:p-4 rounded-xl border text-left transition-colors flex items-center justify-between shadow-sm ${
             statusFilter === 'Active' 
-              ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-400/20' 
-              : 'bg-white border-gray-200 hover:bg-gray-50'
+              ? 'bg-blue-600 border-blue-600 text-white' 
+              : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
           }`}
         >
           <div>
-            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-gray-500">Active Follow-ups</div>
-            <div className="text-base sm:text-xl font-bold text-gray-900">{totalActive}</div>
+            <div className={`text-[10px] sm:text-xs font-extrabold uppercase tracking-wider ${statusFilter === 'Active' ? 'text-blue-100' : 'text-gray-500'}`}>Active Follow-ups</div>
+            <div className={`text-lg sm:text-2xl font-black ${statusFilter === 'Active' ? 'text-white' : 'text-gray-900'}`}>{totalActive}</div>
           </div>
-          <Clock className="w-4 h-4 sm:w-5 h-5 text-blue-500 opacity-80 shrink-0" />
+          <Clock className={`w-6 h-6 sm:w-8 sm:h-8 opacity-80 shrink-0 ${statusFilter === 'Active' ? 'text-blue-200' : 'text-blue-500'}`} />
         </button>
 
         <button
           onClick={() => handleStatusCardClick('Today')}
-          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-3 sm:p-4 rounded-xl border text-left transition-colors flex items-center justify-between shadow-sm ${
             statusFilter === 'Today' 
-              ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-400/20' 
-              : 'bg-white border-gray-200 hover:bg-gray-50'
+              ? 'bg-amber-500 border-amber-500 text-white' 
+              : 'bg-white border-gray-200 hover:border-amber-300 hover:shadow-md'
           }`}
         >
           <div>
-            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-amber-700">Due Today</div>
-            <div className="text-base sm:text-xl font-bold text-amber-900">{countToday}</div>
+            <div className={`text-[10px] sm:text-xs font-extrabold uppercase tracking-wider ${statusFilter === 'Today' ? 'text-amber-100' : 'text-amber-600'}`}>Due Today</div>
+            <div className={`text-lg sm:text-2xl font-black ${statusFilter === 'Today' ? 'text-white' : 'text-amber-700'}`}>{countToday}</div>
           </div>
-          <PhoneCall className="w-4 h-4 sm:w-5 h-5 text-amber-500 opacity-80 shrink-0" />
+          <PhoneCall className={`w-6 h-6 sm:w-8 sm:h-8 opacity-80 shrink-0 ${statusFilter === 'Today' ? 'text-amber-200' : 'text-amber-500'}`} />
         </button>
 
         <button
           onClick={() => handleStatusCardClick('Overdue')}
-          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-3 sm:p-4 rounded-xl border text-left transition-colors flex items-center justify-between shadow-sm ${
             statusFilter === 'Overdue' 
-              ? 'bg-red-50 border-red-400 ring-2 ring-red-400/20' 
-              : 'bg-white border-gray-200 hover:bg-gray-50'
+              ? 'bg-red-500 border-red-500 text-white' 
+              : 'bg-white border-gray-200 hover:border-red-300 hover:shadow-md'
           }`}
         >
           <div>
-            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-red-600">Overdue</div>
-            <div className="text-base sm:text-xl font-bold text-red-700">{countOverdue}</div>
+            <div className={`text-[10px] sm:text-xs font-extrabold uppercase tracking-wider ${statusFilter === 'Overdue' ? 'text-red-100' : 'text-red-600'}`}>Overdue</div>
+            <div className={`text-lg sm:text-2xl font-black ${statusFilter === 'Overdue' ? 'text-white' : 'text-red-700'}`}>{countOverdue}</div>
           </div>
-          <AlertCircle className="w-4 h-4 sm:w-5 h-5 text-red-500 opacity-80 shrink-0" />
+          <AlertCircle className={`w-6 h-6 sm:w-8 sm:h-8 opacity-80 shrink-0 ${statusFilter === 'Overdue' ? 'text-red-200' : 'text-red-500'}`} />
         </button>
 
         <button
           onClick={() => handleStatusCardClick('Upcoming')}
-          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-3 sm:p-4 rounded-xl border text-left transition-colors flex items-center justify-between shadow-sm ${
             statusFilter === 'Upcoming' 
-              ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-400/20' 
-              : 'bg-white border-gray-200 hover:bg-gray-50'
+              ? 'bg-blue-400 border-blue-400 text-white' 
+              : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
           }`}
         >
           <div>
-            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-blue-600">Upcoming</div>
-            <div className="text-base sm:text-xl font-bold text-blue-700">{countUpcoming}</div>
+            <div className={`text-[10px] sm:text-xs font-extrabold uppercase tracking-wider ${statusFilter === 'Upcoming' ? 'text-blue-100' : 'text-blue-600'}`}>Upcoming</div>
+            <div className={`text-lg sm:text-2xl font-black ${statusFilter === 'Upcoming' ? 'text-white' : 'text-blue-700'}`}>{countUpcoming}</div>
           </div>
-          <Calendar className="w-4 h-4 sm:w-5 h-5 text-blue-500 opacity-80 shrink-0" />
+          <Calendar className={`w-6 h-6 sm:w-8 sm:h-8 opacity-80 shrink-0 ${statusFilter === 'Upcoming' ? 'text-blue-200' : 'text-blue-500'}`} />
         </button>
 
         <button
           onClick={() => handleStatusCardClick('Completed')}
-          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-3 sm:p-4 rounded-xl border text-left transition-colors flex items-center justify-between shadow-sm ${
             statusFilter === 'Completed' 
-              ? 'bg-green-50 border-green-400 ring-2 ring-green-400/20' 
-              : 'bg-white border-gray-200 hover:bg-gray-50'
+              ? 'bg-green-500 border-green-500 text-white' 
+              : 'bg-white border-gray-200 hover:border-green-300 hover:shadow-md'
           }`}
         >
           <div>
-            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-green-700">Completed</div>
-            <div className="text-base sm:text-xl font-bold text-green-800">{countCompleted}</div>
+            <div className={`text-[10px] sm:text-xs font-extrabold uppercase tracking-wider ${statusFilter === 'Completed' ? 'text-green-100' : 'text-green-600'}`}>Completed</div>
+            <div className={`text-lg sm:text-2xl font-black ${statusFilter === 'Completed' ? 'text-white' : 'text-green-700'}`}>{countCompleted}</div>
           </div>
-          <CheckCircle2 className="w-4 h-4 sm:w-5 h-5 text-green-500 opacity-80 shrink-0" />
+          <CheckCircle2 className={`w-6 h-6 sm:w-8 sm:h-8 opacity-80 shrink-0 ${statusFilter === 'Completed' ? 'text-green-200' : 'text-green-500'}`} />
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 flex flex-col flex-1 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col flex-1 overflow-hidden">
         
         {/* Mobile Filter Toggle Bar (Hidden on desktop, visible on mobile) */}
-        <div className="md:hidden flex items-center justify-between p-2 bg-gray-50 border-b border-gray-200 shrink-0">
+        <div className="md:hidden flex items-center justify-between p-3 bg-white border-b border-gray-100 shrink-0">
           <button
             type="button"
-            onClick={() => setShowMobileFilters(prev => !prev)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 px-2.5 py-1.5 rounded shadow-xs active:bg-gray-100"
+            onClick={() => setShowMobileFilters(true)}
+            className="flex items-center gap-2 text-sm font-bold text-gray-700 bg-gray-50 border border-gray-200 px-3.5 py-2 rounded-lg shadow-sm transition-colors hover:bg-gray-100"
           >
-            <Filter className="w-3.5 h-3.5 text-gray-500" />
-            <span>Filters</span>
+            <Filter className="w-4 h-4 text-blue-600" />
+            <span>Filters & Search</span>
             {hasActiveFilters && (
-              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-            )}
-            {showMobileFilters ? (
-              <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              <span className="w-2 h-2 rounded-full bg-blue-600 ml-1"></span>
             )}
           </button>
-          
-          <div className="flex items-center gap-2">
+           
+          <div className="flex items-center gap-3">
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="text-[11px] text-red-600 font-semibold px-1.5 py-1 hover:underline flex items-center gap-0.5"
+                className="text-xs text-red-600 font-bold hover:bg-red-50 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1"
               >
-                <X className="w-3 h-3" /> Reset
+                <X className="w-3.5 h-3.5" /> Reset
               </button>
             )}
-            <span className="text-[11px] text-gray-500 font-medium">
+            <span className="text-xs text-gray-500 font-bold bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
               {filteredFollowUps.length} record{filteredFollowUps.length !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
 
-        {/* Filter Bar (Hidden by default on mobile, always visible on desktop) */}
-        <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block bg-gray-50 border-b border-gray-200 p-2.5 sm:p-3.5 shrink-0`}>
+        {/* Desktop Filter Bar */}
+        <div className="hidden md:block bg-white border-b border-gray-100 p-3 sm:p-4 shrink-0 shadow-sm z-10 relative">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="w-full sm:w-48">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Account Name</label>
+              <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">Account Name</label>
               <input 
                 type="text" 
-                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors"
                 value={searchAccount}
                 onChange={e => setSearchAccount(e.target.value)}
                 placeholder="Search accounts..."
@@ -398,9 +393,9 @@ export default function FollowUpsTab({ currentUser }) {
             </div>
             
             <div className="w-full sm:w-44">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Status Filter</label>
+              <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">Status Filter</label>
               <select
-                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors cursor-pointer"
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
               >
@@ -416,9 +411,9 @@ export default function FollowUpsTab({ currentUser }) {
 
             {currentUser?.role === 'admin' && (
               <div className="w-full sm:w-40">
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Assigned To</label>
+                <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">Assigned To</label>
                 <select
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors cursor-pointer"
                   value={assignedFilter}
                   onChange={e => setAssignedFilter(e.target.value)}
                 >
@@ -431,41 +426,143 @@ export default function FollowUpsTab({ currentUser }) {
             )}
 
             <div className="w-full sm:w-32">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">From Date</label>
+              <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">From Date</label>
               <input 
                 type="date" 
-                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors"
                 value={dateFrom}
                 onChange={e => setDateFrom(e.target.value)}
               />
             </div>
             
             <div className="w-full sm:w-32">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">To Date</label>
+              <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">To Date</label>
               <input 
                 type="date" 
-                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors"
                 value={dateTo}
                 onChange={e => setDateTo(e.target.value)}
               />
             </div>
             
-            <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+            <div className="flex gap-2 w-full sm:w-auto sm:ml-auto pt-1">
               <button 
                 onClick={handleSearch}
-                className="px-3 py-1.5 rounded text-sm font-semibold transition bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-xs"
+                className="px-5 py-2.5 rounded-lg text-sm font-bold transition-colors bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 shadow-sm flex-1 sm:flex-none"
               >
                 <Search className="w-4 h-4" /> Filter
               </button>
               <button 
                 onClick={handleClear}
-                className="px-3 py-1.5 rounded text-sm font-medium transition bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center gap-1"
+                className="px-5 py-2.5 rounded-lg text-sm font-bold transition-colors bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center gap-2 flex-1 sm:flex-none"
               >
                 <X className="w-4 h-4" /> Reset
               </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Bottom Sheet Filters */}
+        {showMobileFilters && (
+          <>
+            <div 
+              className="fixed inset-0 bg-black/40 z-40 md:hidden transition-opacity"
+              onClick={() => setShowMobileFilters(false)}
+            ></div>
+            <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl z-50 p-5 pb-safe flex flex-col gap-4 md:hidden max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-full duration-200">
+              <div className="flex justify-between items-center mb-1 border-b border-gray-100 pb-3">
+                <h3 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
+                  <Filter size={18} className="text-blue-600" /> Filters & Search
+                </h3>
+                <button onClick={() => setShowMobileFilters(false)} className="p-1.5 bg-gray-100 text-gray-500 hover:bg-gray-200 rounded-full">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">Account Name</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors"
+                    value={searchAccount}
+                    onChange={e => setSearchAccount(e.target.value)}
+                    placeholder="Search accounts..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">Status Filter</label>
+                  <select
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors cursor-pointer"
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                  >
+                    <option value="Active">Active (All Open)</option>
+                    <option value="Today">Due Today</option>
+                    <option value="Overdue">Overdue</option>
+                    <option value="Upcoming">Upcoming</option>
+                    <option value="Pending">No Date (Pending)</option>
+                    <option value="Completed">Completed (Archived)</option>
+                    <option value="All">All Records (incl. Completed)</option>
+                  </select>
+                </div>
+
+                {currentUser?.role === 'admin' && (
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">Assigned To</label>
+                    <select
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors cursor-pointer"
+                      value={assignedFilter}
+                      onChange={e => setAssignedFilter(e.target.value)}
+                    >
+                      <option value="All">All Users</option>
+                      {users.map(u => (
+                        <option key={u.uid} value={u.uid}>{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">From Date</label>
+                    <input 
+                      type="date" 
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors"
+                      value={dateFrom}
+                      onChange={e => setDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-gray-500 mb-1.5 uppercase tracking-wider">To Date</label>
+                    <input 
+                      type="date" 
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors"
+                      value={dateTo}
+                      onChange={e => setDateTo(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-gray-100">
+                <button 
+                  onClick={() => { handleSearch(); setShowMobileFilters(false); }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl text-sm font-bold shadow-sm transition-colors flex justify-center items-center gap-2"
+                >
+                  <Search size={16} /> Apply Filters
+                </button>
+                <button 
+                  onClick={() => { handleClear(); setShowMobileFilters(false); }}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3.5 rounded-xl text-sm font-bold transition-colors"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Table Area */}
         <div className="flex-1 overflow-auto">
@@ -599,104 +696,107 @@ export default function FollowUpsTab({ currentUser }) {
             </table>
           )}
           {/* Mobile Card View */}
-          <div className="block md:hidden divide-y divide-gray-200">
+          <div className="block md:hidden bg-gray-50/50 p-3 space-y-3">
             {currentData.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
-                <Clock className="w-7 h-7 mx-auto text-gray-300 mb-1.5" />
-                <p className="font-medium text-xs">No follow-ups found.</p>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+                <Clock className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                <p className="font-medium text-sm">No follow-ups found.</p>
               </div>
             ) : (
               currentData.map(fu => {
                 const status = getStatus(fu);
                 const historyCount = Array.isArray(fu.history) && fu.history.length > 0 ? fu.history.length : 1;
                 const statusColors = {
-                  'Today': 'border-l-amber-500 bg-amber-50/30',
-                  'Overdue': 'border-l-red-500 bg-red-50/30',
-                  'Upcoming': 'border-l-blue-500 bg-blue-50/20',
-                  'Completed': 'border-l-green-500 bg-gray-50/50',
-                  'Pending': 'border-l-gray-400 bg-white'
+                  'Today': 'bg-amber-500',
+                  'Overdue': 'bg-red-500',
+                  'Upcoming': 'bg-blue-500',
+                  'Completed': 'bg-green-500',
+                  'Pending': 'bg-gray-400'
                 };
                 return (
-                  <div key={fu.id} className={`p-2 sm:p-2.5 border-l-4 ${statusColors[status] || 'border-l-gray-300 bg-white'}`}>
+                  <div key={fu.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 overflow-hidden relative">
+                    {/* Status Stripe */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusColors[status] || 'bg-gray-300'}`}></div>
+                    
                     {/* Top row: Account name + Status badge */}
-                    <div className="flex items-start justify-between gap-1.5 mb-1">
-                      <h4 className="font-bold text-xs sm:text-sm text-gray-900 leading-tight truncate" title={fu.accountName}>
+                    <div className="flex items-start justify-between gap-1.5 mb-1.5 pl-2">
+                      <h4 className="font-extrabold text-sm text-gray-900 leading-tight truncate" title={fu.accountName}>
                         {fu.accountName}
                       </h4>
-                      <div className="shrink-0">
+                      <div className="shrink-0 scale-90 origin-top-right">
                         {getStatusBadge(status, true)}
                       </div>
                     </div>
                     {/* Meta row */}
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[11px] text-gray-500 mb-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-gray-500 mb-2 pl-2">
                       <span>{fu.date}</span>
-                      <span>by {fu.userName}</span>
+                      <span>by <span className="font-bold text-gray-700">{fu.userName}</span></span>
                       {fu.assignedTo && (
-                        <span className="inline-flex items-center gap-0.5">
-                          <User className="w-2.5 h-2.5 text-gray-400" /> {fu.assignedTo}
+                        <span className="inline-flex items-center gap-0.5 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                          <User className="w-3 h-3 text-gray-400" /> {fu.assignedTo}
                         </span>
                       )}
                       {fu.nextFollowUpDate && (
-                        <span className={`font-semibold ${status === 'Today' ? 'text-amber-700' : status === 'Overdue' ? 'text-red-600' : 'text-gray-700'}`}>
+                        <span className={`font-bold ${status === 'Today' ? 'text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100' : status === 'Overdue' ? 'text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-100' : 'text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100'}`}>
                           Next: {fu.nextFollowUpDate}
                         </span>
                       )}
                     </div>
                     {/* Message */}
                     {fu.message && (
-                      <div className="text-[11px] text-gray-700 mb-1 leading-snug line-clamp-2" title={fu.message}>
+                      <div className="text-xs text-gray-700 mb-2 leading-relaxed line-clamp-2 pl-2" title={fu.message}>
                         {fu.message}
                       </div>
                     )}
                     {fu.lastCallNote && (
-                      <div className="text-[10px] text-blue-900 bg-blue-100/70 p-1.5 rounded border border-blue-200 flex items-start gap-1 mb-1.5">
-                        <PhoneCall className="w-3 h-3 text-blue-600 shrink-0 mt-0.5" />
+                      <div className="text-[11px] text-blue-900 bg-blue-50/50 p-2 rounded-lg border border-blue-100 flex items-start gap-1.5 mb-2.5 ml-2">
+                        <PhoneCall className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
                         <div className="leading-snug">
-                          <span className="font-semibold">Call:</span> {fu.lastCallNote}{' '}
-                          <span className="text-blue-600 font-medium">({fu.lastCallBy || 'User'} on {fu.lastCallDate})</span>
+                          <span className="font-bold text-blue-800">Call:</span> {fu.lastCallNote}{' '}
+                          <span className="text-blue-600 font-bold opacity-80">({fu.lastCallBy || 'User'} on {fu.lastCallDate})</span>
                         </div>
                       </div>
                     )}
                     {/* Action buttons: Exactly 1 row 4 columns */}
-                    <div className={`grid ${fu.completed ? 'grid-cols-2' : 'grid-cols-4'} gap-1 mt-1`}>
+                    <div className={`grid ${fu.completed ? 'grid-cols-2' : 'grid-cols-4'} gap-1.5 mt-2 pl-2`}>
                       {!fu.completed && (
                         <button
                           type="button"
                           onClick={() => handleOpenUpdate(fu)}
-                          className="py-1 px-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-semibold transition flex items-center justify-center gap-0.5 shadow-xs truncate"
-                          title="Customer ne naya date diya ya call update karna hai"
+                          className="py-1.5 px-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm truncate"
+                          title="Reschedule"
                         >
-                          <PhoneCall className="w-2.5 h-2.5 shrink-0" />
+                          <PhoneCall className="w-3 h-3 shrink-0" />
                           <span className="truncate">Reschedule</span>
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => handleOpenUpdate(fu)}
-                        className="py-1 px-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded text-[10px] font-medium transition flex items-center justify-center gap-0.5 shadow-xs truncate"
-                        title="View Full Call & Follow-up History"
+                        className="py-1.5 px-1 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm truncate"
+                        title="History"
                       >
-                        <History className="w-2.5 h-2.5 text-gray-500 shrink-0" />
+                        <History className="w-3 h-3 text-gray-500 shrink-0" />
                         <span className="truncate">History</span>
-                        <span className="bg-gray-200 text-gray-700 text-[9px] px-1 rounded-full font-bold shrink-0">{historyCount}</span>
+                        <span className="bg-white border border-gray-200 text-gray-700 text-[9px] px-1.5 rounded-full font-black shrink-0 shadow-sm">{historyCount}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleOpenStatement(fu.accountName)}
-                        className="py-1 px-1 bg-white hover:bg-gray-50 text-blue-600 border border-blue-300 rounded text-[10px] font-medium transition flex items-center justify-center gap-0.5 shadow-xs truncate"
-                        title="View Account Statement"
+                        className="py-1.5 px-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm truncate"
+                        title="Statement"
                       >
-                        <FileText className="w-2.5 h-2.5 shrink-0" />
-                        <span className="truncate">Statement</span>
+                        <FileText className="w-3 h-3 shrink-0" />
+                        <span className="truncate">Stmt</span>
                       </button>
                       {!fu.completed && (
                         <button
                           type="button"
                           onClick={() => handleMarkComplete(fu)}
-                          className="py-1 px-1 bg-green-600 hover:bg-green-700 text-white rounded text-[10px] font-medium transition flex items-center justify-center gap-0.5 shadow-xs truncate"
-                          title="Mark as Complete"
+                          className="py-1.5 px-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm truncate"
+                          title="Complete"
                         >
-                          <Check className="w-2.5 h-2.5 shrink-0" />
+                          <Check className="w-3 h-3 shrink-0 text-green-600" />
                           <span className="truncate">Complete</span>
                         </button>
                       )}
@@ -710,22 +810,22 @@ export default function FollowUpsTab({ currentUser }) {
 
         {/* Pagination Bar */}
         {!loading && filteredFollowUps.length > 0 && (
-          <div className="bg-gray-50 border-t border-gray-200 p-3 flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0">
-            <div className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredFollowUps.length)}</span> of <span className="font-medium">{filteredFollowUps.length}</span> results
+          <div className="bg-white border-t border-gray-100 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+            <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+              Showing <span className="text-gray-900">{startIndex + 1}</span> to <span className="text-gray-900">{Math.min(startIndex + itemsPerPage, filteredFollowUps.length)}</span> of <span className="text-gray-900">{filteredFollowUps.length}</span> results
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm font-medium bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm text-gray-700"
               >
                 Previous
               </button>
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages || totalPages === 0}
-                className="px-3 py-1 border border-gray-300 rounded text-sm font-medium bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm text-gray-700"
               >
                 Next
               </button>

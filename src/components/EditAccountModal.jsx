@@ -138,17 +138,16 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-medium text-gray-900">Edit Account</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500 transition">
+      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+            <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Edit Account</h2>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
             <X size={20} />
           </button>
         </div>
-
-        <div className="p-4 space-y-4">
+        <div className="p-5 space-y-5">
           {error && (
-            <div className="bg-red-50 text-red-600 p-2 text-sm rounded border border-red-200">
+            <div className="bg-red-50 text-red-600 p-3 text-sm rounded-lg border border-red-100 font-medium">
               {error}
             </div>
           )}
@@ -161,25 +160,25 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
-                  <div className="text-sm text-gray-500 bg-gray-50 p-2 rounded border border-gray-200 truncate">
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Account Name</label>
+                  <div className="text-sm text-gray-800 bg-gray-50 p-2.5 rounded-lg border border-gray-100 truncate font-medium">
                     {account?.name || 'Unknown'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GUID</label>
-                  <div className="text-sm text-gray-500 bg-gray-50 p-2 rounded border border-gray-200 truncate">
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">GUID</label>
+                  <div className="text-sm text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-100 truncate font-medium">
                     {account?.guid || 'N/A'}
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Account Group</label>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Account Group</label>
                 <select
                   value={selectedGroup}
                   onChange={(e) => setSelectedGroup(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-800 transition-colors cursor-pointer"
                 >
                   <option value="">-- No Group --</option>
                   {groupOptions.map(g => (
@@ -187,18 +186,18 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
                   ))}
                 </select>
                 {selectedGroup !== (account?.group || '') && (
-                  <p className="text-xs text-amber-600 mt-1">
+                  <p className="text-xs font-medium text-amber-600 mt-2 bg-amber-50 p-2 rounded border border-amber-100">
                     Group will be changed from "<b>{account?.group || 'None'}</b>" to "<b>{selectedGroup || 'None'}</b>"
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fiscal Year</label>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Fiscal Year</label>
                 <select
                   value={currentFY}
                   onChange={handleFYChange}
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-800 transition-colors cursor-pointer"
                 >
                   {fyOptions?.map(fy => (
                     <option key={fy.id} value={fy.id}>{fy.name}</option>
@@ -208,24 +207,24 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Opening Balance</label>
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Opening Balance</label>
                   <input
                     type="number"
                     value={openingBalance}
                     onChange={(e) => setOpeningBalance(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-800 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                  <div className="flex rounded shadow-sm">
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Type</label>
+                  <div className="flex rounded-lg shadow-sm">
                     <button
                       type="button"
                       onClick={() => setOpeningBalanceType('Dr')}
-                      className={`flex-1 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-l focus:outline-none ${
+                      className={`flex-1 px-4 py-2.5 text-sm font-bold border rounded-l-lg focus:outline-none transition-colors ${
                         openingBalanceType === 'Dr' 
-                          ? 'bg-blue-50 text-blue-700 border-blue-500 relative z-10' 
-                          : 'bg-white text-gray-700 hover:bg-gray-50'
+                           ? 'bg-blue-50 text-blue-700 border-blue-200 relative z-10' 
+                           : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                       }`}
                     >
                       Dr
@@ -233,10 +232,10 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
                     <button
                       type="button"
                       onClick={() => setOpeningBalanceType('Cr')}
-                      className={`flex-1 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-r -ml-px focus:outline-none ${
+                      className={`flex-1 px-4 py-2.5 text-sm font-bold border rounded-r-lg -ml-px focus:outline-none transition-colors ${
                         openingBalanceType === 'Cr' 
-                          ? 'bg-blue-50 text-blue-700 border-blue-500 relative z-10' 
-                          : 'bg-white text-gray-700 hover:bg-gray-50'
+                           ? 'bg-amber-50 text-amber-700 border-amber-200 relative z-10' 
+                           : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                       }`}
                     >
                       Cr
@@ -245,35 +244,37 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg mt-2">
-                <h3 className="text-xs font-semibold text-blue-800 uppercase tracking-wider mb-2">Closing Balance Preview</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="text-gray-600">Transactions:</div>
-                  <div className="text-right font-mono text-gray-800">
-                    Dr {Number(totalDebit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} | Cr {Number(totalCredit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </div>
-                  <div className="text-gray-600 font-medium">New Closing:</div>
-                  <div className={`text-right font-mono font-medium ${closingPreview.type === 'Cr' ? 'text-red-600' : 'text-green-600'}`}>
-                    {closingPreview.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })} {closingPreview.type}
-                  </div>
+              <div className="bg-gray-50 border border-gray-100 p-4 rounded-xl mt-2 flex flex-col gap-3">
+                <div className="flex justify-between items-center pb-2 border-b border-gray-200 border-dashed">
+                  <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Transaction Totals</span>
+                  <span className="font-mono text-xs font-bold text-gray-600">
+                    <span className="text-blue-600">Dr {Number(totalDebit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span className="mx-2 text-gray-300">|</span>
+                    <span className="text-amber-600">Cr {Number(totalCredit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-extrabold text-gray-800 uppercase tracking-wider">New Closing Balance</span>
+                  <span className={`text-lg font-mono font-black ${closingPreview.type === 'Cr' ? 'text-amber-600' : 'text-blue-700'}`}>
+                    {closingPreview.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })} <span className="text-sm font-bold opacity-80">{closingPreview.type}</span>
+                  </span>
                 </div>
               </div>
             </>
           )}
         </div>
-
-        <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 sticky bottom-0 z-10">
+        <div className="px-5 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 sticky bottom-0 z-10 rounded-b-2xl">
           <button
             onClick={onClose}
             disabled={loading}
-            className="px-3 py-1.5 rounded text-sm font-medium transition bg-gray-200 hover:bg-gray-300 text-gray-700 disabled:opacity-50"
+            className="px-5 py-2.5 rounded-lg text-sm font-bold transition-colors bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={loading || fetching}
-            className="px-3 py-1.5 rounded text-sm font-medium transition bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 flex items-center"
+            className="px-5 py-2.5 rounded-lg text-sm font-bold transition-colors bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 flex items-center shadow-sm"
           >
             {loading ? (
               <>

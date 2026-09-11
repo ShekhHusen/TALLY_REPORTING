@@ -106,12 +106,12 @@ export default function AccountSearchDropdown({ value, onChange, placeholder = "
                     onChange={handleInputChange}
                     onFocus={handleFocus}
                     placeholder={placeholder}
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm pr-8"
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-colors pr-8 text-gray-800 font-medium placeholder-gray-400"
                 />
                 {inputValue && (
                     <button
                         onClick={handleClear}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm font-bold"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg font-bold flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition"
                         title="Clear"
                     >
                         ×
@@ -119,16 +119,16 @@ export default function AccountSearchDropdown({ value, onChange, placeholder = "
                 )}
             </div>
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl max-h-60 overflow-y-auto overflow-x-hidden p-1">
                     {filtered.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-gray-400">No accounts found</div>
+                        <div className="px-3 py-3 text-sm text-gray-500 text-center font-medium">No accounts found</div>
                     ) : (
                         filtered.map((name, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => handleSelect(name)}
-                                className={`block w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 hover:text-blue-700 transition ${
-                                    name === inputValue ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                                className={`block w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
+                                    name === inputValue ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50 font-medium'
                                 }`}
                             >
                                 {name}

@@ -9,7 +9,7 @@ import * as XLSX from 'xlsx';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import EditAccountModal from './EditAccountModal';
 import FollowUpModal from './FollowUpModal';
-import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, Check, CheckCircle2 } from 'lucide-react';
+import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, Check, CheckCircle2, MoreVertical, X } from 'lucide-react';
 import { deleteTransactionRecord } from '../utils/transactionOperations';
 
 const formatCurrency = (num) => {
@@ -833,15 +833,15 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
     return (
         <div className="flex flex-col min-h-0 md:h-[calc(100vh-10rem)] gap-3 sm:gap-4">
-            <div className="bg-white rounded-lg shadow border border-gray-200 flex flex-col flex-1 min-h-0 overflow-hidden">
-                <div className="p-3 sm:p-4 border-b border-gray-200 flex flex-col gap-3 sm:gap-4 bg-gray-50 rounded-t-lg shrink-0 relative z-20">
-                    <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                            <h3 className="font-semibold text-base sm:text-lg text-gray-800">Accounts Directory</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col flex-1 min-h-0 overflow-hidden">
+                <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col gap-4 sm:gap-5 bg-white rounded-t-2xl shrink-0 relative z-20">
+                    <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                            <h3 className="font-extrabold text-lg sm:text-xl text-gray-900 tracking-tight">Accounts Directory</h3>
                             <select
                                 value={selectedFY}
                                 onChange={(e) => setSelectedFY(e.target.value)}
-                                className="px-2.5 py-1 sm:px-3 sm:py-1.5 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium bg-blue-50 text-blue-800"
+                                className="px-3 py-1.5 sm:px-4 sm:py-2 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm font-bold bg-blue-50 text-blue-700 cursor-pointer shadow-sm hover:bg-blue-100 transition-colors"
                             >
                                 {fyOptions.length === 0 && <option value="">No Fiscal Years</option>}
                                 {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
@@ -850,22 +850,22 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
                         {/* Desktop header action buttons */}
                         <div className="hidden md:flex items-center gap-2 sm:gap-3">
-                            <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 cursor-pointer mr-2">
+                            <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-gray-600 cursor-pointer mr-2 hover:text-gray-900 transition-colors">
                                 <input 
                                     type="checkbox" 
                                     checked={showIgnored}
                                     onChange={(e) => setShowIgnored(e.target.checked)}
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-50"
                                 />
-                                Include Ignored Accounts
+                                Include Ignored
                             </label>
                             <button
                                 type="button"
                                 onClick={() => setSkipZeroClosingBalance(prev => !prev)}
-                                className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded text-xs sm:text-sm font-medium transition border ${
+                                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors border shadow-sm ${
                                     skipZeroClosingBalance
-                                        ? 'bg-amber-100 text-amber-900 border-amber-400 hover:bg-amber-200 font-semibold'
-                                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                                        ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 font-bold'
+                                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-gray-900 font-bold'
                                 }`}
                                 title="Toggle to skip accounts with 0 closing balance"
                             >
@@ -874,7 +874,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             <button 
                                 onClick={handleVerifyAll}
                                 disabled={verifying || paginatedAccounts.length === 0}
-                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 sm:px-4 sm:py-1.5 rounded text-xs sm:text-sm font-medium transition disabled:opacity-50"
+                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 sm:px-5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all shadow-sm disabled:opacity-50"
                             >
                                 {verifying ? 'Processing...' : 'Verify Visible Page'}
                             </button>
@@ -884,16 +884,16 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         <button
                             type="button"
                             onClick={() => setShowMobileFilters(prev => !prev)}
-                            className="md:hidden flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-300 rounded text-xs font-semibold text-gray-700 hover:bg-gray-50 transition shadow-xs"
+                            className="md:hidden flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
                         >
-                            <Filter className="w-3.5 h-3.5 text-blue-600" />
+                            <Filter className="w-4 h-4 text-blue-600" />
                             <span>Filters</span>
                             {activeFilterCount > 0 && (
-                                <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                                <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">
                                     {activeFilterCount}
                                 </span>
                             )}
-                            {showMobileFilters ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+                            {showMobileFilters ? <ChevronUp className="w-4 h-4 text-gray-400 ml-1" /> : <ChevronDown className="w-4 h-4 text-gray-400 ml-1" />}
                         </button>
                     </div>
                     
@@ -907,7 +907,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         <select
                             value={selectedGroup}
                             onChange={(e) => setSelectedGroup(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-800 transition-colors"
                         >
                             <option value="">All Groups</option>
                             {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
@@ -915,7 +915,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         <select
                             value={verificationStatus}
                             onChange={(e) => setVerificationStatus(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-800 transition-colors"
                         >
                             <option value="all">All Verification Status</option>
                             <option value="verified">Verified</option>
@@ -927,19 +927,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             placeholder="Min Balance" 
                             value={minBalance}
                             onChange={(e) => setMinBalance(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-800 transition-colors placeholder-gray-400"
                         />
                         <input 
                             type="number" 
                             placeholder="Max Balance" 
                             value={maxBalance}
                             onChange={(e) => setMaxBalance(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-800 transition-colors placeholder-gray-400"
                         />
                         <div className="flex gap-2">
                             <button
                                 onClick={handleAccountSearch}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition flex-1"
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm flex-1"
                             >
                                 Search
                             </button>
@@ -954,7 +954,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                         setSkipZeroClosingBalance(false);
                                         setShowIgnored(false);
                                     }}
-                                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm font-medium transition"
+                                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
                                     title="Reset all filters"
                                 >
                                     Reset
@@ -964,7 +964,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     </div>
 
                     {/* Mobile Filters Section (< md screens) */}
-                    <div className="flex flex-col gap-2 md:hidden">
+                    <div className="flex flex-col gap-2 md:hidden relative z-50">
                         {/* Always visible Account Search bar on mobile */}
                         <AccountSearchDropdown
                             value={searchTerm}
@@ -972,123 +972,165 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             placeholder="Search account name..."
                         />
 
-                        {/* Collapsible advanced filters on mobile */}
+                        {/* Bottom Sheet for advanced filters on mobile */}
                         {showMobileFilters && (
-                            <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
-                                {/* Group & Verification Status in 2 columns */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <select
-                                        value={selectedGroup}
-                                        onChange={(e) => setSelectedGroup(e.target.value)}
-                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs bg-white focus:ring-1 focus:ring-blue-500"
-                                    >
-                                        <option value="">All Groups</option>
-                                        {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
-                                    </select>
-                                    <select
-                                        value={verificationStatus}
-                                        onChange={(e) => setVerificationStatus(e.target.value)}
-                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs bg-white focus:ring-1 focus:ring-blue-500"
-                                    >
-                                        <option value="all">All Status</option>
-                                        <option value="verified">Verified</option>
-                                        <option value="unverified">Unverified</option>
-                                        <option value="ignored">Ignored</option>
-                                    </select>
-                                </div>
-
-                                {/* Min & Max Balance */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input 
-                                        type="number" 
-                                        placeholder="Min Balance" 
-                                        value={minBalance}
-                                        onChange={(e) => setMinBalance(e.target.value)}
-                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
-                                    />
-                                    <input 
-                                        type="number" 
-                                        placeholder="Max Balance" 
-                                        value={maxBalance}
-                                        onChange={(e) => setMaxBalance(e.target.value)}
-                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
-                                    />
-                                </div>
-
-                                {/* Sort controls for mobile */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <select
-                                        value={sortConfig.key}
-                                        onChange={(e) => setSortConfig(prev => ({ ...prev, key: e.target.value }))}
-                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs bg-white"
-                                    >
-                                        <option value="name">Sort: Name</option>
-                                        <option value="closingBalance">Sort: Closing Bal</option>
-                                        <option value="openingBalance">Sort: Opening Bal</option>
-                                        <option value="totalDebit">Sort: Total Dr</option>
-                                        <option value="totalCredit">Sort: Total Cr</option>
-                                        <option value="verifiedBy">Sort: Verified</option>
-                                    </select>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'ascending' ? 'descending' : 'ascending' }))}
-                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs bg-white text-gray-700 font-medium"
-                                    >
-                                        Order: {sortConfig.direction === 'ascending' ? 'Asc ↑' : 'Desc ↓'}
-                                    </button>
-                                </div>
-
-                                {/* Ignored & Skip 0 balance toggles on mobile */}
-                                <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
-                                    <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={showIgnored}
-                                            onChange={(e) => setShowIgnored(e.target.checked)}
-                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        />
-                                        Include Ignored
-                                    </label>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSkipZeroClosingBalance(prev => !prev)}
-                                        className={`px-2 py-1 rounded text-xs font-medium transition border ${
-                                            skipZeroClosingBalance
-                                                ? 'bg-amber-100 text-amber-900 border-amber-400 font-semibold'
-                                                : 'bg-white text-gray-700 border-gray-300'
-                                        }`}
-                                    >
-                                        {skipZeroClosingBalance ? '✓ Skip 0 Bal' : 'Skip 0 Bal'}
-                                    </button>
-                                </div>
-
-                                {/* Verify Page & Reset buttons */}
-                                <div className="flex gap-2 pt-1">
-                                    <button 
-                                        onClick={handleVerifyAll}
-                                        disabled={verifying || paginatedAccounts.length === 0}
-                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs font-semibold transition disabled:opacity-50"
-                                    >
-                                        {verifying ? 'Processing...' : 'Verify Visible Page'}
-                                    </button>
-                                    {(searchTerm || selectedGroup || minBalance || maxBalance || verificationStatus !== 'all' || skipZeroClosingBalance || showIgnored) && (
-                                        <button
-                                            onClick={() => {
-                                                setSearchTerm('');
-                                                setSelectedGroup('');
-                                                setMinBalance('');
-                                                setMaxBalance('');
-                                                setVerificationStatus('all');
-                                                setSkipZeroClosingBalance(false);
-                                                setShowIgnored(false);
-                                            }}
-                                            className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs font-medium transition"
-                                        >
-                                            Reset
+                            <>
+                                {/* Backdrop */}
+                                <div 
+                                    className="fixed inset-0 bg-black/40 z-40 md:hidden transition-opacity"
+                                    onClick={() => setShowMobileFilters(false)}
+                                ></div>
+                                {/* Sheet */}
+                                <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl z-50 p-5 pb-safe flex flex-col gap-4 md:hidden max-h-[85vh] overflow-y-auto">
+                                    <div className="flex justify-between items-center mb-1 border-b border-gray-100 pb-3">
+                                        <h3 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
+                                            <Filter size={18} className="text-blue-600" /> Filters & Sort
+                                        </h3>
+                                        <button onClick={() => setShowMobileFilters(false)} className="p-1.5 bg-gray-100 text-gray-500 hover:bg-gray-200 rounded-full">
+                                            <X size={20} />
                                         </button>
-                                    )}
+                                    </div>
+                                    
+                                    {/* Group & Verification Status in 2 columns */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Group</label>
+                                            <select
+                                                value={selectedGroup}
+                                                onChange={(e) => setSelectedGroup(e.target.value)}
+                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                            >
+                                                <option value="">All Groups</option>
+                                                {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</label>
+                                            <select
+                                                value={verificationStatus}
+                                                onChange={(e) => setVerificationStatus(e.target.value)}
+                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                            >
+                                                <option value="all">All</option>
+                                                <option value="verified">Verified</option>
+                                                <option value="unverified">Unverified</option>
+                                                <option value="ignored">Ignored</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Min & Max Balance */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Min Bal</label>
+                                            <input 
+                                                type="number" 
+                                                placeholder="0" 
+                                                value={minBalance}
+                                                onChange={(e) => setMinBalance(e.target.value)}
+                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Max Bal</label>
+                                            <input 
+                                                type="number" 
+                                                placeholder="Any" 
+                                                value={maxBalance}
+                                                onChange={(e) => setMaxBalance(e.target.value)}
+                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Sort controls for mobile */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Sort By</label>
+                                            <select
+                                                value={sortConfig.key}
+                                                onChange={(e) => setSortConfig(prev => ({ ...prev, key: e.target.value }))}
+                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                                            >
+                                                <option value="name">Name</option>
+                                                <option value="closingBalance">Closing Bal</option>
+                                                <option value="openingBalance">Opening Bal</option>
+                                                <option value="totalDebit">Total Dr</option>
+                                                <option value="totalCredit">Total Cr</option>
+                                                <option value="verifiedBy">Verified By</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Order</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'ascending' ? 'descending' : 'ascending' }))}
+                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-800 font-bold shadow-sm"
+                                            >
+                                                {sortConfig.direction === 'ascending' ? 'Ascending ↑' : 'Descending ↓'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Toggles */}
+                                    <div className="flex flex-col gap-3 py-3 border-y border-gray-100 my-1">
+                                        <label className="flex items-center justify-between text-sm text-gray-800 font-semibold cursor-pointer">
+                                            <span>Include Ignored Accounts</span>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={showIgnored}
+                                                onChange={(e) => setShowIgnored(e.target.checked)}
+                                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-50"
+                                            />
+                                        </label>
+                                        <label className="flex items-center justify-between text-sm text-gray-800 font-semibold cursor-pointer">
+                                            <span>Skip 0 Balances</span>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={skipZeroClosingBalance}
+                                                onChange={(e) => setSkipZeroClosingBalance(e.target.checked)}
+                                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-50"
+                                            />
+                                        </label>
+                                    </div>
+
+                                    {/* Action buttons */}
+                                    <div className="flex flex-col gap-2 mt-2">
+                                        <button 
+                                            onClick={() => { handleVerifyAll(); setShowMobileFilters(false); }}
+                                            disabled={verifying || paginatedAccounts.length === 0}
+                                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3.5 rounded-xl text-sm font-bold shadow-sm disabled:opacity-50 transition"
+                                        >
+                                            {verifying ? 'Processing...' : 'Verify Visible Page'}
+                                        </button>
+                                        
+                                        <div className="flex gap-2">
+                                            {(searchTerm || selectedGroup || minBalance || maxBalance || verificationStatus !== 'all' || skipZeroClosingBalance || showIgnored) && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSearchTerm('');
+                                                        setSelectedGroup('');
+                                                        setMinBalance('');
+                                                        setMaxBalance('');
+                                                        setVerificationStatus('all');
+                                                        setSkipZeroClosingBalance(false);
+                                                        setShowIgnored(false);
+                                                    }}
+                                                    className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-sm font-bold"
+                                                >
+                                                    Reset Filters
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setShowMobileFilters(false)}
+                                                className="flex-[2] py-3 bg-gray-900 text-white rounded-xl text-sm font-bold shadow-md"
+                                            >
+                                                Apply & Close
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>
@@ -1228,144 +1270,110 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                         return (
                                             <div 
                                                 key={acc.id} 
-                                                onClick={() => openAccountDetails(acc)}
-                                                className={`p-2.5 transition active:bg-blue-50/50 cursor-pointer ${
-                                                    isIgnored ? 'bg-gray-50/80 opacity-75' : 'bg-white hover:bg-blue-50/20'
+                                                className={`p-4 border-b border-gray-100 last:border-b-0 ${
+                                                    isIgnored ? 'bg-gray-50 opacity-75' : 'bg-white'
                                                 }`}
                                             >
-                                                {/* Row 1: Account Name + Group + Verification / Ignore */}
-                                                <div className="flex items-start justify-between gap-2 mb-1">
-                                                    <div className="min-w-0 flex-1">
-                                                        <h4 className="font-bold text-xs sm:text-sm text-gray-900 leading-tight truncate" title={acc.name}>
-                                                            {acc.name}
-                                                        </h4>
-                                                        <div className="text-[11px] text-gray-500 leading-tight truncate mt-0.5">
-                                                            {acc.group || '-'}
-                                                        </div>
+                                                {/* Header: Name and Status */}
+                                                <div className="flex justify-between items-start mb-3 gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-extrabold text-gray-900 leading-tight truncate text-base">{acc.name}</h4>
+                                                        <p className="text-xs text-gray-500 mt-1 truncate font-medium">{acc.group || '-'}</p>
                                                     </div>
-                                                    <div className="shrink-0 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                                        {bal.verifiedBy ? (
-                                                            <span className="inline-flex items-center gap-0.5 bg-green-100 text-green-800 text-[10px] font-semibold px-2 py-0.5 rounded-full" title={`Verified by ${bal.verifiedBy} on ${bal.verifiedAt}`}>
-                                                                <CheckCircle2 size={10} className="text-green-600 shrink-0" />
-                                                                <span>Verified</span>
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center bg-amber-100 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                                                                Pending
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        {bal.verifiedBy && (
+                                                            <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 border border-green-200">
+                                                                <CheckCircle2 size={12} /> Verified
                                                             </span>
                                                         )}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleIgnoreToggle(acc, isIgnored)}
-                                                            className={`text-[10px] px-1.5 py-0.5 rounded border transition font-medium ${
-                                                                isIgnored 
-                                                                    ? 'bg-amber-50 text-amber-800 border-amber-300 font-semibold' 
-                                                                    : 'bg-white text-gray-500 border-gray-200 hover:text-gray-800'
-                                                            }`}
-                                                            title={isIgnored ? 'Unignore account' : 'Ignore account'}
-                                                        >
-                                                            {isIgnored ? 'Ignored' : 'Ignore'}
-                                                        </button>
                                                     </div>
                                                 </div>
 
-                                                {/* Row 2: Balances Summary Box */}
-                                                <div className="bg-gray-50/90 rounded p-2 my-1.5 border border-gray-200/60">
-                                                    <div className="flex items-center justify-between pb-1 mb-1 border-b border-gray-200/50">
-                                                        <span className="text-gray-500 text-[10px] font-medium uppercase tracking-wider">Closing Balance</span>
-                                                        <span className={`font-bold text-xs sm:text-sm ${
-                                                            bal.closingBalanceType === 'Dr' 
-                                                                ? 'text-blue-700' 
-                                                                : bal.closingBalanceType === 'Cr' 
-                                                                    ? 'text-amber-700' 
-                                                                    : 'text-gray-900'
+                                                {/* Hero Balance */}
+                                                <div className="flex justify-between items-end mb-3">
+                                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Closing Balance</span>
+                                                    <div className="flex items-baseline gap-1.5">
+                                                        <span className={`text-base font-bold leading-none tracking-tight ${
+                                                            bal.closingBalanceType === 'Dr' ? 'text-blue-700' : bal.closingBalanceType === 'Cr' ? 'text-amber-700' : 'text-gray-800'
                                                         }`}>
-                                                            {formatCurrency(bal.closingBalance)}{' '}
-                                                            <span className={`text-[10px] font-semibold px-1 py-0.2 rounded ${
-                                                                bal.closingBalanceType === 'Dr' 
-                                                                    ? 'bg-blue-100 text-blue-800' 
-                                                                    : bal.closingBalanceType === 'Cr' 
-                                                                        ? 'bg-amber-100 text-amber-800' 
-                                                                        : 'bg-gray-200 text-gray-700'
-                                                            }`}>
-                                                                {bal.closingBalanceType || '-'}
-                                                            </span>
+                                                            {formatCurrency(bal.closingBalance)}
+                                                        </span>
+                                                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
+                                                            bal.closingBalanceType === 'Dr' ? 'bg-blue-100 text-blue-800' : bal.closingBalanceType === 'Cr' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'
+                                                        }`}>
+                                                            {bal.closingBalanceType || '-'}
                                                         </span>
                                                     </div>
-                                                    <div className="grid grid-cols-3 gap-1 text-[10px] text-gray-600">
-                                                        <div>
-                                                            <span className="text-gray-400 block text-[9px]">Opening</span>
-                                                            <span className="font-medium text-gray-700 truncate block">
-                                                                {formatCurrency(bal.openingBalance)} {bal.openingBalanceType}
-                                                            </span>
-                                                        </div>
-                                                        <div>
-                                                            <span className="text-gray-400 block text-[9px]">Total Debit</span>
-                                                            <span className="font-medium text-red-600 truncate block">
-                                                                {formatCurrency(bal.totalDebit)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <span className="text-gray-400 block text-[9px]">Total Credit</span>
-                                                            <span className="font-medium text-green-600 truncate block">
-                                                                {formatCurrency(bal.totalCredit)}
-                                                            </span>
-                                                        </div>
+                                                </div>
+
+                                                {/* Secondary Balances */}
+                                                <div className="flex justify-between items-center bg-gray-50 border border-gray-100 rounded-xl p-2.5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Opening</span>
+                                                        <span className="text-xs text-gray-800 font-bold">{formatCurrency(bal.openingBalance)} <span className="text-[10px] font-semibold text-gray-500">{bal.openingBalanceType}</span></span>
+                                                    </div>
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Debit</span>
+                                                        <span className="text-xs text-red-600 font-bold">{formatCurrency(bal.totalDebit)}</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Credit</span>
+                                                        <span className="text-xs text-green-600 font-bold">{formatCurrency(bal.totalCredit)}</span>
                                                     </div>
                                                 </div>
 
-                                                {/* Row 3: Action Buttons (1 row, 4 equal columns) */}
-                                                <div className="grid grid-cols-4 gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
-                                                    {/* Statement / Details */}
+                                                {/* Actions in 1 Row */}
+                                                <div className={`grid ${!bal.verifiedBy ? 'grid-cols-5' : 'grid-cols-4'} gap-1.5 mt-3`}>
                                                     <button
-                                                        type="button"
                                                         onClick={() => openAccountDetails(acc)}
-                                                        className="py-1 px-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[10px] font-semibold transition flex items-center justify-center gap-0.5 shadow-xs truncate"
-                                                        title="View Account Details & Statement"
+                                                        className="flex flex-col items-center justify-center py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition border border-blue-100 shadow-sm"
+                                                        title="View Statement"
                                                     >
-                                                        <Eye size={11} className="shrink-0 text-blue-600" />
-                                                        <span className="truncate">Statement</span>
+                                                        <Eye size={16} className="mb-1" />
+                                                        <span className="text-[9px] font-bold">Stmt</span>
                                                     </button>
-
-                                                    {/* Edit Account */}
+                                                    
                                                     <button
-                                                        type="button"
                                                         onClick={() => handleOpenEdit(acc)}
-                                                        className="py-1 px-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded text-[10px] font-medium transition flex items-center justify-center gap-0.5 shadow-xs truncate"
-                                                        title="Edit Account / Opening Balance"
+                                                        className="flex flex-col items-center justify-center py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg transition border border-gray-200 shadow-sm"
+                                                        title="Edit Account"
                                                     >
-                                                        <Pencil size={10} className="shrink-0 text-gray-500" />
-                                                        <span className="truncate">Edit</span>
+                                                        <Pencil size={16} className="mb-1" />
+                                                        <span className="text-[9px] font-bold">Edit</span>
                                                     </button>
 
-                                                    {/* Follow-up */}
                                                     <button
-                                                        type="button"
                                                         onClick={() => handleOpenFollowUp(acc)}
-                                                        className="py-1 px-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded text-[10px] font-medium transition flex items-center justify-center gap-0.5 shadow-xs truncate"
-                                                        title="Follow-ups"
+                                                        className="flex flex-col items-center justify-center py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition border border-purple-100 shadow-sm"
+                                                        title="Follow Up"
                                                     >
-                                                        <ClipboardList size={10} className="shrink-0 text-purple-600" />
-                                                        <span className="truncate">Follow-up</span>
+                                                        <ClipboardList size={16} className="mb-1" />
+                                                        <span className="text-[9px] font-bold">Follow</span>
                                                     </button>
 
-                                                    {/* Verify button */}
-                                                    {!bal.verifiedBy ? (
+                                                    {!bal.verifiedBy && (
                                                         <button
-                                                            type="button"
                                                             onClick={() => handleVerify(acc)}
-                                                            className="py-1 px-1 bg-green-600 hover:bg-green-700 text-white rounded text-[10px] font-semibold transition flex items-center justify-center gap-0.5 shadow-xs truncate"
+                                                            className="flex flex-col items-center justify-center py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition border border-green-200 shadow-sm"
                                                             title="Mark as Verified"
                                                         >
-                                                            <Check size={10} className="shrink-0" />
-                                                            <span className="truncate">Verify</span>
+                                                            <Check size={16} className="mb-1" />
+                                                            <span className="text-[9px] font-bold">Verify</span>
                                                         </button>
-                                                    ) : (
-                                                        <div className="py-1 px-1 bg-green-50 text-green-700 border border-green-200 rounded text-[9px] font-medium flex items-center justify-center gap-0.5 truncate" title={`Verified by ${bal.verifiedBy}`}>
-                                                            <Check size={9} className="shrink-0 text-green-600" />
-                                                            <span className="truncate">Done</span>
-                                                        </div>
                                                     )}
+
+                                                    <button
+                                                        onClick={() => handleIgnoreToggle(acc, isIgnored)}
+                                                        className={`flex flex-col items-center justify-center py-2 rounded-lg transition border shadow-sm ${
+                                                            isIgnored 
+                                                                ? 'bg-amber-50 text-amber-800 border-amber-200' 
+                                                                : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-200'
+                                                        }`}
+                                                        title={isIgnored ? 'Unignore Account' : 'Ignore Account'}
+                                                    >
+                                                        <X size={16} className="mb-1" />
+                                                        <span className="text-[9px] font-bold">{isIgnored ? 'Unignore' : 'Ignore'}</span>
+                                                    </button>
                                                 </div>
                                             </div>
                                         );
@@ -1376,11 +1384,11 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-2 px-3 sm:px-4 py-2 bg-gray-50 border-t border-gray-200 shrink-0">
-                    <span className="text-xs sm:text-sm text-gray-700 font-medium">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-2 px-4 py-4 sm:py-2 bg-white sm:bg-gray-50 border-t border-gray-200 shrink-0">
+                    <span className="text-xs sm:text-sm text-gray-500 sm:text-gray-700 font-bold sm:font-medium w-full sm:w-auto text-center sm:text-left">
                         Showing {sortedAccounts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, sortedAccounts.length)} of {sortedAccounts.length} accounts
                     </span>
-                    <div className="flex gap-1.5 items-center">
+                    <div className="flex w-full sm:w-auto gap-2 items-center justify-between sm:justify-end">
                         <button 
                             disabled={currentPage === 1 || loadingAccounts}
                             onClick={() => setCurrentPage(1)}
@@ -1392,24 +1400,24 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         <button 
                             disabled={currentPage === 1 || loadingAccounts}
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-xs sm:text-sm font-medium border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            className="flex-1 sm:flex-none py-3 sm:py-1.5 px-4 sm:px-3 bg-gray-100 sm:bg-white text-gray-700 font-bold sm:font-medium rounded-xl sm:rounded border border-gray-200 sm:border-gray-300 disabled:opacity-40 transition"
                         >
-                            ← Previous
+                            ← Prev
                         </button>
-                        <span className="text-xs sm:text-sm font-semibold text-gray-800 px-1 sm:px-2">
-                            Page {currentPage} of {totalPages}
+                        <span className="text-sm font-bold text-gray-800 px-2 sm:px-2 whitespace-nowrap">
+                            <span className="sm:hidden">Pg </span>{currentPage} <span className="text-gray-400">/ {totalPages}</span>
                         </span>
                         <button 
                             disabled={!hasNextPage || loadingAccounts}
                             onClick={() => setCurrentPage(p => p + 1)}
-                            className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-xs sm:text-sm font-medium border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            className="flex-1 sm:flex-none py-3 sm:py-1.5 px-4 sm:px-3 bg-blue-100 sm:bg-white text-blue-700 sm:text-gray-700 font-bold sm:font-medium rounded-xl sm:rounded border border-blue-200 sm:border-gray-300 disabled:opacity-40 transition"
                         >
                             Next →
                         </button>
                         <button 
                             disabled={!hasNextPage || loadingAccounts}
                             onClick={() => setCurrentPage(totalPages)}
-                            className="hidden sm:inline-flex px-2.5 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-xs font-bold border border-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            className="hidden sm:inline-flex px-2.5 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-xs font-bold border border-gray-300 rounded disabled:opacity-40 transition"
                             title="Last Page"
                         >
                             »»

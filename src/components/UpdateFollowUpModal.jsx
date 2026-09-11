@@ -148,47 +148,50 @@ export default function UpdateFollowUpModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-200">
         
         {/* Header */}
-        <div className="px-6 py-4 bg-gray-900 text-white flex justify-between items-center shrink-0">
+        <div className="px-6 py-5 bg-white border-b border-gray-100 flex justify-between items-start shrink-0">
           <div>
-            <div className="flex items-center gap-2">
-              <PhoneCall className="w-5 h-5 text-blue-400" />
-              <h2 className="text-lg font-bold truncate">
-                Follow-up: {followUp.accountName}
+            <div className="flex items-center gap-2.5">
+              <PhoneCall className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-extrabold text-gray-900 tracking-tight truncate">
+                Update Follow-up
               </h2>
             </div>
-            <p className="text-xs text-gray-400 mt-0.5 flex flex-wrap items-center gap-3">
-              <span>Created by: <b className="text-gray-200">{followUp.userName}</b> ({followUp.date})</span>
+            <p className="text-sm font-bold text-blue-600 mt-1 truncate uppercase tracking-wide">
+              {followUp.accountName}
+            </p>
+            <p className="text-[11px] font-extrabold text-gray-500 mt-2 flex flex-wrap items-center gap-3 tracking-wide">
+              <span>Created by: <b className="text-gray-800">{followUp.userName}</b> ({followUp.date})</span>
               {followUp.nextFollowUpDate && (
-                <span className="bg-blue-900/60 text-blue-200 px-2 py-0.5 rounded border border-blue-700/50">
-                  Current Next Date: <b>{followUp.nextFollowUpDate}</b>
+                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-100 font-bold">
+                  Current Next Date: {followUp.nextFollowUpDate}
                 </span>
               )}
               {followUp.completed && (
-                <span className="bg-green-900/60 text-green-300 px-2 py-0.5 rounded border border-green-700/50 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Completed
+                <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded-md border border-green-100 flex items-center gap-1 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Completed
                 </span>
               )}
             </p>
           </div>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800 transition"
+            className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Navigation (Update Form vs Full Audit History) */}
-        <div className="flex border-b border-gray-200 bg-gray-50 px-6 pt-2 shrink-0">
+        <div className="flex border-b border-gray-100 bg-gray-50/50 px-6 pt-2 shrink-0">
           {!followUp.completed && (
             <button
               onClick={() => setActiveTab('update')}
-              className={`py-2 px-4 text-sm font-medium border-b-2 transition flex items-center gap-2 ${
+              className={`py-3 px-5 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${
                 activeTab === 'update' 
-                  ? 'border-blue-600 text-blue-600 bg-white rounded-t-lg shadow-xs' 
+                  ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-sm' 
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -198,9 +201,9 @@ export default function UpdateFollowUpModal({
           )}
           <button
             onClick={() => setActiveTab('history')}
-            className={`py-2 px-4 text-sm font-medium border-b-2 transition flex items-center gap-2 ${
+            className={`py-3 px-5 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${
               activeTab === 'history' 
-                ? 'border-blue-600 text-blue-600 bg-white rounded-t-lg shadow-xs' 
+                ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-sm' 
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -215,16 +218,16 @@ export default function UpdateFollowUpModal({
             <form onSubmit={handleSaveUpdate} className="space-y-5">
               
               {/* Previous History Highlights */}
-              <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-3 text-sm">
-                <div className="font-semibold text-blue-900 mb-1 flex items-center gap-1.5">
-                  <MessageSquare className="w-4 h-4 text-blue-600" /> Latest Discussion / Original Note:
+              <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 text-sm">
+                <div className="font-extrabold text-blue-900 mb-2 flex items-center gap-1.5 uppercase tracking-wider text-[10px]">
+                  <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Latest Discussion / Original Note:
                 </div>
-                <div className="text-gray-700 text-xs italic bg-white p-2 rounded border border-blue-100 whitespace-pre-wrap">
+                <div className="text-gray-800 text-sm font-medium italic bg-white p-3 rounded-lg border border-blue-50 whitespace-pre-wrap shadow-sm">
                   "{followUp.lastCallNote || followUp.message || 'No notes available'}"
                 </div>
                 {followUp.lastCallBy && (
-                  <div className="text-right text-[11px] text-gray-500 mt-1">
-                    Last called by: <b>{followUp.lastCallBy}</b> on {followUp.lastCallDate}
+                  <div className="text-right text-[11px] font-bold text-gray-500 mt-2">
+                    Last called by: <b className="text-gray-700">{followUp.lastCallBy}</b> on {followUp.lastCallDate}
                   </div>
                 )}
               </div>
@@ -232,7 +235,7 @@ export default function UpdateFollowUpModal({
               {/* Action Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
                     Call / Action Date <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -240,27 +243,27 @@ export default function UpdateFollowUpModal({
                     value={callDate}
                     onChange={(e) => setCallDate(e.target.value)}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
                     Called By (Current User)
                   </label>
                   <input
                     type="text"
                     value={currentUser?.name || ''}
                     readOnly
-                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg text-gray-600 text-sm font-medium"
+                    className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-gray-600 text-sm font-bold"
                   />
                 </div>
               </div>
 
               {/* Call Remarks / Conversation Note */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1 flex justify-between">
+                <label className="block text-xs font-bold text-gray-600 mb-1.5 flex justify-between uppercase tracking-wider">
                   <span>Call Remarks / Customer Conversation <span className="text-red-500">*</span></span>
-                  <span className="text-[11px] text-gray-400 font-normal">Details of discussion with customer</span>
+                  <span className="text-[10px] text-gray-400 font-bold capitalize">Details of discussion with customer</span>
                 </label>
                 <textarea
                   value={callRemarks}
@@ -268,18 +271,18 @@ export default function UpdateFollowUpModal({
                   required
                   rows={3}
                   placeholder="E.g., Customer ne bola ki Monday ko payment release karenge, tab call karein..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium transition-colors"
                 />
               </div>
 
               {/* Completed Toggle */}
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-sm text-gray-800 flex items-center gap-1.5">
-                    <CheckCircle2 className={`w-4 h-4 ${isCompleted ? 'text-green-600' : 'text-gray-400'}`} />
+                  <div className="font-extrabold text-sm text-gray-800 flex items-center gap-1.5 tracking-tight">
+                    <CheckCircle2 className={`w-5 h-5 ${isCompleted ? 'text-green-600' : 'text-gray-400'}`} />
                     Mark as Completed
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs font-medium text-gray-500 mt-0.5">
                     Check this if the issue is solved or payment settled (it will disappear from active follow-ups).
                   </p>
                 </div>
@@ -290,15 +293,15 @@ export default function UpdateFollowUpModal({
                     onChange={(e) => setIsCompleted(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                 </label>
               </div>
 
               {/* If not completed: Reschedule Date & Assignee */}
               {!isCompleted && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-gray-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 text-blue-700">
+                    <label className="block text-xs font-bold text-gray-600 mb-1.5 flex items-center gap-1.5 uppercase tracking-wider text-blue-700">
                       <Calendar className="w-3.5 h-3.5" />
                       Next Follow-up Date <span className="text-red-500">*</span>
                     </label>
@@ -307,20 +310,20 @@ export default function UpdateFollowUpModal({
                       value={newNextDate}
                       onChange={(e) => setNewNextDate(e.target.value)}
                       required={!isCompleted}
-                      className="w-full px-3 py-2 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+                      className="w-full px-4 py-2.5 border border-blue-200 bg-blue-50/30 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold text-gray-800 transition-colors"
                     />
-                    <p className="text-[11px] text-gray-500 mt-1">Naya date jo customer ne diya hai</p>
+                    <p className="text-[11px] font-medium text-gray-400 mt-1.5 capitalize">Naya date jo customer ne diya hai</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
                       Assigned To
                     </label>
                     {currentUser?.role === 'admin' ? (
                       <select
                         value={assignedToUid}
                         onChange={(e) => setAssignedToUid(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                        className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium transition-colors cursor-pointer"
                       >
                         {users.map(u => (
                           <option key={u.uid} value={u.uid}>{u.name}</option>
@@ -331,7 +334,7 @@ export default function UpdateFollowUpModal({
                         type="text"
                         value={followUp.assignedTo || currentUser?.name || ''}
                         readOnly
-                        className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg text-gray-600 text-sm"
+                        className="w-full px-4 py-2.5 border border-gray-200 bg-gray-100 rounded-lg text-gray-500 font-bold text-sm"
                       />
                     )}
                   </div>
@@ -339,22 +342,22 @@ export default function UpdateFollowUpModal({
               )}
 
               {/* Submit Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <div className="flex justify-end gap-3 pt-5 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+                  className="px-5 py-2.5 rounded-lg text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
                   disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className={`px-5 py-2 rounded-lg text-sm font-semibold text-white transition flex items-center gap-2 shadow-sm ${
+                  className={`px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-colors flex items-center gap-2 shadow-sm ${
                     isCompleted 
                       ? 'bg-green-600 hover:bg-green-700' 
                       : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
+                  } disabled:opacity-50`}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
