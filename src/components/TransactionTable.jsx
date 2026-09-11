@@ -71,23 +71,30 @@ export default function TransactionTable({ transactions, showFullDetails = false
                             <tr><td colSpan={6 + (showFullDetails ? 1 : 0) + (onDeleteTransaction ? 1 : 0)} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
                         ) : (
                             sortedTransactions.map((t, idx) => {
-                                // Check if selected account is in debit side (primary or allDebitAccounts)
-                                const isDebit = (t.debitAccount && t.debitAccount.toLowerCase() === selectedAccountName.toLowerCase()) ||
-                                    (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === selectedAccountName.toLowerCase()));
-                                const particulars = isDebit ? `To ${t.creditAccount}` : `By ${t.debitAccount}`;
-
-                                // Calculate per-account amount for multi-ledger journals
-                                let accountDebitAmt = t.debitAmount;
-                                let accountCreditAmt = t.creditAmount;
-                                if (isDebit && t.allDebitEntries && t.allDebitEntries.length > 0) {
-                                    accountDebitAmt = t.allDebitEntries
-                                        .filter(e => e.name && e.name.toLowerCase() === selectedAccountName.toLowerCase())
-                                        .reduce((sum, e) => sum + e.amount, 0);
-                                } else if (!isDebit && t.allCreditEntries && t.allCreditEntries.length > 0) {
-                                    accountCreditAmt = t.allCreditEntries
-                                        .filter(e => e.name && e.name.toLowerCase() === selectedAccountName.toLowerCase())
-                                        .reduce((sum, e) => sum + e.amount, 0);
+                                // Check if selected account is in debit side or credit side
+                                const hasCalculatedAmounts = t.accountDebitAmt !== undefined || t.accountCreditAmt !== undefined;
+                                let accountDebitAmt = hasCalculatedAmounts ? (t.accountDebitAmt || 0) : t.debitAmount;
+                                let accountCreditAmt = hasCalculatedAmounts ? (t.accountCreditAmt || 0) : t.creditAmount;
+                                
+                                if (!hasCalculatedAmounts) {
+                                    const isDeb = (t.debitAccount && t.debitAccount.toLowerCase() === selectedAccountName.toLowerCase()) ||
+                                        (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === selectedAccountName.toLowerCase()));
+                                    if (isDeb && t.allDebitEntries && t.allDebitEntries.length > 0) {
+                                        accountDebitAmt = t.allDebitEntries
+                                            .filter(e => e.name && e.name.toLowerCase() === selectedAccountName.toLowerCase())
+                                            .reduce((sum, e) => sum + e.amount, 0);
+                                    } else if (!isDeb && t.allCreditEntries && t.allCreditEntries.length > 0) {
+                                        accountCreditAmt = t.allCreditEntries
+                                            .filter(e => e.name && e.name.toLowerCase() === selectedAccountName.toLowerCase())
+                                            .reduce((sum, e) => sum + e.amount, 0);
+                                    }
                                 }
+
+                                const isDebit = accountDebitAmt > 0 || (accountCreditAmt === 0 && (
+                                    (t.debitAccount && t.debitAccount.toLowerCase() === selectedAccountName.toLowerCase()) ||
+                                    (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === selectedAccountName.toLowerCase()))
+                                ));
+                                const particulars = isDebit ? `To ${t.creditAccount || '-'}` : `By ${t.debitAccount || '-'}`;
 
                                 return (
                                     <React.Fragment key={t.id || idx}>
@@ -98,8 +105,8 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                                 <div className="text-xs">No: {t.voucherNo}</div>
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-gray-900" title={particulars}>{particulars}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{isDebit && accountDebitAmt ? formatCurrency(accountDebitAmt) : ''}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{!isDebit && accountCreditAmt ? formatCurrency(accountCreditAmt) : ''}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{accountDebitAmt ? formatCurrency(accountDebitAmt) : ''}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{accountCreditAmt ? formatCurrency(accountCreditAmt) : ''}</td>
                                             <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-bold">{formatCurrency(t.runningBalance)} <span className="text-xs font-normal text-gray-500">{t.runningBalanceType}</span></td>
                                             {showFullDetails && (
                                                 <td className="px-4 py-3 whitespace-nowrap text-gray-500">{t.enteredBy}</td>

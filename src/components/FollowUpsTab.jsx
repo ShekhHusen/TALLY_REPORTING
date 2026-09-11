@@ -3,7 +3,8 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Search, X, Check, Clock, AlertCircle, AlertTriangle, 
-  FileText, PhoneCall, History, Calendar, CheckCircle2, User
+  FileText, PhoneCall, History, Calendar, CheckCircle2, User,
+  Filter, ChevronDown, ChevronUp
 } from 'lucide-react';
 import AccountStatementModal from './AccountStatementModal';
 import UpdateFollowUpModal from './UpdateFollowUpModal';
@@ -40,6 +41,7 @@ export default function FollowUpsTab({ currentUser }) {
   const [assignedFilter, setAssignedFilter] = useState('All');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -227,18 +229,28 @@ export default function FollowUpsTab({ currentUser }) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredFollowUps.slice(startIndex, startIndex + itemsPerPage);
 
-  const getStatusBadge = (status) => {
+  const hasActiveFilters = Boolean(
+    searchAccount || 
+    (statusFilter !== 'Active') || 
+    (assignedFilter !== 'All') || 
+    dateFrom || 
+    dateTo
+  );
+
+  const getStatusBadge = (status, isMobile = false) => {
+    const pad = isMobile ? "px-1.5 py-0.5 text-[10px]" : "px-2.5 py-0.5 text-xs";
+    const iconCls = isMobile ? "w-2.5 h-2.5 shrink-0" : "w-3 h-3 shrink-0";
     switch (status) {
       case 'Completed':
-        return <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-green-100 text-green-800"><CheckCircle2 className="w-3 h-3"/> Completed</span>;
+        return <span className={`inline-flex items-center gap-1 font-semibold rounded-full bg-green-100 text-green-800 ${pad}`}><CheckCircle2 className={iconCls}/> Completed</span>;
       case 'Today':
-        return <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 shadow-xs"><Clock className="w-3 h-3 text-amber-600"/> Due Today</span>;
+        return <span className={`inline-flex items-center gap-1 font-bold rounded-full bg-amber-100 text-amber-900 border border-amber-300 shadow-xs ${pad}`}><Clock className={`text-amber-600 ${iconCls}`}/> Due Today</span>;
       case 'Upcoming':
-        return <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800"><Calendar className="w-3 h-3"/> Upcoming</span>;
+        return <span className={`inline-flex items-center gap-1 font-medium rounded-full bg-blue-100 text-blue-800 ${pad}`}><Calendar className={iconCls}/> Upcoming</span>;
       case 'Overdue':
-        return <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200"><AlertCircle className="w-3 h-3 text-red-600"/> Overdue</span>;
+        return <span className={`inline-flex items-center gap-1 font-semibold rounded-full bg-red-100 text-red-800 border border-red-200 ${pad}`}><AlertCircle className={`text-red-600 ${iconCls}`}/> Overdue</span>;
       case 'Pending':
-        return <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700"><AlertTriangle className="w-3 h-3"/> Pending</span>;
+        return <span className={`inline-flex items-center gap-1 font-medium rounded-full bg-gray-100 text-gray-700 ${pad}`}><AlertTriangle className={iconCls}/> Pending</span>;
       default:
         return null;
     }
@@ -255,89 +267,124 @@ export default function FollowUpsTab({ currentUser }) {
   };
 
   return (
-    <div className="flex flex-col min-h-0 md:h-[calc(100vh-10rem)] gap-3">
-      {/* Quick Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 shrink-0 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+    <div className="flex flex-col min-h-0 md:h-[calc(100vh-10rem)] gap-2.5 sm:gap-3">
+      {/* Quick Summary Bar - Compact on mobile */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2 shrink-0 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <button
           onClick={() => handleStatusCardClick('Active')}
-          className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
             statusFilter === 'Active' 
               ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-400/20' 
               : 'bg-white border-gray-200 hover:bg-gray-50'
           }`}
         >
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Active Follow-ups</div>
-            <div className="text-xl font-bold text-gray-900">{totalActive}</div>
+            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-gray-500">Active Follow-ups</div>
+            <div className="text-base sm:text-xl font-bold text-gray-900">{totalActive}</div>
           </div>
-          <Clock className="w-5 h-5 text-blue-500 opacity-80" />
+          <Clock className="w-4 h-4 sm:w-5 h-5 text-blue-500 opacity-80 shrink-0" />
         </button>
 
         <button
           onClick={() => handleStatusCardClick('Today')}
-          className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
             statusFilter === 'Today' 
               ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-400/20' 
               : 'bg-white border-gray-200 hover:bg-gray-50'
           }`}
         >
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-700">Due Today</div>
-            <div className="text-xl font-bold text-amber-900">{countToday}</div>
+            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-amber-700">Due Today</div>
+            <div className="text-base sm:text-xl font-bold text-amber-900">{countToday}</div>
           </div>
-          <PhoneCall className="w-5 h-5 text-amber-500 opacity-80" />
+          <PhoneCall className="w-4 h-4 sm:w-5 h-5 text-amber-500 opacity-80 shrink-0" />
         </button>
 
         <button
           onClick={() => handleStatusCardClick('Overdue')}
-          className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
             statusFilter === 'Overdue' 
               ? 'bg-red-50 border-red-400 ring-2 ring-red-400/20' 
               : 'bg-white border-gray-200 hover:bg-gray-50'
           }`}
         >
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-red-600">Overdue</div>
-            <div className="text-xl font-bold text-red-700">{countOverdue}</div>
+            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-red-600">Overdue</div>
+            <div className="text-base sm:text-xl font-bold text-red-700">{countOverdue}</div>
           </div>
-          <AlertCircle className="w-5 h-5 text-red-500 opacity-80" />
+          <AlertCircle className="w-4 h-4 sm:w-5 h-5 text-red-500 opacity-80 shrink-0" />
         </button>
 
         <button
           onClick={() => handleStatusCardClick('Upcoming')}
-          className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
             statusFilter === 'Upcoming' 
               ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-400/20' 
               : 'bg-white border-gray-200 hover:bg-gray-50'
           }`}
         >
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">Upcoming</div>
-            <div className="text-xl font-bold text-blue-700">{countUpcoming}</div>
+            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-blue-600">Upcoming</div>
+            <div className="text-base sm:text-xl font-bold text-blue-700">{countUpcoming}</div>
           </div>
-          <Calendar className="w-5 h-5 text-blue-500 opacity-80" />
+          <Calendar className="w-4 h-4 sm:w-5 h-5 text-blue-500 opacity-80 shrink-0" />
         </button>
 
         <button
           onClick={() => handleStatusCardClick('Completed')}
-          className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
+          className={`p-1.5 sm:p-2.5 rounded-lg border text-left transition flex items-center justify-between ${
             statusFilter === 'Completed' 
               ? 'bg-green-50 border-green-400 ring-2 ring-green-400/20' 
               : 'bg-white border-gray-200 hover:bg-gray-50'
           }`}
         >
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-green-700">Completed</div>
-            <div className="text-xl font-bold text-green-800">{countCompleted}</div>
+            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-green-700">Completed</div>
+            <div className="text-base sm:text-xl font-bold text-green-800">{countCompleted}</div>
           </div>
-          <CheckCircle2 className="w-5 h-5 text-green-500 opacity-80" />
+          <CheckCircle2 className="w-4 h-4 sm:w-5 h-5 text-green-500 opacity-80 shrink-0" />
         </button>
       </div>
 
       <div className="bg-white rounded-lg shadow border border-gray-200 flex flex-col flex-1 overflow-hidden">
         
-        {/* Filter Bar */}
-        <div className="bg-gray-50 border-b border-gray-200 p-3.5 shrink-0">
+        {/* Mobile Filter Toggle Bar (Hidden on desktop, visible on mobile) */}
+        <div className="md:hidden flex items-center justify-between p-2 bg-gray-50 border-b border-gray-200 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowMobileFilters(prev => !prev)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 px-2.5 py-1.5 rounded shadow-xs active:bg-gray-100"
+          >
+            <Filter className="w-3.5 h-3.5 text-gray-500" />
+            <span>Filters</span>
+            {hasActiveFilters && (
+              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+            )}
+            {showMobileFilters ? (
+              <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+            )}
+          </button>
+          
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="text-[11px] text-red-600 font-semibold px-1.5 py-1 hover:underline flex items-center gap-0.5"
+              >
+                <X className="w-3 h-3" /> Reset
+              </button>
+            )}
+            <span className="text-[11px] text-gray-500 font-medium">
+              {filteredFollowUps.length} record{filteredFollowUps.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+
+        {/* Filter Bar (Hidden by default on mobile, always visible on desktop) */}
+        <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block bg-gray-50 border-b border-gray-200 p-2.5 sm:p-3.5 shrink-0`}>
           <div className="flex flex-wrap gap-3 items-end">
             <div className="w-full sm:w-48">
               <label className="block text-xs font-semibold text-gray-700 mb-1">Account Name</label>
@@ -554,9 +601,9 @@ export default function FollowUpsTab({ currentUser }) {
           {/* Mobile Card View */}
           <div className="block md:hidden divide-y divide-gray-200">
             {currentData.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <Clock className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-                <p className="font-medium">No follow-ups found.</p>
+              <div className="p-6 text-center text-gray-500">
+                <Clock className="w-7 h-7 mx-auto text-gray-300 mb-1.5" />
+                <p className="font-medium text-xs">No follow-ups found.</p>
               </div>
             ) : (
               currentData.map(fu => {
@@ -570,19 +617,23 @@ export default function FollowUpsTab({ currentUser }) {
                   'Pending': 'border-l-gray-400 bg-white'
                 };
                 return (
-                  <div key={fu.id} className={`p-3 border-l-4 ${statusColors[status] || 'border-l-gray-300 bg-white'}`}>
+                  <div key={fu.id} className={`p-2 sm:p-2.5 border-l-4 ${statusColors[status] || 'border-l-gray-300 bg-white'}`}>
                     {/* Top row: Account name + Status badge */}
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h4 className="font-bold text-sm text-gray-900 leading-tight">{fu.accountName}</h4>
-                      {getStatusBadge(status)}
+                    <div className="flex items-start justify-between gap-1.5 mb-1">
+                      <h4 className="font-bold text-xs sm:text-sm text-gray-900 leading-tight truncate" title={fu.accountName}>
+                        {fu.accountName}
+                      </h4>
+                      <div className="shrink-0">
+                        {getStatusBadge(status, true)}
+                      </div>
                     </div>
                     {/* Meta row */}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[11px] text-gray-500 mb-1">
                       <span>{fu.date}</span>
                       <span>by {fu.userName}</span>
                       {fu.assignedTo && (
-                        <span className="inline-flex items-center gap-1">
-                          <User className="w-3 h-3" /> {fu.assignedTo}
+                        <span className="inline-flex items-center gap-0.5">
+                          <User className="w-2.5 h-2.5 text-gray-400" /> {fu.assignedTo}
                         </span>
                       )}
                       {fu.nextFollowUpDate && (
@@ -592,50 +643,61 @@ export default function FollowUpsTab({ currentUser }) {
                       )}
                     </div>
                     {/* Message */}
-                    <div className="text-xs text-gray-700 mb-2">{fu.message}</div>
+                    {fu.message && (
+                      <div className="text-[11px] text-gray-700 mb-1 leading-snug line-clamp-2" title={fu.message}>
+                        {fu.message}
+                      </div>
+                    )}
                     {fu.lastCallNote && (
-                      <div className="text-[11px] text-blue-900 bg-blue-100/70 p-2 rounded border border-blue-200 flex items-start gap-1 mb-2">
+                      <div className="text-[10px] text-blue-900 bg-blue-100/70 p-1.5 rounded border border-blue-200 flex items-start gap-1 mb-1.5">
                         <PhoneCall className="w-3 h-3 text-blue-600 shrink-0 mt-0.5" />
-                        <div>
-                          <span className="font-semibold">Latest Call:</span> {fu.lastCallNote}{' '}
+                        <div className="leading-snug">
+                          <span className="font-semibold">Call:</span> {fu.lastCallNote}{' '}
                           <span className="text-blue-600 font-medium">({fu.lastCallBy || 'User'} on {fu.lastCallDate})</span>
                         </div>
                       </div>
                     )}
-                    {/* Action buttons */}
-                    <div className="flex flex-wrap gap-2 mt-1">
+                    {/* Action buttons: Exactly 1 row 4 columns */}
+                    <div className={`grid ${fu.completed ? 'grid-cols-2' : 'grid-cols-4'} gap-1 mt-1`}>
                       {!fu.completed && (
                         <button
                           type="button"
                           onClick={() => handleOpenUpdate(fu)}
-                          className="min-h-[44px] px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition inline-flex items-center gap-1.5 shadow-sm"
+                          className="py-1 px-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-semibold transition flex items-center justify-center gap-0.5 shadow-xs truncate"
+                          title="Customer ne naya date diya ya call update karna hai"
                         >
-                          <PhoneCall className="w-3.5 h-3.5" /> Reschedule
+                          <PhoneCall className="w-2.5 h-2.5 shrink-0" />
+                          <span className="truncate">Reschedule</span>
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => handleOpenUpdate(fu)}
-                        className="min-h-[44px] px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded text-xs font-medium transition inline-flex items-center gap-1.5 shadow-sm"
+                        className="py-1 px-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded text-[10px] font-medium transition flex items-center justify-center gap-0.5 shadow-xs truncate"
+                        title="View Full Call & Follow-up History"
                       >
-                        <History className="w-3.5 h-3.5 text-gray-500" />
-                        History
-                        <span className="bg-gray-200 text-gray-700 text-[10px] px-1.5 rounded-full font-bold">{historyCount}</span>
+                        <History className="w-2.5 h-2.5 text-gray-500 shrink-0" />
+                        <span className="truncate">History</span>
+                        <span className="bg-gray-200 text-gray-700 text-[9px] px-1 rounded-full font-bold shrink-0">{historyCount}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleOpenStatement(fu.accountName)}
-                        className="min-h-[44px] px-3 py-2 bg-white hover:bg-gray-50 text-blue-600 border border-blue-300 rounded text-xs font-medium transition inline-flex items-center gap-1.5 shadow-sm"
+                        className="py-1 px-1 bg-white hover:bg-gray-50 text-blue-600 border border-blue-300 rounded text-[10px] font-medium transition flex items-center justify-center gap-0.5 shadow-xs truncate"
+                        title="View Account Statement"
                       >
-                        <FileText className="w-3.5 h-3.5" /> Statement
+                        <FileText className="w-2.5 h-2.5 shrink-0" />
+                        <span className="truncate">Statement</span>
                       </button>
                       {!fu.completed && (
                         <button
                           type="button"
                           onClick={() => handleMarkComplete(fu)}
-                          className="min-h-[44px] px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition inline-flex items-center gap-1.5 shadow-sm"
+                          className="py-1 px-1 bg-green-600 hover:bg-green-700 text-white rounded text-[10px] font-medium transition flex items-center justify-center gap-0.5 shadow-xs truncate"
+                          title="Mark as Complete"
                         >
-                          <Check className="w-3.5 h-3.5" /> Complete
+                          <Check className="w-2.5 h-2.5 shrink-0" />
+                          <span className="truncate">Complete</span>
                         </button>
                       )}
                     </div>

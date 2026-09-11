@@ -471,28 +471,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
             // Merge with previous if load more
             const combinedTxns = isLoadMore ? [...accountTxns, ...fyFilteredTxns] : fyFilteredTxns;
-            
-            // Calculate running balance based on opening balance
-            // Ensure we use the correct opening balance sign (+ for Dr, - for Cr)
-            let runningVal = detailFYData 
-                ? (detailFYData.openingBalanceType === 'Cr' ? -1 : 1) * parseFloat(detailFYData.openingBalance || 0)
-                : 0;
-            
-            const processedTxns = combinedTxns.map(t => {
-                const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === accNameLower;
-                const debAmt = isDebit ? parseFloat(t.debitAmount || 0) : 0;
-                const credAmt = !isDebit ? parseFloat(t.creditAmount || 0) : 0;
-                
-                runningVal = runningVal + debAmt - credAmt;
-                
-                return {
-                    ...t,
-                    runningBalance: Math.abs(runningVal),
-                    runningBalanceType: runningVal < 0 ? 'Cr' : (runningVal > 0 ? 'Dr' : '')
-                };
-            });
-
-            setAccountTxns(processedTxns);
+            setAccountTxns(combinedTxns);
             setLastVisibleTxn(snap.docs[snap.docs.length - 1]);
             setHasMoreTxns(snap.docs.length === 50);
 
@@ -502,6 +481,50 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         }
         setLoadingTxns(false);
     };
+
+    // Calculate accurate running balance and account-specific debit/credit amounts based on opening balance
+    const processedAccountTxns = useMemo(() => {
+        if (!accountTxns || accountTxns.length === 0) return [];
+
+        const fyData = detailFYData || (selectedAccount && fyBalances[selectedAccount.id]) || null;
+        const ob = parseFloat(fyData?.openingBalance || 0);
+        const obType = fyData?.openingBalanceType || '';
+        let runningVal = obType === 'Cr' ? -ob : ob;
+
+        const accNameLower = (selectedAccount?.name || '').trim().toLowerCase();
+        const sorted = [...accountTxns].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        return sorted.map(t => {
+            let debAmt = 0;
+            let credAmt = 0;
+
+            if (t.allDebitEntries && t.allDebitEntries.length > 0) {
+                debAmt = t.allDebitEntries
+                    .filter(e => e.name && e.name.trim().toLowerCase() === accNameLower)
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            } else if (t.debitAccount && t.debitAccount.trim().toLowerCase() === accNameLower) {
+                debAmt = parseFloat(t.debitAmount || 0);
+            }
+
+            if (t.allCreditEntries && t.allCreditEntries.length > 0) {
+                credAmt = t.allCreditEntries
+                    .filter(e => e.name && e.name.trim().toLowerCase() === accNameLower)
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            } else if (t.creditAccount && t.creditAccount.trim().toLowerCase() === accNameLower) {
+                credAmt = parseFloat(t.creditAmount || 0);
+            }
+
+            runningVal = runningVal + debAmt - credAmt;
+
+            return {
+                ...t,
+                accountDebitAmt: debAmt,
+                accountCreditAmt: credAmt,
+                runningBalance: Math.abs(runningVal),
+                runningBalanceType: runningVal < 0 ? 'Cr' : (runningVal > 0 ? 'Dr' : '')
+            };
+        });
+    }, [accountTxns, detailFYData, selectedAccount, fyBalances]);
 
     const handleDeleteStatementTransaction = async (t) => {
         const ok = await deleteTransactionRecord(t);
@@ -516,19 +539,21 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const openAccountDetails = (acc) => {
         setSelectedAccount(acc);
         setDetailFY(selectedFY);
+        setDetailFYData(fyBalances[acc.id] || null);
         setView('details');
         setAccountTxns([]);
         setLastVisibleTxn(null);
-        // We will pass the account object so fetchAccountTransactions can use its opening balance
     };
 
-    // Need to trigger fetch when selectedAccount is set
+    // Trigger fetch when selectedAccount or detailFY changes
     useEffect(() => {
-        if (view === 'details' && selectedAccount && accountTxns.length === 0 && !loadingTxns) {
-            fetchAccountTransactions(selectedAccount.name);
+        if (view === 'details' && selectedAccount && detailFY) {
+            setAccountTxns([]);
+            setLastVisibleTxn(null);
+            fetchAccountTransactions(selectedAccount.name, false, detailFY);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [view, selectedAccount, detailFY, detailFYData]);
+    }, [view, selectedAccount, detailFY]);
 
     useEffect(() => {
         if (view !== 'details' || !selectedAccount || !detailFY) return;
@@ -578,9 +603,12 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         const tableColumn = ["Date", "Particulars", "Vch Type", "Vch No", "Debit", "Credit", "Balance"];
         const tableRows = [];
 
-        accountTxns.forEach(t => {
-            const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === selectedAccount.name.toLowerCase();
-            let particulars = isDebit ? `To ${t.creditAccount}` : `By ${t.debitAccount}`;
+        processedAccountTxns.forEach(t => {
+            const isDebit = t.accountDebitAmt > 0 || (t.accountCreditAmt === 0 && (
+                (t.debitAccount && t.debitAccount.toLowerCase() === selectedAccount.name.toLowerCase()) ||
+                (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === selectedAccount.name.toLowerCase()))
+            ));
+            let particulars = isDebit ? `To ${t.creditAccount || '-'}` : `By ${t.debitAccount || '-'}`;
             
             if (showFullDetails) {
                 if (t.narration) particulars += `\n[Narration: ${t.narration}]`;
@@ -595,8 +623,8 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 particulars,
                 t.type,
                 t.voucherNo,
-                isDebit && t.debitAmount ? formatCurrency(t.debitAmount) : '',
-                !isDebit && t.creditAmount ? formatCurrency(t.creditAmount) : '',
+                t.accountDebitAmt ? formatCurrency(t.accountDebitAmt) : '',
+                t.accountCreditAmt ? formatCurrency(t.accountCreditAmt) : '',
                 `${formatCurrency(t.runningBalance)} ${t.runningBalanceType}`
             ];
             tableRows.push(row);
@@ -628,17 +656,20 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         const activeFY = fyOptions.find(f => f.id === detailFY);
         const fyName = activeFY?.name || detailFY;
         
-        const formattedData = accountTxns.map(t => {
-            const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === selectedAccount.name.toLowerCase();
-            let particulars = isDebit ? `To ${t.creditAccount}` : `By ${t.debitAccount}`;
+        const formattedData = processedAccountTxns.map(t => {
+            const isDebit = t.accountDebitAmt > 0 || (t.accountCreditAmt === 0 && (
+                (t.debitAccount && t.debitAccount.toLowerCase() === selectedAccount.name.toLowerCase()) ||
+                (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === selectedAccount.name.toLowerCase()))
+            ));
+            let particulars = isDebit ? `To ${t.creditAccount || '-'}` : `By ${t.debitAccount || '-'}`;
             
             let row = {
                 Date: t.date,
                 Particulars: particulars,
                 VoucherType: t.type,
                 VoucherNo: t.voucherNo,
-                DebitAmount: isDebit ? parseFloat(t.debitAmount || 0) : null,
-                CreditAmount: !isDebit ? parseFloat(t.creditAmount || 0) : null,
+                DebitAmount: t.accountDebitAmt || null,
+                CreditAmount: t.accountCreditAmt || null,
                 Balance: parseFloat(t.runningBalance || 0),
                 BalanceType: t.runningBalanceType || ''
             };
@@ -757,7 +788,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
 
                     <div className="overflow-auto flex-1 p-0">
                         <TransactionTable 
-                            transactions={accountTxns} 
+                            transactions={processedAccountTxns} 
                             showFullDetails={showFullDetails} 
                             isStatementView={true} 
                             selectedAccountName={selectedAccount.name} 

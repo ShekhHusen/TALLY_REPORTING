@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, getDocs, collection, query, where, limit, startAfter, or } from 'firebase/firestore';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
@@ -124,26 +124,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
             fyFiltered.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             const combined = isLoadMore ? [...transactions, ...fyFiltered] : fyFiltered;
-
-            let runningVal = fyData 
-                ? (fyData.openingBalanceType === 'Cr' ? -1 : 1) * parseFloat(fyData.openingBalance || 0)
-                : 0;
-
-            const processed = combined.map(t => {
-                const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === accNameLower;
-                const debAmt = isDebit ? parseFloat(t.debitAmount || 0) : 0;
-                const credAmt = !isDebit ? parseFloat(t.creditAmount || 0) : 0;
-                
-                runningVal = runningVal + debAmt - credAmt;
-                
-                return {
-                    ...t,
-                    runningBalance: Math.abs(runningVal),
-                    runningBalanceType: runningVal < 0 ? 'Cr' : (runningVal > 0 ? 'Dr' : '')
-                };
-            });
-
-            setTransactions(processed);
+            setTransactions(combined);
             setLastVisibleTxn(snap.docs[snap.docs.length - 1]);
             setHasMoreTxns(snap.docs.length === 50);
         } catch (err) {
@@ -152,6 +133,49 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
             setLoadingTxns(false);
         }
     };
+
+    // Calculate accurate running balance and account-specific debit/credit amounts based on opening balance
+    const processedTransactions = useMemo(() => {
+        if (!transactions || transactions.length === 0) return [];
+
+        const ob = parseFloat(fyData?.openingBalance || 0);
+        const obType = fyData?.openingBalanceType || '';
+        let runningVal = obType === 'Cr' ? -ob : ob;
+
+        const accNameLower = (accountName || '').trim().toLowerCase();
+        const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        return sorted.map(t => {
+            let debAmt = 0;
+            let credAmt = 0;
+
+            if (t.allDebitEntries && t.allDebitEntries.length > 0) {
+                debAmt = t.allDebitEntries
+                    .filter(e => e.name && e.name.trim().toLowerCase() === accNameLower)
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            } else if (t.debitAccount && t.debitAccount.trim().toLowerCase() === accNameLower) {
+                debAmt = parseFloat(t.debitAmount || 0);
+            }
+
+            if (t.allCreditEntries && t.allCreditEntries.length > 0) {
+                credAmt = t.allCreditEntries
+                    .filter(e => e.name && e.name.trim().toLowerCase() === accNameLower)
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            } else if (t.creditAccount && t.creditAccount.trim().toLowerCase() === accNameLower) {
+                credAmt = parseFloat(t.creditAmount || 0);
+            }
+
+            runningVal = runningVal + debAmt - credAmt;
+
+            return {
+                ...t,
+                accountDebitAmt: debAmt,
+                accountCreditAmt: credAmt,
+                runningBalance: Math.abs(runningVal),
+                runningBalanceType: runningVal < 0 ? 'Cr' : (runningVal > 0 ? 'Dr' : '')
+            };
+        });
+    }, [transactions, fyData, accountName]);
 
     useEffect(() => {
         if (isOpen && accountName && selectedFY) {
@@ -189,9 +213,12 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
         const tableColumn = ["Date", "Particulars", "Vch Type", "Vch No", "Debit", "Credit", "Balance"];
         const tableRows = [];
 
-        transactions.forEach(t => {
-            const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === accountName.toLowerCase();
-            let particulars = isDebit ? `To ${t.creditAccount}` : `By ${t.debitAccount}`;
+        processedTransactions.forEach(t => {
+            const isDebit = t.accountDebitAmt > 0 || (t.accountCreditAmt === 0 && (
+                (t.debitAccount && t.debitAccount.toLowerCase() === accountName.toLowerCase()) ||
+                (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === accountName.toLowerCase()))
+            ));
+            let particulars = isDebit ? `To ${t.creditAccount || '-'}` : `By ${t.debitAccount || '-'}`;
             
             if (showFullDetails && t.narration) {
                 particulars += `\n[Narration: ${t.narration}]`;
@@ -202,8 +229,8 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
                 particulars,
                 t.type,
                 t.voucherNo,
-                isDebit && t.debitAmount ? formatCurrency(t.debitAmount) : '',
-                !isDebit && t.creditAmount ? formatCurrency(t.creditAmount) : '',
+                t.accountDebitAmt ? formatCurrency(t.accountDebitAmt) : '',
+                t.accountCreditAmt ? formatCurrency(t.accountCreditAmt) : '',
                 `${formatCurrency(t.runningBalance)} ${t.runningBalanceType}`
             ];
             tableRows.push(row);
@@ -225,17 +252,20 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
         const activeFY = fyOptions.find(f => f.id === selectedFY);
         const fyName = activeFY?.name || selectedFY;
         
-        const formattedData = transactions.map(t => {
-            const isDebit = t.debitAccount && t.debitAccount.toLowerCase() === accountName.toLowerCase();
-            let particulars = isDebit ? `To ${t.creditAccount}` : `By ${t.debitAccount}`;
+        const formattedData = processedTransactions.map(t => {
+            const isDebit = t.accountDebitAmt > 0 || (t.accountCreditAmt === 0 && (
+                (t.debitAccount && t.debitAccount.toLowerCase() === accountName.toLowerCase()) ||
+                (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === accountName.toLowerCase()))
+            ));
+            let particulars = isDebit ? `To ${t.creditAccount || '-'}` : `By ${t.debitAccount || '-'}`;
             
             return {
                 Date: t.date,
                 Particulars: particulars,
                 VoucherType: t.type,
                 VoucherNo: t.voucherNo,
-                DebitAmount: isDebit ? parseFloat(t.debitAmount || 0) : null,
-                CreditAmount: !isDebit ? parseFloat(t.creditAmount || 0) : null,
+                DebitAmount: t.accountDebitAmt || null,
+                CreditAmount: t.accountCreditAmt || null,
                 Balance: parseFloat(t.runningBalance || 0),
                 BalanceType: t.runningBalanceType || '',
                 Narration: t.narration || ''
@@ -343,7 +373,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
                 {/* Transactions Table Area */}
                 <div className="flex-1 overflow-auto p-0">
                     <TransactionTable 
-                        transactions={transactions} 
+                        transactions={processedTransactions} 
                         showFullDetails={showFullDetails} 
                         isStatementView={true} 
                         selectedAccountName={accountName}
