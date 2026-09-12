@@ -95,11 +95,7 @@ export default function UserManagementTab({ updateTrigger }) {
     }
 
     return (
-        <div className="h-[calc(100vh-12rem)] flex flex-col relative">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800">User Management</h2>
-            </div>
-            
+        <div className="flex-1 flex flex-col relative">
             <div className="bg-white shadow rounded-lg border border-gray-200 flex-1 overflow-auto">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-gray-50 sticky top-0 shadow-sm z-10">

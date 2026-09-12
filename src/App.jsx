@@ -112,132 +112,146 @@ export default function App() {
     const activeTabObj = availableTabs.find(t => t.id === activeTab) || availableTabs[0];
 
     return (
-        <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
+        <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
             
-            {/* DESKTOP SIDEBAR */}
-            <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 shadow-sm z-20">
-                <div className="p-6 border-b border-gray-100">
-                    <h1 className="text-2xl font-extrabold text-blue-700 tracking-tight">Tally Analyzer</h1>
-                    <p className="text-xs text-gray-500 mt-1 font-medium">Deep Data Analysis</p>
-                </div>
-                
-                <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-                    {availableTabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                                activeTab === tab.id 
-                                ? 'bg-blue-50 text-blue-700 shadow-sm' 
-                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                            }`}
-                        >
-                            <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'text-blue-600' : 'text-gray-400'}`} />
-                            {tab.label}
-                        </button>
-                    ))}
-                </nav>
-
-                <div className="p-4 border-t border-gray-200 bg-gray-50">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shadow-inner">
-                            {currentUser.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-bold text-gray-900 truncate">{currentUser.name}</p>
-                            <p className="text-xs text-gray-500 capitalize">{currentUser.role}</p>
-                        </div>
+            {/* TOP NAVIGATION BAR */}
+            <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-2.5 flex justify-between items-center shadow-sm z-30">
+                <div className="flex items-center gap-4 lg:gap-6">
+                    {/* LOGO */}
+                    <div>
+                        <h1 className="text-lg md:text-xl font-extrabold text-blue-700 tracking-tight leading-none">Tally Analyzer</h1>
+                        <p className="text-[9px] md:text-[10px] text-gray-500 mt-1 font-medium leading-none">Deep Data Analysis</p>
                     </div>
+
+                    {/* PAGE TITLE (Moved to Nav) */}
+                    <div className="hidden md:block h-6 w-px bg-gray-300 mx-1"></div>
+                    <h2 className="hidden md:flex text-base lg:text-lg font-bold text-gray-800 items-center gap-2">
+                        {activeTabObj && <activeTabObj.icon className="w-5 h-5 text-blue-600" />}
+                        {activeTabObj ? activeTabObj.label : 'Dashboard'}
+                    </h2>
+                </div>
+
+                <div className="flex items-center gap-3 lg:gap-5">
+                    {/* DESKTOP NAVIGATION (Compact Section) */}
+                    <nav className="hidden md:flex items-center p-1 bg-slate-50/80 border border-slate-200/60 rounded-xl shadow-sm gap-0.5">
+                        {availableTabs.map(tab => {
+                            const isActive = activeTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+                                        isActive 
+                                        ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' 
+                                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/50'
+                                    }`}
+                                >
+                                    <tab.icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                    <span className={isActive ? 'inline-block' : 'hidden lg:inline-block'}>{tab.label}</span>
+                                </button>
+                            );
+                        })}
+                    </nav>
+                    {/* DESKTOP RESTRICTED VIEW */}
                     {currentUser.allowedAccount && (
-                        <div className="mb-3">
-                            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Restricted View</p>
-                            <p className="text-xs text-orange-700 bg-orange-100 px-2 py-1 rounded truncate font-semibold">
+                        <div className="hidden md:flex items-center">
+                            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mr-2">View:</span>
+                            <span className="text-xs text-orange-700 bg-orange-100 px-2 py-1 rounded font-semibold max-w-[150px] truncate">
                                 {currentUser.allowedAccount}
-                            </p>
+                            </span>
                         </div>
                     )}
-                    <div className="flex gap-2">
-                        <button 
-                            onClick={() => setShowChangePassword(true)}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
-                            title="Change Password"
-                        >
-                            <Key className="w-3.5 h-3.5" /> Pass
-                        </button>
-                        <button 
-                            onClick={handleLogout}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-md text-xs font-medium text-red-600 hover:bg-red-100 transition-colors shadow-sm"
-                        >
-                            <LogOut className="w-3.5 h-3.5" /> Exit
-                        </button>
-                    </div>
-                </div>
-            </aside>
+                    
+                    {/* MOBILE RESTRICTED VIEW */}
+                    {currentUser.allowedAccount && (
+                        <p className="md:hidden text-[10px] text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded inline-block font-semibold mt-0.5">
+                            View: {currentUser.allowedAccount}
+                        </p>
+                    )}
 
-            {/* MAIN CONTENT AREA */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                
-                {/* MOBILE TOP HEADER */}
-                <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center shadow-sm z-20">
-                    <div>
-                        <h1 className="text-lg font-bold text-blue-700 tracking-tight">Tally Analyzer</h1>
-                        {currentUser.allowedAccount && (
-                            <p className="text-[10px] text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded inline-block font-semibold mt-0.5">
-                                View: {currentUser.allowedAccount}
-                            </p>
-                        )}
-                    </div>
+                    {/* MOBILE MENU BUTTON */}
                     <button 
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        className="p-2 -mr-2 text-gray-600 hover:text-gray-900 focus:outline-none"
+                        className="md:hidden p-2 -mr-2 text-gray-600 hover:text-gray-900 focus:outline-none"
                     >
                         <User className="w-6 h-6" />
                     </button>
-                </header>
 
-                {/* MOBILE USER MENU DROPDOWN */}
-                {mobileMenuOpen && (
-                    <div className="md:hidden absolute top-[60px] left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-30 p-4">
-                        <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
-                            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg">
+                    {/* DESKTOP USER MENU (Hover Dropdown) */}
+                    <div className="hidden md:block relative group">
+                        <button className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-50 transition-colors focus:outline-none">
+                            <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shadow-inner">
                                 {currentUser.name.charAt(0).toUpperCase()}
                             </div>
-                            <div>
-                                <p className="text-base font-bold text-gray-900">{currentUser.name}</p>
-                                <p className="text-sm text-gray-500 capitalize">{currentUser.role} Account</p>
+                            <div className="hidden lg:block text-left mr-1">
+                                <p className="text-sm font-bold text-gray-900 max-w-[120px] truncate leading-tight">{currentUser.name}</p>
+                                <p className="text-xs text-gray-500 capitalize leading-tight">{currentUser.role}</p>
+                            </div>
+                        </button>
+                        
+                        {/* Dropdown Panel */}
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
+                            <div className="p-4 border-b border-gray-50">
+                                <p className="text-sm font-bold text-gray-900 truncate">{currentUser.name}</p>
+                                <p className="text-xs text-gray-500 capitalize mt-0.5">{currentUser.role} Account</p>
+                            </div>
+                            <div className="p-2 space-y-1">
+                                <button 
+                                    onClick={() => setShowChangePassword(true)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                                >
+                                    <Key className="w-4 h-4 text-gray-500" /> Change Password
+                                </button>
+                                <button 
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                    <LogOut className="w-4 h-4 text-red-500" /> Sign Out
+                                </button>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-2">
-                            <button 
-                                onClick={() => { setShowChangePassword(true); setMobileMenuOpen(false); }}
-                                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg text-sm font-semibold text-gray-700"
-                            >
-                                <Key className="w-4 h-4 text-gray-500" /> Change Password
-                            </button>
-                            <button 
-                                onClick={handleLogout}
-                                className="w-full flex items-center gap-3 px-4 py-3 bg-red-50 rounded-lg text-sm font-semibold text-red-600"
-                            >
-                                <LogOut className="w-4 h-4 text-red-500" /> Logout
-                            </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* MOBILE USER MENU DROPDOWN */}
+            {mobileMenuOpen && (
+                <div className="md:hidden absolute top-[60px] left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-40 p-4">
+                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg">
+                            {currentUser.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p className="text-base font-bold text-gray-900">{currentUser.name}</p>
+                            <p className="text-sm text-gray-500 capitalize">{currentUser.role} Account</p>
                         </div>
                     </div>
-                )}
+                    <div className="flex flex-col gap-2">
+                        <button 
+                            onClick={() => { setShowChangePassword(true); setMobileMenuOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg text-sm font-semibold text-gray-700"
+                        >
+                            <Key className="w-4 h-4 text-gray-500" /> Change Password
+                        </button>
+                        <button 
+                            onClick={handleLogout}
+                            className="w-full flex items-center gap-3 px-4 py-3 bg-red-50 rounded-lg text-sm font-semibold text-red-600"
+                        >
+                            <LogOut className="w-4 h-4 text-red-500" /> Logout
+                        </button>
+                    </div>
+                </div>
+            )}
 
-                {/* DESKTOP TOP HEADER (Optional context bar) */}
-                <header className="hidden md:flex bg-white/80 backdrop-blur-md border-b border-gray-200 px-8 py-5 items-center justify-between z-10 sticky top-0">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        {activeTabObj && <activeTabObj.icon className="w-6 h-6 text-blue-600" />}
-                        {activeTabObj ? activeTabObj.label : 'Dashboard'}
-                    </h2>
-                </header>
+            {/* MAIN CONTENT AREA */}
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
 
                 {/* SCROLLABLE MAIN PAGE */}
-                <main className="flex-1 overflow-auto p-4 md:p-8 bg-gray-50 pb-24 md:pb-8">
+                <main className="flex-1 overflow-hidden p-3 md:p-4 bg-gray-50 pb-24 md:pb-4 flex flex-col">
                     
                     {/* Password Change Modal */}
                     {showChangePassword && (
-                        <div className="mb-6 p-5 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-end gap-4 max-w-xl mx-auto md:mx-0">
+                        <div className="shrink-0 mb-6 p-5 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-end gap-4 max-w-xl mx-auto md:mx-0">
                             <div className="flex-1 w-full">
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">Set New Password</label>
                                 <input 
@@ -265,17 +279,17 @@ export default function App() {
                         </div>
                     )}
 
-                    <div className="max-w-7xl mx-auto">
-                        <div style={{ display: activeTab === 'users' ? 'block' : 'none' }}>
+                    <div className="max-w-7xl mx-auto w-full flex-1 min-h-0 flex flex-col">
+                        <div style={{ display: activeTab === 'users' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'users' && <UserManagementTab updateTrigger={updateTrigger} />}
                         </div>
-                        <div style={{ display: activeTab === 'settings' ? 'block' : 'none' }}>
+                        <div style={{ display: activeTab === 'settings' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col overflow-y-auto">
                             {activeTab === 'settings' && <SettingsTab currentUser={currentUser} />}
                         </div>
-                        <div style={{ display: activeTab === 'import' ? 'block' : 'none' }}>
+                        <div style={{ display: activeTab === 'import' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col overflow-y-auto">
                             {activeTab === 'import' && <ImportCenter setUpdateTrigger={setUpdateTrigger} currentUser={currentUser} />}
                         </div>
-                        <div style={{ display: activeTab === 'accounts' ? 'block' : 'none' }}>
+                        <div style={{ display: activeTab === 'accounts' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'accounts' && (
                                 <AccountsTab 
                                     updateTrigger={updateTrigger}
@@ -286,7 +300,7 @@ export default function App() {
                                 />
                             )}
                         </div>
-                        <div style={{ display: activeTab === 'transactions' ? 'block' : 'none' }}>
+                        <div style={{ display: activeTab === 'transactions' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'transactions' && (
                                 <TransactionsTab 
                                     updateTrigger={updateTrigger}
@@ -296,7 +310,7 @@ export default function App() {
                                 />
                             )}
                         </div>
-                        <div style={{ display: activeTab === 'followups' ? 'block' : 'none' }}>
+                        <div style={{ display: activeTab === 'followups' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'followups' && <FollowUpsTab currentUser={currentUser} />}
                         </div>
                     </div>

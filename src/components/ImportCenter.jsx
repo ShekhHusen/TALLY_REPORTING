@@ -407,7 +407,17 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
     return (
         <div className="p-6 max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Import Center</h2>
+                <div className="flex items-center gap-4">
+                    <label className="text-sm font-semibold text-gray-700">Fiscal Year for Import:</label>
+                    <select
+                        value={selectedFYId}
+                        onChange={(e) => setSelectedFYId(e.target.value)}
+                        className="px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-medium bg-white"
+                    >
+                        {fyOptions.length === 0 && <option value="">No Fiscal Years found</option>}
+                        {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
+                    </select>
+                </div>
                 <button 
                     type="button"
                     onClick={() => setShowPushModal(true)}
@@ -416,18 +426,6 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                     <PlusCircle size={18} />
                     Push Transaction
                 </button>
-            </div>
-            
-            <div className="mb-6 flex items-center gap-4">
-                <label className="text-sm font-semibold text-gray-700">Fiscal Year for Import:</label>
-                <select
-                    value={selectedFYId}
-                    onChange={(e) => setSelectedFYId(e.target.value)}
-                    className="px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-medium bg-white"
-                >
-                    {fyOptions.length === 0 && <option value="">No Fiscal Years found</option>}
-                    {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
-                </select>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

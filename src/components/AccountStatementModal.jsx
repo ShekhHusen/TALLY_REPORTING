@@ -290,81 +290,99 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] flex flex-col overflow-hidden ring-1 ring-black/5">
                 {/* Header */}
-                <div className="p-4 sm:p-5 border-b border-gray-100 bg-white flex flex-wrap gap-4 justify-between items-center shrink-0">
+                <div className="px-6 py-5 border-b border-gray-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
                     <div className="flex items-center gap-4">
-                        <div className="p-2.5 bg-blue-50 text-blue-700 rounded-xl">
-                            <FileText size={24} />
+                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                            <FileText size={28} className="stroke-[2.5]" />
                         </div>
                         <div>
-                            <h3 className="font-extrabold text-xl text-gray-900 tracking-tight">{accountName}</h3>
-                            <p className="text-xs font-medium text-gray-500 mt-0.5">Group: {accountData?.group || 'N/A'}</p>
+                            <h3 className="font-extrabold text-2xl text-gray-900 tracking-tight">{accountName}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{accountData?.group || 'N/A'}</span>
+                                <span className="text-gray-300">•</span>
+                                <span className="text-xs font-bold text-indigo-600">Ledger Statement</span>
+                            </div>
                         </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 self-start sm:self-auto">
                         <select
                             value={selectedFY}
                             onChange={(e) => setSelectedFY(e.target.value)}
-                            className="ml-4 px-3 py-1.5 sm:px-4 sm:py-2 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold bg-blue-50 text-blue-700 cursor-pointer shadow-sm hover:bg-blue-100 transition-colors"
+                            className="px-4 py-2 sm:py-2.5 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold bg-gray-50 text-gray-800 cursor-pointer hover:bg-gray-100 transition-colors shadow-sm ring-1 ring-inset ring-gray-200"
                         >
                             {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
                         </select>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-2 text-sm font-bold text-gray-600 cursor-pointer hover:text-gray-900 transition-colors mr-2">
-                            <input 
-                                type="checkbox" 
-                                checked={showFullDetails}
-                                onChange={(e) => setShowFullDetails(e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-50"
-                            />
-                            Show details
-                        </label>
-                        <button 
-                            onClick={exportToPDF}
-                            className="bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-1.5 border border-red-200"
-                        >
-                            <Download size={16} /> PDF
-                        </button>
-                        <button 
-                            onClick={exportToExcel}
-                            className="bg-green-50 hover:bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-1.5 border border-green-200"
-                        >
-                            <Download size={16} /> Excel
-                        </button>
                         <button 
                             onClick={onClose}
-                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition ml-2"
+                            className="p-2 sm:p-2.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors ml-1"
                         >
-                            <X size={20} />
+                            <X size={22} className="stroke-[2.5]" />
                         </button>
                     </div>
                 </div>
 
-                {/* Balance Summary Card */}
-                <div className="p-4 sm:p-5 bg-white border-b border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 shrink-0 text-sm">
-                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col justify-center">
-                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Opening Balance</div>
-                        <div className="text-base font-extrabold text-gray-800">
-                            {formatCurrency(displayBalance.openingBalance)} <span className="text-[10px] text-gray-500">{displayBalance.openingBalanceType}</span>
+                {/* Toolbar & Balance Summary Card */}
+                <div className="px-6 py-5 bg-gray-50/50 border-b border-gray-100 flex flex-col gap-5 shrink-0">
+                    {/* Controls Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <label className="flex items-center gap-2.5 text-sm font-bold text-gray-700 cursor-pointer hover:text-gray-900 transition-colors select-none">
+                            <input 
+                                type="checkbox" 
+                                checked={showFullDetails}
+                                onChange={(e) => setShowFullDetails(e.target.checked)}
+                                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 bg-white"
+                            />
+                            Show narration details
+                        </label>
+                        
+                        <div className="flex items-center gap-2.5">
+                            <button 
+                                onClick={exportToPDF}
+                                className="bg-white hover:bg-red-50 text-red-600 px-3.5 py-1.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-gray-200 hover:border-red-200 shadow-sm"
+                            >
+                                <Download size={16} className="stroke-[2.5]" /> PDF
+                            </button>
+                            <button 
+                                onClick={exportToExcel}
+                                className="bg-white hover:bg-green-50 text-green-700 px-3.5 py-1.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-gray-200 hover:border-green-200 shadow-sm"
+                            >
+                                <Download size={16} className="stroke-[2.5]" /> Excel
+                            </button>
                         </div>
                     </div>
-                    <div className="bg-red-50/50 p-4 rounded-xl border border-red-100 flex flex-col justify-center">
-                        <div className="text-[10px] text-red-500 font-bold uppercase tracking-wider mb-1">Total Debit</div>
-                        <div className="text-base font-extrabold text-red-700">
-                            {formatCurrency(displayBalance.totalDebit)}
+
+                    {/* Balances Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+                            <div className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest mb-1.5">Opening Balance</div>
+                            <div className="text-lg font-extrabold text-gray-900">
+                                {formatCurrency(displayBalance.openingBalance)} <span className="text-xs text-gray-500 font-bold ml-0.5">{displayBalance.openingBalanceType}</span>
+                            </div>
                         </div>
-                    </div>
-                    <div className="bg-green-50/50 p-4 rounded-xl border border-green-100 flex flex-col justify-center">
-                        <div className="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-1">Total Credit</div>
-                        <div className="text-base font-extrabold text-green-700">
-                            {formatCurrency(displayBalance.totalCredit)}
+                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+                            <div className="text-[10px] text-red-500 font-extrabold uppercase tracking-widest mb-1.5">Total Debit</div>
+                            <div className="text-lg font-extrabold text-red-600">
+                                {formatCurrency(displayBalance.totalDebit)}
+                            </div>
                         </div>
-                    </div>
-                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col justify-center">
-                        <div className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-1">Closing Balance</div>
-                        <div className="text-lg font-black text-blue-800 leading-none">
-                            {formatCurrency(displayBalance.closingBalance)} <span className="text-xs font-bold">{displayBalance.closingBalanceType}</span>
+                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+                            <div className="text-[10px] text-green-600 font-extrabold uppercase tracking-widest mb-1.5">Total Credit</div>
+                            <div className="text-lg font-extrabold text-green-600">
+                                {formatCurrency(displayBalance.totalCredit)}
+                            </div>
+                        </div>
+                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-100 rounded-full blur-2xl -mr-10 -mt-10 opacity-60"></div>
+                            <div className="relative z-10">
+                                <div className="text-[10px] text-indigo-700 font-extrabold uppercase tracking-widest mb-1.5">Closing Balance</div>
+                                <div className="text-2xl font-black text-indigo-900 leading-none">
+                                    {formatCurrency(displayBalance.closingBalance)} <span className="text-sm font-bold opacity-80 ml-0.5">{displayBalance.closingBalanceType}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -379,13 +397,18 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
                         onDeleteTransaction={handleDelete}
                     />
                     
-                    {loadingTxns && <div className="text-center p-6 text-sm font-medium text-gray-500">Loading transactions...</div>}
+                    {loadingTxns && (
+                        <div className="flex items-center justify-center p-12 text-sm font-bold text-gray-400 gap-3">
+                            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                            Loading statement...
+                        </div>
+                    )}
                     
                     {!loadingTxns && hasMoreTxns && transactions.length > 0 && (
-                        <div className="text-center p-6 border-t border-gray-100">
+                        <div className="text-center p-8 border-t border-gray-100">
                             <button 
                                 onClick={() => fetchTransactions(true)}
-                                className="px-6 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-sm font-bold border border-gray-200 transition-colors"
+                                className="px-6 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-full text-sm font-bold border border-gray-200 shadow-sm transition-colors"
                             >
                                 Load More Transactions
                             </button>
