@@ -281,12 +281,12 @@ export default function FollowUpsTab({ currentUser }) {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col flex-1 min-h-0 overflow-hidden">
         
         {/* Unified Top Control Bar */}
-        <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col gap-4 sm:gap-5 bg-white rounded-t-2xl shrink-0 relative z-20">
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
+        <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col gap-3 sm:gap-5 bg-white rounded-t-2xl shrink-0 relative z-20">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-4">
             
-            {/* Left: Status Nav List (Small Cards / Pills) */}
-            <div className="flex-1 w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0">
-              <div className="flex gap-2 min-w-max">
+            {/* Top Row on Mobile: Status Cards */}
+            <div className="w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0 shrink-0">
+              <div className="flex gap-2 w-max mx-auto md:mx-0">
                 {[
                   { id: 'Active', label: 'Active', count: totalActive, color: 'text-blue-700 bg-blue-100 border-blue-200' },
                   { id: 'Today', label: 'Today', count: countToday, color: 'text-amber-700 bg-amber-100 border-amber-200' },
@@ -323,39 +323,41 @@ export default function FollowUpsTab({ currentUser }) {
               </div>
             </div>
 
-            {/* Center: Account Name */}
-            <div className="shrink-0 w-full md:w-64">
-              <input 
-                type="text" 
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors"
-                value={searchAccount}
-                onChange={e => {
-                  setSearchAccount(e.target.value);
-                  // Optional: Auto-search as they type, or let them click Apply
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSearch();
-                }}
-                placeholder="Search account name..."
-              />
-            </div>
+            {/* Second Row on Mobile: Search + Filter */}
+            <div className="flex items-center justify-between gap-2 md:gap-4 w-full md:flex-1 min-w-0">
+              {/* Center: Account Name */}
+              <div className="flex-1 w-full min-w-0">
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 font-medium transition-colors"
+                  value={searchAccount}
+                  onChange={e => {
+                    setSearchAccount(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSearch();
+                  }}
+                  placeholder="Search account name..."
+                />
+              </div>
 
-            {/* Right: Filter Button */}
-            <div className="shrink-0 w-full md:w-auto flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowMobileFilters(true)}
-                className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
-              >
-                <Filter className="w-4 h-4 text-blue-600" />
-                <span>Filters</span>
-                {hasActiveFilters && (
-                  <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">
-                    •
-                  </span>
-                )}
-                {showMobileFilters ? <ChevronUp className="w-4 h-4 text-gray-400 ml-1 hidden md:block" /> : <ChevronDown className="w-4 h-4 text-gray-400 ml-1 hidden md:block" />}
-              </button>
+              {/* Right: Filter Button */}
+              <div className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilters(true)}
+                  className="flex justify-center items-center gap-1.5 md:gap-2 px-3 py-2 md:px-4 md:py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs md:text-sm font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
+                >
+                  <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
+                  <span className="hidden md:inline">Filters</span>
+                  {hasActiveFilters && (
+                    <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">
+                      •
+                    </span>
+                  )}
+                  {showMobileFilters ? <ChevronUp className="w-4 h-4 text-gray-400 ml-1 hidden md:block" /> : <ChevronDown className="w-4 h-4 text-gray-400 ml-1 hidden md:block" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -733,24 +735,36 @@ export default function FollowUpsTab({ currentUser }) {
 
         {/* Pagination Bar */}
         {!loading && filteredFollowUps.length > 0 && (
-          <div className="bg-white border-t border-gray-100 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-            <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+          <div className="flex flex-row justify-between items-center px-3 py-3 sm:py-2 bg-white sm:bg-gray-50 border-t border-gray-200 shrink-0">
+            {/* Desktop Showing */}
+            <span className="hidden sm:inline text-[11px] font-bold text-gray-500 uppercase tracking-wider text-left">
               Showing <span className="text-gray-900">{startIndex + 1}</span> to <span className="text-gray-900">{Math.min(startIndex + itemsPerPage, filteredFollowUps.length)}</span> of <span className="text-gray-900">{filteredFollowUps.length}</span> results
-            </div>
-            <div className="flex gap-2">
+            </span>
+            <div className="flex w-full sm:w-auto gap-2 items-center justify-between sm:justify-end">
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm text-gray-700"
+                className="shrink-0 py-1.5 px-2.5 sm:py-1.5 sm:px-3 bg-gray-100 sm:bg-white text-gray-700 text-xs sm:text-sm font-bold sm:font-medium rounded border border-gray-200 sm:border-gray-300 disabled:opacity-40 transition"
               >
-                Previous
+                <span className="sm:hidden">← Prev.</span><span className="hidden sm:inline">Previous</span>
               </button>
+
+              <div className="flex items-center justify-center text-[10px] sm:text-sm text-center truncate flex-1 sm:flex-none font-medium text-gray-600">
+                <span className="sm:hidden truncate mr-1">
+                  {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredFollowUps.length)} of {filteredFollowUps.length}
+                </span>
+                <span className="sm:hidden text-gray-400 mr-1">•</span>
+                <span className="font-bold text-gray-800 whitespace-nowrap">
+                  <span className="sm:hidden">Pg </span>{currentPage} <span className="text-gray-400">/ {totalPages}</span>
+                </span>
+              </div>
+
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages || totalPages === 0}
-                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm text-gray-700"
+                className="shrink-0 py-1.5 px-2.5 sm:py-1.5 sm:px-3 bg-blue-50 sm:bg-white text-blue-700 sm:text-gray-700 text-xs sm:text-sm font-bold sm:font-medium rounded border border-blue-200 sm:border-gray-300 disabled:opacity-40 transition"
               >
-                Next
+                <span className="sm:hidden">Next →</span><span className="hidden sm:inline">Next</span>
               </button>
             </div>
           </div>

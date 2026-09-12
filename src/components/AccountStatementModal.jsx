@@ -7,7 +7,7 @@ import { deleteTransactionRecord } from '../utils/transactionOperations';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from 'xlsx';
-import { X, FileText, Download } from 'lucide-react';
+import { X, FileText, Download, ChevronUp, ChevronDown } from 'lucide-react';
 
 const formatCurrency = (num) => {
     const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num) || 0);
@@ -24,6 +24,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
     const [lastVisibleTxn, setLastVisibleTxn] = useState(null);
     const [hasMoreTxns, setHasMoreTxns] = useState(false);
     const [showFullDetails, setShowFullDetails] = useState(false);
+    const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
 
     // 1. Fetch Fiscal Years on mount or open
     useEffect(() => {
@@ -293,99 +294,133 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6">
             <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] flex flex-col overflow-hidden ring-1 ring-black/5">
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-gray-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
-                            <FileText size={28} className="stroke-[2.5]" />
-                        </div>
-                        <div>
-                            <h3 className="font-extrabold text-2xl text-gray-900 tracking-tight">{accountName}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{accountData?.group || 'N/A'}</span>
-                                <span className="text-gray-300">•</span>
-                                <span className="text-xs font-bold text-indigo-600">Ledger Statement</span>
+                <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-white flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0">
+                    
+                    {/* Account Name & Info (Clickable for mobile to collapse summary) */}
+                    <div 
+                        className="flex items-center justify-between cursor-pointer xl:cursor-default"
+                        onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}
+                    >
+                        <div className="flex items-center gap-3 sm:gap-4 w-full">
+                            <div className="p-2 sm:p-3 bg-indigo-50 text-indigo-600 rounded-xl sm:rounded-2xl shrink-0">
+                                <FileText className="stroke-[2.5] w-6 h-6 sm:w-7 sm:h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-extrabold text-lg sm:text-2xl text-gray-900 tracking-tight flex items-center justify-between xl:justify-start gap-2">
+                                    <span className="truncate">{accountName}</span>
+                                    {/* Collapse Button (Only visible on smaller screens) */}
+                                    <button className="xl:hidden text-gray-400 p-1 hover:bg-gray-100 rounded-lg shrink-0 transition-colors">
+                                        {isSummaryCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                                    </button>
+                                </h3>
+                                <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
+                                    <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider truncate">{accountData?.group || 'N/A'}</span>
+                                    <span className="text-gray-300 shrink-0">•</span>
+                                    <span className="text-[10px] sm:text-xs font-bold text-indigo-600 shrink-0">Ledger Statement</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div className="flex items-center gap-3 self-start sm:self-auto">
-                        <select
-                            value={selectedFY}
-                            onChange={(e) => setSelectedFY(e.target.value)}
-                            className="px-4 py-2 sm:py-2.5 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold bg-gray-50 text-gray-800 cursor-pointer hover:bg-gray-100 transition-colors shadow-sm ring-1 ring-inset ring-gray-200"
-                        >
-                            {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
-                        </select>
-                        <button 
-                            onClick={onClose}
-                            className="p-2 sm:p-2.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors ml-1"
-                        >
-                            <X size={22} className="stroke-[2.5]" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Toolbar & Balance Summary Card */}
-                <div className="px-6 py-5 bg-gray-50/50 border-b border-gray-100 flex flex-col gap-5 shrink-0">
-                    {/* Controls Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <label className="flex items-center gap-2.5 text-sm font-bold text-gray-700 cursor-pointer hover:text-gray-900 transition-colors select-none">
+                    {/* Toolbar actions */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+                        {/* Narration Checkbox */}
+                        <label className="hidden sm:flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer hover:text-gray-900 transition-colors select-none mr-2">
                             <input 
                                 type="checkbox" 
                                 checked={showFullDetails}
                                 onChange={(e) => setShowFullDetails(e.target.checked)}
                                 className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 bg-white"
                             />
-                            Show narration details
+                            Show narration
                         </label>
                         
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0 justify-between sm:justify-end">
+                            <select
+                                value={selectedFY}
+                                onChange={(e) => setSelectedFY(e.target.value)}
+                                className="px-3 sm:px-4 py-2 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold bg-gray-50 text-gray-800 cursor-pointer hover:bg-gray-100 transition-colors shadow-sm ring-1 ring-inset ring-gray-200 shrink-0"
+                            >
+                                {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
+                            </select>
+
                             <button 
                                 onClick={exportToPDF}
-                                className="bg-white hover:bg-red-50 text-red-600 px-3.5 py-1.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-gray-200 hover:border-red-200 shadow-sm"
+                                className="shrink-0 bg-white hover:bg-red-50 text-red-600 px-3 sm:px-3.5 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-gray-200 hover:border-red-200 shadow-sm"
                             >
-                                <Download size={16} className="stroke-[2.5]" /> PDF
+                                <Download size={16} className="stroke-[2.5]" /> <span className="hidden sm:inline">PDF</span>
                             </button>
                             <button 
                                 onClick={exportToExcel}
-                                className="bg-white hover:bg-green-50 text-green-700 px-3.5 py-1.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-gray-200 hover:border-green-200 shadow-sm"
+                                className="shrink-0 bg-white hover:bg-green-50 text-green-700 px-3 sm:px-3.5 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-gray-200 hover:border-green-200 shadow-sm"
                             >
-                                <Download size={16} className="stroke-[2.5]" /> Excel
+                                <Download size={16} className="stroke-[2.5]" /> <span className="hidden sm:inline">Excel</span>
+                            </button>
+                            
+                            <button 
+                                onClick={onClose}
+                                className="hidden sm:block p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors ml-1 shrink-0"
+                            >
+                                <X size={20} className="stroke-[2.5]" />
+                            </button>
+                        </div>
+                        
+                        <div className="flex items-center justify-between sm:justify-end gap-3 mt-1 sm:mt-0">
+                            <label className="flex items-center justify-center py-2 sm:py-0 px-3 sm:px-0 gap-2 text-xs sm:text-sm font-bold text-gray-700 cursor-pointer sm:bg-transparent bg-gray-50 sm:border-0 border border-gray-200 rounded-lg sm:rounded-none hover:text-gray-900 transition-colors select-none flex-1 sm:flex-none">
+                                <input 
+                                    type="checkbox" 
+                                    checked={showFullDetails}
+                                    onChange={(e) => setShowFullDetails(e.target.checked)}
+                                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 bg-white"
+                                />
+                                Show full narration
+                            </label>
+                            
+                            <button 
+                                onClick={onClose}
+                                className="sm:hidden p-2 bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors shrink-0"
+                            >
+                                <X size={18} className="stroke-[2.5]" />
                             </button>
                         </div>
                     </div>
+                </div>
 
-                    {/* Balances Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                            <div className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest mb-1.5">Opening Balance</div>
-                            <div className="text-lg font-extrabold text-gray-900">
-                                {formatCurrency(displayBalance.openingBalance)} <span className="text-xs text-gray-500 font-bold ml-0.5">{displayBalance.openingBalanceType}</span>
+                {/* Balances Grid - Collapsible */}
+                {!isSummaryCollapsed && (
+                    <div className="px-4 sm:px-6 py-4 sm:py-5 bg-gray-50/50 border-b border-gray-100 flex flex-col gap-5 shrink-0">
+                        {/* Balances Grid */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                            <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+                                <div className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest mb-1 sm:mb-1.5">Opening Bal</div>
+                                <div className="text-base sm:text-lg font-extrabold text-gray-900 truncate">
+                                    {formatCurrency(displayBalance.openingBalance)} <span className="text-[10px] sm:text-xs text-gray-500 font-bold ml-0.5">{displayBalance.openingBalanceType}</span>
+                                </div>
                             </div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                            <div className="text-[10px] text-red-500 font-extrabold uppercase tracking-widest mb-1.5">Total Debit</div>
-                            <div className="text-lg font-extrabold text-red-600">
-                                {formatCurrency(displayBalance.totalDebit)}
+                            <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+                                <div className="text-[10px] text-red-500 font-extrabold uppercase tracking-widest mb-1 sm:mb-1.5">Total Debit</div>
+                                <div className="text-base sm:text-lg font-extrabold text-red-600 truncate">
+                                    {formatCurrency(displayBalance.totalDebit)}
+                                </div>
                             </div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                            <div className="text-[10px] text-green-600 font-extrabold uppercase tracking-widest mb-1.5">Total Credit</div>
-                            <div className="text-lg font-extrabold text-green-600">
-                                {formatCurrency(displayBalance.totalCredit)}
+                            <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+                                <div className="text-[10px] text-green-600 font-extrabold uppercase tracking-widest mb-1 sm:mb-1.5">Total Credit</div>
+                                <div className="text-base sm:text-lg font-extrabold text-green-600 truncate">
+                                    {formatCurrency(displayBalance.totalCredit)}
+                                </div>
                             </div>
-                        </div>
-                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-100 rounded-full blur-2xl -mr-10 -mt-10 opacity-60"></div>
-                            <div className="relative z-10">
-                                <div className="text-[10px] text-indigo-700 font-extrabold uppercase tracking-widest mb-1.5">Closing Balance</div>
-                                <div className="text-2xl font-black text-indigo-900 leading-none">
-                                    {formatCurrency(displayBalance.closingBalance)} <span className="text-sm font-bold opacity-80 ml-0.5">{displayBalance.closingBalanceType}</span>
+                            <div className="bg-indigo-50 p-3 sm:p-4 rounded-xl border border-indigo-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-100 rounded-full blur-2xl -mr-10 -mt-10 opacity-60"></div>
+                                <div className="relative z-10">
+                                    <div className="text-[10px] text-indigo-700 font-extrabold uppercase tracking-widest mb-1 sm:mb-1.5">Closing Bal</div>
+                                    <div className="text-xl sm:text-2xl font-black text-indigo-900 leading-none truncate">
+                                        {formatCurrency(displayBalance.closingBalance)} <span className="text-[10px] sm:text-sm font-bold opacity-80 ml-0.5">{displayBalance.closingBalanceType}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Transactions Table Area */}
                 <div className="flex-1 overflow-auto p-0 bg-white">

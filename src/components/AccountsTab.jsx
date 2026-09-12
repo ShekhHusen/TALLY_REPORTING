@@ -711,71 +711,72 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             <div className="flex flex-col min-h-0 flex-1 gap-4">
                 <div className="bg-white rounded-lg shadow border border-gray-200 flex flex-col h-full">
                     {/* Header Top Bar */}
-                    <div className="p-4 sm:px-6 sm:py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 bg-white rounded-t-2xl z-20">
-                        {/* Left Side: Nav, FY, Title */}
-                        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                            <button 
-                                onClick={() => setView('directory')}
-                                className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 transition-colors shadow-sm shrink-0"
-                                title="Back to Accounts"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                            </button>
+                    <div className="p-4 sm:px-6 sm:py-4 border-b border-slate-100 flex flex-col gap-4 sm:gap-4 shrink-0 bg-white rounded-t-2xl z-20">
+                        {/* Row 1: Back, FY, and Actions */}
+                        <div className="flex justify-between items-center w-full">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <button 
+                                    onClick={() => setView('directory')}
+                                    className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0"
+                                    title="Back to Accounts"
+                                >
+                                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                                </button>
+                                
+                                <select
+                                    value={detailFY}
+                                    onChange={(e) => { setDetailFY(e.target.value); setAccountTxns([]); setLastVisibleTxn(null); }}
+                                    className="px-2 py-1.5 sm:px-3 sm:py-1.5 border-0 bg-indigo-100 text-indigo-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-bold tracking-wide shadow-inner cursor-pointer shrink-0"
+                                >
+                                    {fyOptions.length === 0 && <option value="">No FY</option>}
+                                    {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
+                                </select>
+                            </div>
                             
-                            <select
-                                value={detailFY}
-                                onChange={(e) => { setDetailFY(e.target.value); setAccountTxns([]); setLastVisibleTxn(null); }}
-                                className="px-3 py-1.5 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-xs font-bold bg-indigo-50 text-indigo-700 tracking-wide uppercase shadow-sm cursor-pointer shrink-0"
-                            >
-                                {fyOptions.length === 0 && <option value="">No Fiscal Years</option>}
-                                {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
-                            </select>
-
-                            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight ml-1 sm:ml-2 truncate max-w-[200px] md:max-w-md" title={selectedAccount.name}>
-                                {selectedAccount.name}
-                            </h2>
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <label className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold text-slate-600 cursor-pointer hover:text-slate-900 transition-colors">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={showFullDetails}
+                                        onChange={(e) => setShowFullDetails(e.target.checked)}
+                                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
+                                    />
+                                    <span>Full</span>
+                                </label>
+                                <button 
+                                    onClick={exportToPDF}
+                                    className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-sm font-bold transition-colors shrink-0"
+                                    title="Export PDF"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    <span className="hidden sm:inline">PDF</span>
+                                </button>
+                                <button 
+                                    onClick={exportToExcel}
+                                    className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-sm font-bold transition-colors shrink-0"
+                                    title="Export Excel"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    <span className="hidden sm:inline">Excel</span>
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Right Side: Actions & Toggle */}
-                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                            <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 cursor-pointer mr-1 hover:text-slate-900 transition-colors">
-                                <input 
-                                    type="checkbox" 
-                                    checked={showFullDetails}
-                                    onChange={(e) => setShowFullDetails(e.target.checked)}
-                                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
-                                />
-                                <span className="hidden sm:inline">Show full details</span>
-                                <span className="sm:hidden">Full</span>
-                            </label>
+                        {/* Row 2: Account Name & Collapse Toggle */}
+                        <div 
+                            className="flex justify-between items-center w-full cursor-pointer group"
+                            onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
+                        >
+                            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate flex-1 pr-4" title={selectedAccount.name}>
+                                {selectedAccount.name}
+                            </h2>
                             <button 
-                                onClick={exportToPDF}
-                                className="flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm"
-                                title="Export PDF"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                <span className="hidden sm:inline">PDF</span>
-                            </button>
-                            <button 
-                                onClick={exportToExcel}
-                                className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm"
-                                title="Export Excel"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                <span className="hidden sm:inline">Excel</span>
-                            </button>
-                            
-                            {/* Expand/Collapse Toggle */}
-                            <div className="w-px h-6 bg-slate-200 mx-1"></div>
-                            <button 
-                                onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
-                                className="flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all border border-transparent hover:border-indigo-100"
-                                title={isSummaryExpanded ? "Collapse Summary" : "Expand Summary"}
+                                className="flex items-center justify-center w-8 h-8 rounded-full text-slate-400 group-hover:text-indigo-600 transition-all shrink-0"
                             >
                                 {isSummaryExpanded ? (
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
                                 ) : (
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                                 )}
                             </button>
                         </div>
@@ -893,17 +894,37 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         <div className="flex flex-col min-h-0 flex-1 gap-3 sm:gap-4">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col flex-1 min-h-0 overflow-hidden">
                 <div className="py-[5px] px-4 sm:px-5 border-b border-gray-100 flex flex-col gap-2 sm:gap-3 bg-white rounded-t-2xl shrink-0 relative z-20">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
-                        {/* Left: Fiscal Year Selector */}
-                        <div className="shrink-0 w-full sm:w-auto">
-                            <select
-                                value={selectedFY}
-                                onChange={(e) => setSelectedFY(e.target.value)}
-                                className="w-full sm:w-auto px-3 py-2 sm:px-4 sm:py-2 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm font-bold bg-blue-50 text-blue-700 cursor-pointer shadow-sm hover:bg-blue-100 transition-colors"
-                            >
-                                {fyOptions.length === 0 && <option value="">No Fiscal Years</option>}
-                                {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
-                            </select>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4">
+                        {/* Mobile: Top Row (FY + Filter), Desktop: Just FY */}
+                        <div className="flex items-center justify-between gap-3 sm:w-auto">
+                            {/* Left: Fiscal Year Selector */}
+                            <div className="shrink-0 flex-1 sm:flex-none">
+                                <select
+                                    value={selectedFY}
+                                    onChange={(e) => setSelectedFY(e.target.value)}
+                                    className="w-full sm:w-auto px-3 py-2 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm font-bold bg-blue-50 text-blue-700 cursor-pointer shadow-sm hover:bg-blue-100 transition-colors"
+                                >
+                                    {fyOptions.length === 0 && <option value="">No Fiscal Years</option>}
+                                    {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
+                                </select>
+                            </div>
+
+                            {/* Right: Filter Toggle Button (Mobile) */}
+                            <div className="shrink-0 sm:hidden">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowMobileFilters(prev => !prev)}
+                                    className="flex justify-center items-center gap-1.5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
+                                >
+                                    <Filter className="w-3.5 h-3.5 text-blue-600" />
+                                    <span>Filters</span>
+                                    {activeFilterCount > 0 && (
+                                        <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                            {activeFilterCount}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
                         </div>
 
                         {/* Center: Search Box */}
@@ -915,12 +936,12 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             />
                         </div>
 
-                        {/* Right: Filter Toggle Button */}
-                        <div className="shrink-0 w-full sm:w-auto">
+                        {/* Right: Filter Toggle Button (Desktop) */}
+                        <div className="shrink-0 hidden sm:block">
                             <button
                                 type="button"
                                 onClick={() => setShowMobileFilters(prev => !prev)}
-                                className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
+                                className="flex justify-center items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
                             >
                                 <Filter className="w-4 h-4 text-blue-600" />
                                 <span>Filters</span>
@@ -1344,8 +1365,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-2 px-4 py-4 sm:py-2 bg-white sm:bg-gray-50 border-t border-gray-200 shrink-0">
-                    <span className="text-xs sm:text-sm text-gray-500 sm:text-gray-700 font-bold sm:font-medium w-full sm:w-auto text-center sm:text-left">
+                <div className="flex flex-row justify-between items-center px-3 py-3 sm:py-2 bg-white sm:bg-gray-50 border-t border-gray-200 shrink-0">
+                    {/* Desktop Showing */}
+                    <span className="hidden sm:inline text-sm text-gray-700 font-medium w-auto text-left">
                         Showing {sortedAccounts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, sortedAccounts.length)} of {sortedAccounts.length} accounts
                     </span>
                     <div className="flex w-full sm:w-auto gap-2 items-center justify-between sm:justify-end">
@@ -1360,19 +1382,27 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         <button 
                             disabled={currentPage === 1 || loadingAccounts}
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            className="flex-1 sm:flex-none py-3 sm:py-1.5 px-4 sm:px-3 bg-gray-100 sm:bg-white text-gray-700 font-bold sm:font-medium rounded-xl sm:rounded border border-gray-200 sm:border-gray-300 disabled:opacity-40 transition"
+                            className="shrink-0 py-1.5 px-2.5 sm:py-1.5 sm:px-3 bg-gray-100 sm:bg-white text-gray-700 text-xs sm:text-sm font-bold sm:font-medium rounded border border-gray-200 sm:border-gray-300 disabled:opacity-40 transition"
                         >
-                            ← Prev
+                            <span className="sm:hidden">← Prev.</span><span className="hidden sm:inline">← Prev</span>
                         </button>
-                        <span className="text-sm font-bold text-gray-800 px-2 sm:px-2 whitespace-nowrap">
-                            <span className="sm:hidden">Pg </span>{currentPage} <span className="text-gray-400">/ {totalPages}</span>
-                        </span>
+                        
+                        <div className="flex items-center justify-center text-[10px] sm:text-sm text-center truncate flex-1 sm:flex-none font-medium text-gray-600">
+                            <span className="sm:hidden truncate mr-1">
+                                {sortedAccounts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, sortedAccounts.length)} of {sortedAccounts.length}
+                            </span>
+                            <span className="sm:hidden text-gray-400 mr-1">•</span>
+                            <span className="font-bold text-gray-800 whitespace-nowrap">
+                                <span className="sm:hidden">Pg </span>{currentPage} <span className="text-gray-400">/ {totalPages}</span>
+                            </span>
+                        </div>
+
                         <button 
                             disabled={!hasNextPage || loadingAccounts}
                             onClick={() => setCurrentPage(p => p + 1)}
-                            className="flex-1 sm:flex-none py-3 sm:py-1.5 px-4 sm:px-3 bg-blue-100 sm:bg-white text-blue-700 sm:text-gray-700 font-bold sm:font-medium rounded-xl sm:rounded border border-blue-200 sm:border-gray-300 disabled:opacity-40 transition"
+                            className="shrink-0 py-1.5 px-2.5 sm:py-1.5 sm:px-3 bg-blue-50 sm:bg-white text-blue-700 sm:text-gray-700 text-xs sm:text-sm font-bold sm:font-medium rounded border border-blue-200 sm:border-gray-300 disabled:opacity-40 transition"
                         >
-                            Next →
+                            <span className="sm:hidden">Next →</span><span className="hidden sm:inline">Next →</span>
                         </button>
                         <button 
                             disabled={!hasNextPage || loadingAccounts}

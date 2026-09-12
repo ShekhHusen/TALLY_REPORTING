@@ -4,7 +4,7 @@ import { collection, writeBatch, doc, getDocs, query, getDoc } from 'firebase/fi
 import { processMaster, processTransactions } from '../utils/parser';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import PushTransactionModal from './PushTransactionModal';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, UploadCloud, RefreshCw, AlertTriangle, Database } from 'lucide-react';
 
 export default function ImportCenter({ setUpdateTrigger, currentUser }) {
     const [loadingMaster, setLoadingMaster] = useState(false);
@@ -405,14 +405,16 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
     const activeFYName = fyOptions.find(f => f.id === selectedFYId)?.name || 'Unknown FY';
 
     return (
-        <div className="p-6 max-w-4xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-4">
-                    <label className="text-sm font-semibold text-gray-700">Fiscal Year for Import:</label>
+        <div className="p-4 sm:p-6 max-w-5xl mx-auto flex flex-col gap-5 sm:gap-6">
+            
+            {/* Top Control Bar */}
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                    <label className="text-sm font-bold text-gray-700 whitespace-nowrap">Fiscal Year:</label>
                     <select
                         value={selectedFYId}
                         onChange={(e) => setSelectedFYId(e.target.value)}
-                        className="px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-medium bg-white"
+                        className="w-full sm:w-auto px-4 py-2 sm:py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                         {fyOptions.length === 0 && <option value="">No Fiscal Years found</option>}
                         {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
@@ -421,65 +423,107 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                 <button 
                     type="button"
                     onClick={() => setShowPushModal(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow font-medium transition flex items-center gap-2 text-sm"
+                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 sm:py-2 rounded-xl shadow-sm font-bold transition-colors flex justify-center items-center gap-2 text-sm"
                 >
                     <PlusCircle size={18} />
                     Push Transaction
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-                    <h3 className="text-lg font-semibold mb-2 text-gray-800">Import Master (Ledgers)</h3>
-                    <p className="text-sm text-gray-500 mb-4">Upload Master.json to import account details to Firestore.</p>
-                    <input 
-                        type="file" 
-                        accept=".json" 
-                        disabled={loadingMaster}
-                        onChange={(e) => handleFileUpload(e, 'master')}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
-                    />
-                    {loadingMaster && <p className="mt-3 text-sm text-blue-600 font-medium animate-pulse">Uploading to Firestore...</p>}
+            {/* Import Cards Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                
+                {/* Import Master */}
+                <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                        <Database size={80} />
+                    </div>
+                    <div className="flex items-center gap-3 mb-2 relative z-10">
+                        <div className="p-2 bg-blue-50 rounded-xl text-blue-600">
+                            <UploadCloud size={20} />
+                        </div>
+                        <h3 className="text-lg font-extrabold text-gray-900">Import Master (Ledgers)</h3>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-6 font-medium relative z-10">Upload Master.json to import account details to Firestore.</p>
+                    
+                    <div className="mt-auto relative z-10 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                        <input 
+                            type="file" 
+                            accept=".json" 
+                            disabled={loadingMaster}
+                            onChange={(e) => handleFileUpload(e, 'master')}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer"
+                        />
+                    </div>
+                    {loadingMaster && <p className="mt-3 text-sm text-blue-600 font-bold animate-pulse">Uploading to Firestore...</p>}
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-                    <h3 className="text-lg font-semibold mb-2 text-gray-800">Import Transactions (Vouchers)</h3>
-                    <p className="text-sm text-gray-500 mb-4">Upload Transactions.json to import vouchers to Firestore.</p>
-                    <input 
-                        type="file" 
-                        accept=".json" 
-                        disabled={loadingTransactions}
-                        onChange={(e) => handleFileUpload(e, 'transaction')}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
-                    />
-                    {loadingTransactions && <p className="mt-3 text-sm text-blue-600 font-medium animate-pulse">Uploading to Firestore...</p>}
+                {/* Import Transactions */}
+                <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                        <Database size={80} />
+                    </div>
+                    <div className="flex items-center gap-3 mb-2 relative z-10">
+                        <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+                            <UploadCloud size={20} />
+                        </div>
+                        <h3 className="text-lg font-extrabold text-gray-900">Import Transactions</h3>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-6 font-medium relative z-10">Upload Transactions.json to import vouchers to Firestore.</p>
+                    
+                    <div className="mt-auto relative z-10 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                        <input 
+                            type="file" 
+                            accept=".json" 
+                            disabled={loadingTransactions}
+                            onChange={(e) => handleFileUpload(e, 'transaction')}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 transition-colors disabled:opacity-50 cursor-pointer"
+                        />
+                    </div>
+                    {loadingTransactions && <p className="mt-3 text-sm text-indigo-600 font-bold animate-pulse">Uploading to Firestore...</p>}
                 </div>
+
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-yellow-50 p-6 rounded-lg shadow border border-yellow-200 text-center">
-                    <h3 className="text-lg font-semibold text-yellow-800 mb-2">Sync Balances</h3>
-                    <p className="text-sm text-yellow-700 mb-4">Calculate and save closing balances for all accounts based on transactions. Do this after importing.</p>
+            {/* Actions Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-2">
+                
+                {/* Sync Balances */}
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-5 sm:p-6 rounded-2xl shadow-sm border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 justify-between">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <RefreshCw size={18} className="text-amber-700" />
+                            <h3 className="text-lg font-extrabold text-amber-900">Sync Balances</h3>
+                        </div>
+                        <p className="text-sm text-amber-800 font-medium opacity-90">Calculate and save closing balances based on transactions.</p>
+                    </div>
                     <button 
                         onClick={syncAccountBalances}
                         disabled={clearing}
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded shadow font-medium transition disabled:opacity-50"
+                        className="w-full sm:w-auto shrink-0 bg-amber-600 hover:bg-amber-700 text-white py-2.5 px-5 rounded-xl shadow-sm font-bold transition-all disabled:opacity-50"
                     >
-                        {clearing ? 'Processing...' : `Sync Balances (${activeFYName})`}
+                        {clearing ? 'Processing...' : `Sync Balances`}
                     </button>
                 </div>
 
-                <div className="bg-red-50 p-6 rounded-lg shadow border border-red-200 text-center">
-                    <h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
-                    <p className="text-sm text-red-600 mb-4">This will permanently delete all Accounts and Transactions data from Firestore.</p>
+                {/* Danger Zone */}
+                <div className="bg-gradient-to-br from-red-50 to-rose-50 p-5 sm:p-6 rounded-2xl shadow-sm border border-red-200 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 justify-between">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <AlertTriangle size={18} className="text-red-700" />
+                            <h3 className="text-lg font-extrabold text-red-900">Danger Zone</h3>
+                        </div>
+                        <p className="text-sm text-red-800 font-medium opacity-90">Permanently delete all Accounts and Transactions data.</p>
+                    </div>
                     <button 
                         onClick={clearAllData}
                         disabled={clearing}
-                        className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded shadow font-medium transition disabled:opacity-50"
+                        className="w-full sm:w-auto shrink-0 bg-red-600 hover:bg-red-700 text-white py-2.5 px-5 rounded-xl shadow-sm font-bold transition-all disabled:opacity-50"
                     >
                         {clearing ? 'Clearing...' : 'Clear All Data'}
                     </button>
                 </div>
+
             </div>
 
             <PushTransactionModal

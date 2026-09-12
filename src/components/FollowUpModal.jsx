@@ -319,26 +319,15 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
             <form onSubmit={handleSubmit} className="space-y-4">
               <h3 className="font-extrabold text-gray-900 border-b border-gray-100 pb-2.5 text-sm uppercase tracking-wider">New Follow-up</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Date</label>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Created By</label>
-                  <input
-                    type="text"
-                    value={currentUser?.name || ''}
-                    readOnly
-                    className="w-full px-4 py-2.5 border border-gray-200 bg-gray-100 rounded-lg text-gray-500 text-sm font-bold"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                  className="w-full sm:w-1/2 px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium transition-colors"
+                />
               </div>
 
               <div>
@@ -353,7 +342,7 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
                 />
               </div>
 
-              <div className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="hidden sm:flex items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
                 <input
                   type="checkbox"
                   id="completed"
@@ -397,21 +386,21 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
                 </div>
               )}
 
-              <div className="flex justify-end space-x-3 pt-3">
+              <div className="flex justify-between sm:justify-end gap-3 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="px-5 py-2.5 rounded-lg text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
                   disabled={isSubmitting}
                 >
-                  Cancel
+                  Close
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm disabled:opacity-50"
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm disabled:opacity-50"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Saving...' : 'Save Follow-up'}
+                  {isSubmitting ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </form>
