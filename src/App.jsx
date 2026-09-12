@@ -23,6 +23,24 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+    if (!db || !auth) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-xl text-center border border-red-100">
+                    <div className="text-red-500 mb-4 flex justify-center"><Settings size={48} /></div>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Configuration Missing</h1>
+                    <p className="text-gray-600 mb-6">
+                        The application failed to load because the Firebase Environment Variables are missing. 
+                        If you just deployed to Vercel, you need to add your <code className="bg-gray-100 px-1 py-0.5 rounded text-sm text-red-600">VITE_FIREBASE_...</code> variables in the Vercel Dashboard Settings, then trigger a redeploy.
+                    </p>
+                    <a href="https://vercel.com/docs/projects/environment-variables" target="_blank" rel="noreferrer" className="inline-block bg-gray-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-gray-800 transition-colors">
+                        View Vercel Documentation
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
     const [currentUser, setCurrentUser] = useState(() => {
         try {
             const saved = sessionStorage.getItem('currentUser');

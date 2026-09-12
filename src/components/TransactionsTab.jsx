@@ -197,7 +197,7 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
     return (
         <div className="flex flex-col min-h-0 flex-1 gap-3 sm:gap-4">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col flex-1 min-h-0 overflow-hidden">
-                <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col gap-4 sm:gap-5 bg-white rounded-t-2xl shrink-0 relative z-20">
+                <div className="p-6 sm:p-5 border-b border-gray-100 flex flex-col gap-4 sm:gap-5 bg-white rounded-t-2xl shrink-0 relative z-20">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
                         {/* Left: Fiscal Year Selector */}
                         <div className="shrink-0 w-full sm:w-auto">

@@ -12,7 +12,20 @@ const firebaseConfig = {
   measurementId: "G-JGCWKJPQTG"
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+let app;
+let db;
+let auth;
+let googleProvider;
+
+try {
+  app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
+} catch (error) {
+  console.error("Firebase initialization failed. Are Vercel Environment Variables missing?", error);
+  // Optional: you can set them to mock objects or leave them undefined
+  // but showing a clear error in console is better than a silent white screen crash
+}
+
+export { db, auth, googleProvider, app };
