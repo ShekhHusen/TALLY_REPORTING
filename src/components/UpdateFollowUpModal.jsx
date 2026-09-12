@@ -12,7 +12,8 @@ export default function UpdateFollowUpModal({
   followUp, 
   currentUser, 
   users = [], 
-  onSuccess 
+  onSuccess,
+  initialTab = 'update'
 }) {
   const [callDate, setCallDate] = useState(new Date().toISOString().split('T')[0]);
   const [callRemarks, setCallRemarks] = useState('');
@@ -29,14 +30,14 @@ export default function UpdateFollowUpModal({
       setNewNextDate(followUp.nextFollowUpDate || '');
       setIsCompleted(!!followUp.completed);
       setAssignedToUid(followUp.assignedToUid || currentUser?.uid || '');
-      // If already completed, default to history view
-      if (followUp.completed) {
+      // Respect initialTab prop, override if already completed
+      if (followUp.completed || initialTab === 'history') {
         setActiveTab('history');
       } else {
         setActiveTab('update');
       }
     }
-  }, [isOpen, followUp, currentUser]);
+  }, [isOpen, followUp, currentUser, initialTab]);
 
   if (!isOpen || !followUp) return null;
 
@@ -232,37 +233,12 @@ export default function UpdateFollowUpModal({
                 )}
               </div>
 
-              {/* Action Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
-                    Call / Action Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={callDate}
-                    onChange={(e) => setCallDate(e.target.value)}
-                    required
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
-                    Called By (Current User)
-                  </label>
-                  <input
-                    type="text"
-                    value={currentUser?.name || ''}
-                    readOnly
-                    className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-gray-600 text-sm font-bold"
-                  />
-                </div>
-              </div>
+
 
               {/* Call Remarks / Conversation Note */}
               <div>
                 <label className="block text-xs font-bold text-gray-600 mb-1.5 flex justify-between uppercase tracking-wider">
-                  <span>Call Remarks / Customer Conversation <span className="text-red-500">*</span></span>
+             {/*      <span>Call Remarks / Customer Conversation <span className="text-red-500">*</span></span>   */}
                   <span className="text-[10px] text-gray-400 font-bold capitalize">Details of discussion with customer</span>
                 </label>
                 <textarea
@@ -282,9 +258,7 @@ export default function UpdateFollowUpModal({
                     <CheckCircle2 className={`w-5 h-5 ${isCompleted ? 'text-green-600' : 'text-gray-400'}`} />
                     Mark as Completed
                   </div>
-                  <p className="text-xs font-medium text-gray-500 mt-0.5">
-                    Check this if the issue is solved or payment settled (it will disappear from active follow-ups).
-                  </p>
+                  
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -432,13 +406,8 @@ export default function UpdateFollowUpModal({
                           <div className="text-xs text-gray-500 flex items-center gap-2">
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3 text-gray-400" />
-                              {step.date}
+                              {step.timestamp ? formatTimestamp(step.timestamp) : step.date}
                             </span>
-                            {step.timestamp && (
-                              <span className="text-[11px] text-gray-400">
-                                ({formatTimestamp(step.timestamp)})
-                              </span>
-                            )}
                           </div>
                         </div>
 
@@ -450,23 +419,29 @@ export default function UpdateFollowUpModal({
                         )}
 
                         {/* Next date changes */}
-                        {(step.nextFollowUpDate || step.previousFollowUpDate) && (
-                          <div className="mt-2 text-xs flex items-center gap-2 text-gray-600 pt-1.5 border-t border-gray-100">
-                            <Clock className="w-3.5 h-3.5 text-blue-500" />
-                            {step.previousFollowUpDate && step.previousFollowUpDate !== step.nextFollowUpDate ? (
-                              <span className="flex items-center gap-1.5">
-                                <span className="line-through text-gray-400">{step.previousFollowUpDate}</span>
-                                <ArrowRight className="w-3 h-3 text-gray-400" />
-                                <span className="font-semibold text-blue-700">{step.nextFollowUpDate || 'None'}</span>
-                              </span>
-                            ) : (
-                              <span>Next follow-up set to: <b className="text-blue-700">{step.nextFollowUpDate}</b></span>
+                        {(step.nextFollowUpDate || step.previousFollowUpDate || (!isComplete && step.assignedTo)) && (
+                          <div className="mt-2 text-xs flex flex-col gap-2 text-gray-600 pt-2 border-t border-gray-100">
+                            {(step.nextFollowUpDate || step.previousFollowUpDate) && (
+                              <div className="flex items-center gap-1.5 w-full">
+                                <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                {step.previousFollowUpDate && step.previousFollowUpDate !== step.nextFollowUpDate ? (
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="line-through text-gray-400">{step.previousFollowUpDate}</span>
+                                    <ArrowRight className="w-3 h-3 text-gray-400 shrink-0" />
+                                    <span className={`font-semibold ${isComplete ? 'text-green-700' : 'text-blue-700'}`}>{step.nextFollowUpDate || (isComplete ? 'Completed' : 'None')}</span>
+                                  </span>
+                                ) : (
+                                  <span>Next follow-up set to: <b className="text-blue-700">{step.nextFollowUpDate}</b></span>
+                                )}
+                              </div>
                             )}
-
-                            {step.assignedTo && (
-                              <span className="ml-auto text-gray-500">
-                                Assigned to: <b>{step.assignedTo}</b>
-                              </span>
+                            {!isComplete && step.assignedTo && (
+                              <div className="flex items-center gap-1.5 w-full">
+                                <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                <span className="text-gray-500">
+                                  Assigned to: <b>{step.assignedTo}</b>
+                                </span>
+                              </div>
                             )}
                           </div>
                         )}
@@ -486,17 +461,7 @@ export default function UpdateFollowUpModal({
           )}
         </div>
 
-        {/* Footer info */}
-        <div className="px-6 py-2.5 bg-gray-50 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500 shrink-0">
-          <span>Account: <b>{followUp.accountName}</b></span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1 bg-white border border-gray-300 hover:bg-gray-100 rounded text-gray-700 font-medium transition"
-          >
-            Close
-          </button>
-        </div>
+        
       </div>
     </div>
   );

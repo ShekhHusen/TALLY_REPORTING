@@ -18,6 +18,7 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
   // Sub-modal for rescheduling / viewing history
   const [selectedFollowUp, setSelectedFollowUp] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateModalTab, setUpdateModalTab] = useState('update');
   
   // Form state
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -94,8 +95,9 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
     setAssignedToUid('');
   };
 
-  const handleOpenUpdate = (fu) => {
+  const handleOpenUpdate = (fu, tab = 'update') => {
     setSelectedFollowUp(fu);
+    setUpdateModalTab(tab);
     setIsUpdateModalOpen(true);
   };
 
@@ -263,22 +265,24 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
                       )}
                       
                       {/* Card Footer: Next Date, Assigned, and Action buttons */}
-                      <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
-                        <div className="flex items-center gap-4">
-                          {!f.completed && f.nextFollowUpDate && (
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Next Follow-up</span>
-                              <b className="text-blue-700 text-xs mt-0.5">{f.nextFollowUpDate}</b>
-                            </div>
-                          )}
-                          {f.assignedTo && (
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assigned To</span>
-                              <span className="font-bold text-gray-700 text-xs mt-0.5">{f.assignedTo}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
+                      <div className={`mt-4 pt-3 border-t border-gray-100 flex ${f.completed ? 'flex-col' : 'flex-wrap items-center justify-between'} gap-3 text-xs text-gray-600`}>
+                        {!f.completed && (
+                          <div className="flex items-center gap-4">
+                            {f.nextFollowUpDate && (
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Next Follow-up</span>
+                                <b className="text-blue-700 text-xs mt-0.5">{f.nextFollowUpDate}</b>
+                              </div>
+                            )}
+                            {f.assignedTo && (
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assigned To</span>
+                                <span className="font-bold text-gray-700 text-xs mt-0.5">{f.assignedTo}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div className={`flex items-center gap-2 ${f.completed ? 'w-full' : ''}`}>
                           {!f.completed && (
                             <button
                               type="button"
@@ -290,8 +294,8 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
                           )}
                           <button
                             type="button"
-                            onClick={() => handleOpenUpdate(f)}
-                            className="px-3 py-1.5 bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 rounded-lg font-bold transition-colors inline-flex items-center gap-1.5"
+                            onClick={() => handleOpenUpdate(f, 'history')}
+                            className={`px-3 py-1.5 bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 rounded-lg font-bold transition-colors inline-flex items-center justify-center gap-1.5 ${f.completed ? 'w-full py-2.5' : ''}`}
                           >
                             <History className="w-3.5 h-3.5" /> History ({historyCount})
                           </button>
@@ -319,17 +323,6 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
             <form onSubmit={handleSubmit} className="space-y-4">
               <h3 className="font-extrabold text-gray-900 border-b border-gray-100 pb-2.5 text-sm uppercase tracking-wider">New Follow-up</h3>
               
-              <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Date</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                  className="w-full sm:w-1/2 px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium transition-colors"
-                />
-              </div>
-
               <div>
                 <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Message / Discussion</label>
                 <textarea
@@ -411,6 +404,7 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
       {/* Update / History Sub-modal */}
       <UpdateFollowUpModal
         isOpen={isUpdateModalOpen}
+        initialTab={updateModalTab}
         onClose={() => { setIsUpdateModalOpen(false); setSelectedFollowUp(null); }}
         followUp={selectedFollowUp}
         currentUser={currentUser}

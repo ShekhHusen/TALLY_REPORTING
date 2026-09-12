@@ -25,6 +25,7 @@ export default function FollowUpsTab({ currentUser }) {
   // Update / Reschedule modal state
   const [selectedFollowUp, setSelectedFollowUp] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateModalTab, setUpdateModalTab] = useState('update');
 
   // Dropdown state
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -40,8 +41,9 @@ export default function FollowUpsTab({ currentUser }) {
     setIsStatementOpen(true);
   };
 
-  const handleOpenUpdate = (fu) => {
+  const handleOpenUpdate = (fu, tab = 'update') => {
     setSelectedFollowUp(fu);
+    setUpdateModalTab(tab);
     setIsUpdateModalOpen(true);
   };
   
@@ -524,7 +526,7 @@ export default function FollowUpsTab({ currentUser }) {
                               {!fu.completed && (
                                 <button
                                   type="button"
-                                  onClick={() => { setActiveDropdown(null); handleOpenUpdate(fu); }}
+                                  onClick={() => { setActiveDropdown(null); handleOpenUpdate(fu, 'history'); }}
                                   className="px-4 py-2 text-left text-sm font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2"
                                 >
                                   <PhoneCall className="w-4 h-4 text-blue-500" /> Update
@@ -532,7 +534,7 @@ export default function FollowUpsTab({ currentUser }) {
                               )}
                               <button
                                 type="button"
-                                onClick={() => { setActiveDropdown(null); handleOpenUpdate(fu); }}
+                                onClick={() => { setActiveDropdown(null); handleOpenUpdate(fu, 'history'); }}
                                 className="px-4 py-2 text-left text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                               >
                                 <History className="w-4 h-4 text-gray-400" /> History ({historyCount})
@@ -631,100 +633,107 @@ export default function FollowUpsTab({ currentUser }) {
               currentData.map(fu => {
                 const status = getStatus(fu);
                 const historyCount = Array.isArray(fu.history) && fu.history.length > 0 ? fu.history.length : 1;
-                const statusColors = {
-                  'Today': 'bg-amber-500',
-                  'Overdue': 'bg-red-500',
-                  'Upcoming': 'bg-blue-500',
-                  'Completed': 'bg-green-500',
-                  'Pending': 'bg-gray-400'
+                const statusStyles = {
+                  'Today': { label: 'Due Today', color: 'bg-amber-100 text-amber-900 border-amber-300', stripe: 'bg-amber-500', icon: <Clock className="w-3.5 h-3.5 mr-1 text-amber-600" /> },
+                  'Overdue': { label: 'Overdue', color: 'bg-red-100 text-red-800 border-red-200', stripe: 'bg-red-500', icon: <AlertCircle className="w-3.5 h-3.5 mr-1 text-red-600" /> },
+                  'Upcoming': { label: 'Upcoming', color: 'bg-blue-100 text-blue-800 border-blue-200', stripe: 'bg-blue-500', icon: <Calendar className="w-3.5 h-3.5 mr-1 text-blue-600" /> },
+                  'Completed': { label: 'Completed', color: 'bg-green-100 text-green-800 border-green-200', stripe: 'bg-green-500', icon: <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-green-600" /> },
+                  'Pending': { label: 'Pending', color: 'bg-gray-100 text-gray-800 border-gray-200', stripe: 'bg-gray-400', icon: <Clock className="w-3.5 h-3.5 mr-1 text-gray-600" /> }
                 };
+                const currentStyle = statusStyles[status] || statusStyles['Pending'];
+
                 return (
-                  <div key={fu.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 overflow-hidden relative">
-                    {/* Status Stripe */}
-                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusColors[status] || 'bg-gray-300'}`}></div>
+                  <div key={fu.id} className="bg-white border border-gray-100 rounded-xl shadow-sm relative overflow-hidden transition-all hover:shadow-md mb-3">
+                    {/* Color stripe on the left */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${currentStyle.stripe}`}></div>
                     
-                    {/* Top row: Account name + Status badge */}
-                    <div className="flex items-start justify-between gap-1.5 mb-1.5 pl-2">
-                      <h4 className="font-extrabold text-sm text-gray-900 leading-tight truncate" title={fu.accountName}>
-                        {fu.accountName}
-                      </h4>
-                      <div className="shrink-0 scale-90 origin-top-right">
-                        {getStatusBadge(status, true)}
-                      </div>
-                    </div>
-                    {/* Meta row */}
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-gray-500 mb-2 pl-2">
-                      <span>{fu.date}</span>
-                      <span>by <span className="font-bold text-gray-700">{fu.userName}</span></span>
-                      {fu.assignedTo && (
-                        <span className="inline-flex items-center gap-0.5 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-                          <User className="w-3 h-3 text-gray-400" /> {fu.assignedTo}
-                        </span>
-                      )}
-                      {fu.nextFollowUpDate && (
-                        <span className={`font-bold ${status === 'Today' ? 'text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100' : status === 'Overdue' ? 'text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-100' : 'text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100'}`}>
-                          Next: {fu.nextFollowUpDate}
-                        </span>
-                      )}
-                    </div>
-                    {/* Message */}
-                    {fu.message && (
-                      <div className="text-xs text-gray-700 mb-2 leading-relaxed line-clamp-2 pl-2" title={fu.message}>
-                        {fu.message}
-                      </div>
-                    )}
-                    {fu.lastCallNote && (
-                      <div className="text-[11px] text-blue-900 bg-blue-50/50 p-2 rounded-lg border border-blue-100 flex items-start gap-1.5 mb-2.5 ml-2">
-                        <PhoneCall className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-                        <div className="leading-snug">
-                          <span className="font-bold text-blue-800">Call:</span> {fu.lastCallNote}{' '}
-                          <span className="text-blue-600 font-bold opacity-80">({fu.lastCallBy || 'User'} on {fu.lastCallDate})</span>
+                    <div className="p-4 pl-5">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center space-x-2.5">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${currentStyle.color}`}>
+                            {currentStyle.icon}
+                            {currentStyle.label}
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-gray-500 flex items-center bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0">
+                          <User className="w-3.5 h-3.5 mr-1.5 text-gray-400 shrink-0" />
+                          <span className="truncate max-w-[80px]">{fu.userName}</span>
                         </div>
                       </div>
-                    )}
-                    {/* Action buttons: Exactly 1 row 4 columns */}
-                    <div className={`grid ${fu.completed ? 'grid-cols-2' : 'grid-cols-4'} gap-1.5 mt-2 pl-2`}>
-                      {!fu.completed && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenUpdate(fu)}
-                          className="py-1.5 px-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm truncate"
-                          title="Reschedule"
-                        >
-                          <PhoneCall className="w-3 h-3 shrink-0" />
-                          <span className="truncate">Reschedule</span>
-                        </button>
+
+                      {/* Account Name */}
+                      <h4 className="font-extrabold text-sm text-gray-900 leading-tight mb-2 truncate" title={fu.accountName}>
+                        {fu.accountName}
+                      </h4>
+                      
+                      {/* Message */}
+                      <div className="text-gray-800 text-sm font-medium leading-relaxed whitespace-pre-wrap line-clamp-3">
+                        {fu.message}
+                      </div>
+
+                      {/* Latest Call Info if present */}
+                      {fu.lastCallNote && (
+                        <div className="mt-3 text-[11px] text-blue-900 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100 flex items-start gap-2">
+                          <PhoneCall className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-extrabold text-blue-800">Latest Call:</span> <span className="font-medium text-gray-700">{fu.lastCallNote}</span>{' '}
+                            <span className="text-blue-600 font-bold block mt-0.5">({fu.lastCallBy || 'User'} on {fu.lastCallDate})</span>
+                          </div>
+                        </div>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenUpdate(fu)}
-                        className="py-1.5 px-1 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm truncate"
-                        title="History"
-                      >
-                        <History className="w-3 h-3 text-gray-500 shrink-0" />
-                        <span className="truncate">History</span>
-                        <span className="bg-white border border-gray-200 text-gray-700 text-[9px] px-1.5 rounded-full font-black shrink-0 shadow-sm">{historyCount}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenStatement(fu.accountName)}
-                        className="py-1.5 px-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm truncate"
-                        title="Statement"
-                      >
-                        <FileText className="w-3 h-3 shrink-0" />
-                        <span className="truncate">Stmt</span>
-                      </button>
-                      {!fu.completed && (
-                        <button
-                          type="button"
-                          onClick={() => handleMarkComplete(fu)}
-                          className="py-1.5 px-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm truncate"
-                          title="Complete"
-                        >
-                          <Check className="w-3 h-3 shrink-0 text-green-600" />
-                          <span className="truncate">Complete</span>
-                        </button>
-                      )}
+                      
+                      {/* Card Footer: Next Date, Assigned, and Action buttons */}
+                      <div className={`mt-4 pt-3 border-t border-gray-100 flex ${fu.completed ? 'flex-col' : 'flex-wrap items-start justify-between'} gap-3 text-xs text-gray-600`}>
+                        {!fu.completed && (
+                          <div className="flex items-center gap-4 w-full">
+                            {fu.nextFollowUpDate && (
+                              <div className="flex flex-col flex-1">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Next Follow-up</span>
+                                <b className="text-blue-700 text-xs mt-0.5">{fu.nextFollowUpDate}</b>
+                              </div>
+                            )}
+                            {fu.assignedTo && (
+                              <div className="flex flex-col flex-1">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assigned To</span>
+                                <span className="font-bold text-gray-700 text-xs mt-0.5 truncate">{fu.assignedTo}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div className={`grid ${fu.completed ? 'grid-cols-2 gap-2 w-full' : 'grid-cols-3 gap-1.5 w-full'}`}>
+                          {!fu.completed && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenUpdate(fu)}
+                              className="py-1.5 px-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 shadow-sm truncate"
+                              title="Reschedule"
+                            >
+                              <PhoneCall className="w-3.5 h-3.5 shrink-0" />
+                              <span className="truncate hidden sm:inline">Resched.</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenUpdate(fu, 'history')}
+                            className={`${fu.completed ? 'col-span-1 px-3 py-2' : 'py-1.5 px-1'} bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-bold transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 shadow-sm truncate`}
+                            title="History"
+                          >
+                            <History className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                            <span className="truncate hidden sm:inline">History</span>
+                            <span className="bg-white border border-gray-200 text-gray-700 text-[9px] px-1 rounded-full font-black shrink-0">{historyCount}</span>
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => handleOpenStatement(fu.accountName)}
+                            className={`${fu.completed ? 'col-span-1 px-3 py-2' : 'py-1.5 px-1'} bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 rounded-lg text-[10px] font-bold transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 shadow-sm truncate`}
+                            title="Statement"
+                          >
+                             <FileText className="w-3.5 h-3.5 shrink-0" />
+                             <span className="truncate hidden sm:inline">Stmt</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -781,6 +790,7 @@ export default function FollowUpsTab({ currentUser }) {
       {/* Update / Reschedule / History Modal */}
       <UpdateFollowUpModal
         isOpen={isUpdateModalOpen}
+        initialTab={updateModalTab}
         onClose={() => { setIsUpdateModalOpen(false); setSelectedFollowUp(null); }}
         followUp={selectedFollowUp}
         currentUser={currentUser}
