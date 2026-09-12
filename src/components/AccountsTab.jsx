@@ -115,6 +115,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [lastVisibleTxn, setLastVisibleTxn] = useState(null);
     const [hasMoreTxns, setHasMoreTxns] = useState(true);
     const [showFullDetails, setShowFullDetails] = useState(false);
+    const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
 
     // All data state
     const [allAccounts, setAllAccounts] = useState([]);
@@ -709,96 +710,152 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         return (
             <div className="flex flex-col min-h-0 flex-1 gap-4">
                 <div className="bg-white rounded-lg shadow border border-gray-200 flex flex-col h-full">
-                    {/* Header */}
-                    <div className="p-3 sm:p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg shrink-0 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-between items-start sm:items-center">
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                    {/* Header Top Bar */}
+                    <div className="p-4 sm:px-6 sm:py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 bg-white rounded-t-2xl z-20">
+                        {/* Left Side: Nav, FY, Title */}
+                        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                             <button 
                                 onClick={() => setView('directory')}
-                                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-medium text-sm transition"
+                                className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 transition-colors shadow-sm shrink-0"
+                                title="Back to Accounts"
                             >
-                                ← Back to Accounts
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                             </button>
+                            
                             <select
                                 value={detailFY}
                                 onChange={(e) => { setDetailFY(e.target.value); setAccountTxns([]); setLastVisibleTxn(null); }}
-                                className="px-3 py-1.5 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-medium bg-blue-50 text-blue-800"
+                                className="px-3 py-1.5 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-xs font-bold bg-indigo-50 text-indigo-700 tracking-wide uppercase shadow-sm cursor-pointer shrink-0"
                             >
                                 {fyOptions.length === 0 && <option value="">No Fiscal Years</option>}
                                 {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
                             </select>
-                            <h3 className="font-semibold text-base sm:text-xl text-gray-800">
+
+                            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight ml-1 sm:ml-2 truncate max-w-[200px] md:max-w-md" title={selectedAccount.name}>
                                 {selectedAccount.name}
-                            </h3>
+                            </h2>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+
+                        {/* Right Side: Actions & Toggle */}
+                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                            <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 cursor-pointer mr-1 hover:text-slate-900 transition-colors">
                                 <input 
                                     type="checkbox" 
                                     checked={showFullDetails}
                                     onChange={(e) => setShowFullDetails(e.target.checked)}
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
                                 />
-                                Show full details
+                                <span className="hidden sm:inline">Show full details</span>
+                                <span className="sm:hidden">Full</span>
                             </label>
                             <button 
                                 onClick={exportToPDF}
-                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm font-medium transition"
+                                className="flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm"
+                                title="Export PDF"
                             >
-                                Export PDF
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <span className="hidden sm:inline">PDF</span>
                             </button>
                             <button 
                                 onClick={exportToExcel}
-                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm font-medium transition"
+                                className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm"
+                                title="Export Excel"
                             >
-                                Export Excel
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <span className="hidden sm:inline">Excel</span>
+                            </button>
+                            
+                            {/* Expand/Collapse Toggle */}
+                            <div className="w-px h-6 bg-slate-200 mx-1"></div>
+                            <button 
+                                onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
+                                className="flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all border border-transparent hover:border-indigo-100"
+                                title={isSummaryExpanded ? "Collapse Summary" : "Expand Summary"}
+                            >
+                                {isSummaryExpanded ? (
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+                                ) : (
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                                )}
                             </button>
                         </div>
                     </div>
 
-                    {/* Account Summary & Details Block */}
-                    <div className="p-4 border-b border-gray-200 bg-white grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
-                        <div>
-                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Account Details</h4>
-                            <div className="text-sm text-gray-700 grid grid-cols-2 gap-2">
-                                <div className="font-medium">Group:</div>
-                                <div>{selectedAccount.group || '-'}</div>
-                                <div className="font-medium">Address:</div>
-                                <div>{selectedAccount.address || '-'}</div>
-                                <div className="font-medium">Contact:</div>
-                                <div>{selectedAccount.contact || '-'}</div>
-                            </div>
-                        </div>
-                        <div>
-                            {(() => {
-                                const displayBalance = detailFYData || {
-                                    openingBalance: 0,
-                                    openingBalanceType: '',
-                                    totalDebit: 0,
-                                    totalCredit: 0,
-                                    closingBalance: 0,
-                                    closingBalanceType: '',
-                                    fyName: fyOptions.find(f => f.id === detailFY)?.name || 'Selected FY'
-                                };
-                                return (
-                                    <>
-                                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                                            Balance Summary <span className="text-[10px] text-blue-500 normal-case ml-1">({displayBalance.fyName || 'Selected FY'})</span>
-                                        </h4>
-                                        <div className="text-sm text-gray-700 grid grid-cols-2 gap-2">
-                                            <div className="font-medium">Opening Balance:</div>
-                                            <div className="text-right">{formatCurrency(displayBalance.openingBalance)} {displayBalance.openingBalanceType}</div>
-                                            <div className="font-medium">Total Debit:</div>
-                                            <div className="text-right text-red-600">{formatCurrency(displayBalance.totalDebit)}</div>
-                                            <div className="font-medium">Total Credit:</div>
-                                            <div className="text-right text-green-600">{formatCurrency(displayBalance.totalCredit)}</div>
-                                            <div className="font-medium text-gray-900 border-t pt-1 mt-1">Closing Balance:</div>
-                                            <div className="text-right font-bold text-gray-900 border-t pt-1 mt-1">{formatCurrency(displayBalance.closingBalance)} {displayBalance.closingBalanceType}</div>
+                    {/* Summary Bento Grid */}
+                    {isSummaryExpanded && (() => {
+                        const displayBalance = detailFYData || {
+                            openingBalance: 0,
+                            openingBalanceType: '',
+                            totalDebit: 0,
+                            totalCredit: 0,
+                            closingBalance: 0,
+                            closingBalanceType: '',
+                            fyName: fyOptions.find(f => f.id === detailFY)?.name || 'Selected FY'
+                        };
+                        return (
+                            <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0 transition-all duration-300 ease-in-out">
+                                {/* Info Card (Span 2) */}
+                                <div className="lg:col-span-2 bg-white border border-slate-200/60 rounded-xl p-4 flex flex-col justify-center shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Account Details
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                                        <div className="flex flex-col">
+                                            <span className="text-slate-500 font-medium text-[11px] uppercase tracking-wider mb-0.5">Group</span>
+                                            <span className="text-slate-900 font-semibold truncate" title={selectedAccount.group}>{selectedAccount.group || '-'}</span>
                                         </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    </div>
+                                        <div className="flex flex-col sm:col-span-2">
+                                            <span className="text-slate-500 font-medium text-[11px] uppercase tracking-wider mb-0.5">Address & Contact</span>
+                                            <span className="text-slate-900 font-semibold truncate" title={selectedAccount.address ? `${selectedAccount.address} ${selectedAccount.contact ? `| ${selectedAccount.contact}` : ''}` : '-'}>
+                                                {selectedAccount.address || '-'} {selectedAccount.contact ? <span className="text-slate-400 font-normal mx-1">|</span> : ''} {selectedAccount.contact || ''}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Debit & Credit Flow (Span 1) */}
+                                <div className="bg-white border border-slate-200/60 rounded-xl p-4 flex flex-col justify-center shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                    <div className="flex justify-between items-end mb-2.5">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-400"></div> Total Debit
+                                        </div>
+                                        <div className="text-sm font-bold text-rose-600">{formatCurrency(displayBalance.totalDebit)}</div>
+                                    </div>
+                                    <div className="w-full h-px bg-slate-100 mb-2.5"></div>
+                                    <div className="flex justify-between items-end">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div> Total Credit
+                                        </div>
+                                        <div className="text-sm font-bold text-emerald-600">{formatCurrency(displayBalance.totalCredit)}</div>
+                                    </div>
+                                </div>
+
+                                {/* Combined Balances (Span 1) */}
+                                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-200/60 rounded-xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden h-full">
+                                    <div className="absolute -right-4 -bottom-4 text-indigo-500/10 pointer-events-none">
+                                        <svg className="w-24 h-24 transform rotate-12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.11-1.36-3.11-2.92v-.46h2.79v.48c0 .76.7 1.31 1.74 1.31 1.11 0 1.73-.57 1.73-1.36 0-.87-.59-1.28-1.92-1.61-1.98-.51-3.26-1.56-3.26-3.25 0-1.46 1.11-2.5 2.69-2.85V5.5h2.67v1.95c1.4.35 2.5 1.31 2.5 2.55v.52h-2.79v-.53c0-.68-.61-1.16-1.5-1.16-.94 0-1.47.51-1.47 1.25 0 .8.65 1.21 2.05 1.57 2.11.53 3.12 1.63 3.12 3.32 0 1.6-1.18 2.67-2.77 3.12z"/></svg>
+                                    </div>
+                                    <div className="relative z-10 flex justify-between items-end mb-2">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                            Opening
+                                        </div>
+                                        <div className="text-sm font-semibold text-slate-600">
+                                            {formatCurrency(displayBalance.openingBalance)} <span className="text-xs font-normal ml-0.5">{displayBalance.openingBalanceType}</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-full h-px bg-indigo-200/50 mb-2 relative z-10"></div>
+                                    <div className="relative z-10 flex flex-col items-start mt-auto">
+                                        <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div> Closing
+                                        </div>
+                                        <div className="text-xl font-black text-indigo-950 tracking-tight leading-none mt-1">
+                                            {formatCurrency(displayBalance.closingBalance)} <span className="text-sm font-bold text-indigo-600 ml-0.5">{displayBalance.closingBalanceType}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     <div className="overflow-auto flex-1 p-0">
                         <TransactionTable 

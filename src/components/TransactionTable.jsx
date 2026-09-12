@@ -50,19 +50,19 @@ export default function TransactionTable({ transactions, showFullDetails = false
         return (
             <div className="overflow-x-auto bg-white">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                    <thead className="bg-slate-50/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-200">
                         <tr>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('date')}>Date{getSortIndicator('date')}</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('type')}>Voucher{getSortIndicator('type')}</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('debitAccount')}>Particulars{getSortIndicator('debitAccount')}</th>
-                            <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('debitAmount')}>Debit Amt{getSortIndicator('debitAmount')}</th>
-                            <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('creditAmount')}>Credit Amt{getSortIndicator('creditAmount')}</th>
-                            <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('runningBalance')}>Balance{getSortIndicator('runningBalance')}</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('date')}>Date{getSortIndicator('date')}</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('type')}>Voucher{getSortIndicator('type')}</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('debitAccount')}>Particulars{getSortIndicator('debitAccount')}</th>
+                            <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('debitAmount')}>Debit Amt{getSortIndicator('debitAmount')}</th>
+                            <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('creditAmount')}>Credit Amt{getSortIndicator('creditAmount')}</th>
+                            <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('runningBalance')}>Balance{getSortIndicator('runningBalance')}</th>
                             {showFullDetails && (
-                                <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('enteredBy')}>Entered By{getSortIndicator('enteredBy')}</th>
+                                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('enteredBy')}>Entered By{getSortIndicator('enteredBy')}</th>
                             )}
                             {onDeleteTransaction && (
-                                <th className="px-3 py-3 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
+                                <th className="px-3 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Action</th>
                             )}
                         </tr>
                     </thead>
@@ -98,7 +98,7 @@ export default function TransactionTable({ transactions, showFullDetails = false
 
                                 return (
                                     <React.Fragment key={t.id || idx}>
-                                        <tr className="hover:bg-gray-50">
+                                        <tr className="hover:bg-slate-50/80 transition-colors">
                                             <td className="px-4 py-3 whitespace-nowrap text-gray-900">{t.date}</td>
                                             <td className="px-4 py-3 whitespace-nowrap text-gray-500">
                                                 <div className="font-medium text-gray-900">{t.type}</div>
@@ -183,19 +183,19 @@ export default function TransactionTable({ transactions, showFullDetails = false
     return (
         <div className="overflow-x-auto bg-white">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                <thead className="bg-slate-50/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-200">
                     <tr>
-                        <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('date')}>Date{getSortIndicator('date')}</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('type')}>Voucher{getSortIndicator('type')}</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('debitAccount')}>Debit Account{getSortIndicator('debitAccount')}</th>
-                        <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('debitAmount')}>Debit Amt{getSortIndicator('debitAmount')}</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('creditAccount')}>Credit Account{getSortIndicator('creditAccount')}</th>
-                        <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('creditAmount')}>Credit Amt{getSortIndicator('creditAmount')}</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('date')}>Date{getSortIndicator('date')}</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('type')}>Voucher{getSortIndicator('type')}</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('debitAccount')}>Debit Account{getSortIndicator('debitAccount')}</th>
+                        <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('debitAmount')}>Debit Amt{getSortIndicator('debitAmount')}</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('creditAccount')}>Credit Account{getSortIndicator('creditAccount')}</th>
+                        <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('creditAmount')}>Credit Amt{getSortIndicator('creditAmount')}</th>
                         {showFullDetails && (
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('enteredBy')}>Entered By{getSortIndicator('enteredBy')}</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('enteredBy')}>Entered By{getSortIndicator('enteredBy')}</th>
                         )}
                         {onDeleteTransaction && (
-                            <th className="px-3 py-3 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
+                            <th className="px-3 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Action</th>
                         )}
                     </tr>
                 </thead>
@@ -205,7 +205,7 @@ export default function TransactionTable({ transactions, showFullDetails = false
                     ) : (
                         sortedTransactions.map((t, idx) => (
                             <React.Fragment key={t.id || idx}>
-                                <tr className="hover:bg-gray-50">
+                                <tr className="hover:bg-slate-50/80 transition-colors">
                                     <td className="px-4 py-3 whitespace-nowrap text-gray-900">{t.date}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-gray-500">
                                         <div className="font-medium text-gray-900">{t.type}</div>
