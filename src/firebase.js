@@ -2,6 +2,18 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCrqNgwRJ0RqZqZRJlETX7nTgwEltCO33g",
+  authDomain: "tally-reporting.firebaseapp.com",
+  projectId: "tally-reporting",
+  storageBucket: "tally-reporting.firebasestorage.app",
+  messagingSenderId: "896448159679",
+  appId: "1:896448159679:web:cbf9ccaa50fb73708a0b0a",
+  measurementId: "G-PXGY6S82Q2"
+};
+
+/*
 const firebaseConfig = {
   apiKey: "AIzaSyDxUdNuacE9J08BoebrY4Ax63CD4phZXj4",
   authDomain: "jbmt-reporting.firebaseapp.com",
@@ -11,6 +23,7 @@ const firebaseConfig = {
   appId: "1:554546722753:web:c6be832b4d00fbe6bfe140",
   measurementId: "G-JGCWKJPQTG"
 };
+*/
 
 let app;
 let db;
