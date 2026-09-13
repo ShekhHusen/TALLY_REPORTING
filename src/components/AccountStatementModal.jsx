@@ -106,7 +106,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
                     where('debitAccount', '==', accountName), 
                     where('creditAccount', '==', accountName)
                 ),
-                limit(50)
+                limit(10)
             );
 
             if (isLoadMore && lastVisibleTxn) {
@@ -127,7 +127,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
             const combined = isLoadMore ? [...transactions, ...fyFiltered] : fyFiltered;
             setTransactions(combined);
             setLastVisibleTxn(snap.docs[snap.docs.length - 1]);
-            setHasMoreTxns(snap.docs.length === 50);
+            setHasMoreTxns(snap.docs.length === 10);
         } catch (err) {
             console.error("Error fetching transactions for statement:", err);
         } finally {
@@ -293,129 +293,132 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6">
             <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] flex flex-col overflow-hidden ring-1 ring-black/5">
-                {/* Header */}
-                <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-white flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0">
-                    
-                    {/* Account Name & Info (Clickable for mobile to collapse summary) */}
-                    <div 
-                        className="flex items-center justify-between cursor-pointer xl:cursor-default"
-                        onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}
-                    >
-                        <div className="flex items-center gap-3 sm:gap-4 w-full">
-                            <div className="p-2 sm:p-3 bg-indigo-50 text-indigo-600 rounded-xl sm:rounded-2xl shrink-0">
-                                <FileText className="stroke-[2.5] w-6 h-6 sm:w-7 sm:h-7" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-extrabold text-lg sm:text-2xl text-gray-900 tracking-tight flex items-center justify-between xl:justify-start gap-2">
-                                    <span className="truncate">{accountName}</span>
-                                    {/* Collapse Button (Only visible on smaller screens) */}
-                                    <button className="xl:hidden text-gray-400 p-1 hover:bg-gray-100 rounded-lg shrink-0 transition-colors">
-                                        {isSummaryCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
-                                    </button>
-                                </h3>
-                                <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
-                                    <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider truncate">{accountData?.group || 'N/A'}</span>
-                                    <span className="text-gray-300 shrink-0">•</span>
-                                    <span className="text-[10px] sm:text-xs font-bold text-indigo-600 shrink-0">Ledger Statement</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    {/* Toolbar actions */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
-                        {/* Narration Checkbox */}
-                        <label className="hidden sm:flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer hover:text-gray-900 transition-colors select-none mr-2">
-                            <input 
-                                type="checkbox" 
-                                checked={showFullDetails}
-                                onChange={(e) => setShowFullDetails(e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 bg-white"
-                            />
-                            Show narration
-                        </label>
-                        
-                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0 justify-between sm:justify-end">
+                {/* Header Top Bar */}
+                <div className="p-4 sm:px-6 sm:py-4 border-b border-slate-100 flex flex-col gap-4 sm:gap-4 shrink-0 bg-white z-20">
+                    {/* Row 1: Back, FY, and Actions */}
+                    <div className="flex justify-between items-center w-full">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <button
+                                onClick={onClose}
+                                className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0"
+                                title="Close"
+                            >
+                                <X className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                            </button>
                             <select
                                 value={selectedFY}
                                 onChange={(e) => setSelectedFY(e.target.value)}
-                                className="px-3 sm:px-4 py-2 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold bg-gray-50 text-gray-800 cursor-pointer hover:bg-gray-100 transition-colors shadow-sm ring-1 ring-inset ring-gray-200 shrink-0"
+                                className="px-2 py-1.5 sm:px-3 sm:py-1.5 border-0 bg-indigo-100 text-indigo-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-bold tracking-wide shadow-inner cursor-pointer shrink-0"
                             >
+                                {fyOptions.length === 0 && <option value="">No FY</option>}
                                 {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
                             </select>
-
-                            <button 
-                                onClick={exportToPDF}
-                                className="shrink-0 bg-white hover:bg-red-50 text-red-600 px-3 sm:px-3.5 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-gray-200 hover:border-red-200 shadow-sm"
-                            >
-                                <Download size={16} className="stroke-[2.5]" /> <span className="hidden sm:inline">PDF</span>
-                            </button>
-                            <button 
-                                onClick={exportToExcel}
-                                className="shrink-0 bg-white hover:bg-green-50 text-green-700 px-3 sm:px-3.5 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-gray-200 hover:border-green-200 shadow-sm"
-                            >
-                                <Download size={16} className="stroke-[2.5]" /> <span className="hidden sm:inline">Excel</span>
-                            </button>
-                            
-                            <button 
-                                onClick={onClose}
-                                className="hidden sm:block p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors ml-1 shrink-0"
-                            >
-                                <X size={20} className="stroke-[2.5]" />
-                            </button>
                         </div>
-                        
-                        <div className="flex items-center justify-between sm:justify-end gap-3 mt-1 sm:mt-0">
-                            <label className="flex items-center justify-center py-2 sm:py-0 px-3 sm:px-0 gap-2 text-xs sm:text-sm font-bold text-gray-700 cursor-pointer sm:bg-transparent bg-gray-50 sm:border-0 border border-gray-200 rounded-lg sm:rounded-none hover:text-gray-900 transition-colors select-none flex-1 sm:flex-none">
-                                <input 
-                                    type="checkbox" 
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <label className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold text-slate-600 cursor-pointer hover:text-slate-900 transition-colors">
+                                <input
+                                    type="checkbox"
                                     checked={showFullDetails}
                                     onChange={(e) => setShowFullDetails(e.target.checked)}
-                                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 bg-white"
+                                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
                                 />
-                                Show full narration
+                                <span>Full</span>
                             </label>
-                            
-                            <button 
-                                onClick={onClose}
-                                className="sm:hidden p-2 bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors shrink-0"
+                            <button
+                                onClick={exportToPDF}
+                                className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-sm font-bold transition-colors shrink-0"
+                                title="Export PDF"
                             >
-                                <X size={18} className="stroke-[2.5]" />
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <span className="hidden sm:inline">PDF</span>
+                            </button>
+                            <button
+                                onClick={exportToExcel}
+                                className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-sm font-bold transition-colors shrink-0"
+                                title="Export Excel"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <span className="hidden sm:inline">Excel</span>
                             </button>
                         </div>
                     </div>
+                    {/* Row 2: Account Name & Collapse Toggle */}
+                    <div 
+                        className="flex justify-between items-center w-full cursor-pointer group"
+                        onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}
+                    >
+                        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate flex-1 pr-4" title={accountName}>
+                            {accountName}
+                        </h2>
+                        <button 
+                            className="flex items-center justify-center w-8 h-8 rounded-full text-slate-400 group-hover:text-indigo-600 transition-all shrink-0"
+                        >
+                            {!isSummaryCollapsed ? (
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+                            ) : (
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
-                {/* Balances Grid - Collapsible */}
+                {/* Summary Bento Grid */}
                 {!isSummaryCollapsed && (
-                    <div className="px-4 sm:px-6 py-4 sm:py-5 bg-gray-50/50 border-b border-gray-100 flex flex-col gap-5 shrink-0">
-                        {/* Balances Grid */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                            <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                                <div className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest mb-1 sm:mb-1.5">Opening Bal</div>
-                                <div className="text-base sm:text-lg font-extrabold text-gray-900 truncate">
-                                    {formatCurrency(displayBalance.openingBalance)} <span className="text-[10px] sm:text-xs text-gray-500 font-bold ml-0.5">{displayBalance.openingBalanceType}</span>
+                    <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0 transition-all duration-300 ease-in-out">
+                        {/* Info Card (Span 2) */}
+                        <div className="lg:col-span-2 bg-white border border-slate-200/60 rounded-xl p-4 flex flex-col justify-center shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Account Details
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-slate-500 font-medium text-[11px] uppercase tracking-wider mb-0.5">Group</span>
+                                    <span className="text-slate-900 font-semibold truncate" title={accountData?.group}>{accountData?.group || '-'}</span>
+                                </div>
+                                <div className="flex flex-col sm:col-span-2">
+                                    <span className="text-slate-500 font-medium text-[11px] uppercase tracking-wider mb-0.5">Address & Contact</span>
+                                    <span className="text-slate-900 font-semibold truncate" title={accountData?.address ? `${accountData.address} ${accountData.contact ? `| ${accountData.contact}` : ''}` : '-'}>
+                                        {accountData?.address || '-'} {accountData?.contact ? <span className="text-slate-400 font-normal mx-1">|</span> : ''} {accountData?.contact || ''}
+                                    </span>
                                 </div>
                             </div>
-                            <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                                <div className="text-[10px] text-red-500 font-extrabold uppercase tracking-widest mb-1 sm:mb-1.5">Total Debit</div>
-                                <div className="text-base sm:text-lg font-extrabold text-red-600 truncate">
-                                    {formatCurrency(displayBalance.totalDebit)}
+                        </div>
+                        {/* Debit & Credit Flow (Span 1) */}
+                        <div className="bg-white border border-slate-200/60 rounded-xl p-4 flex flex-col justify-center shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                            <div className="flex justify-between items-end mb-2.5">
+                                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-400"></div> Total Debit
+                                </div>
+                                <div className="text-sm font-bold text-rose-600">{formatCurrency(displayBalance.totalDebit)}</div>
+                            </div>
+                            <div className="w-full h-px bg-slate-100 mb-2.5"></div>
+                            <div className="flex justify-between items-end">
+                                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div> Total Credit
+                                </div>
+                                <div className="text-sm font-bold text-emerald-600">{formatCurrency(displayBalance.totalCredit)}</div>
+                            </div>
+                        </div>
+                        {/* Combined Balances (Span 1) */}
+                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-200/60 rounded-xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden h-full">
+                            <div className="absolute -right-4 -bottom-4 text-indigo-500/10 pointer-events-none">
+                                <svg className="w-24 h-24 transform rotate-12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.11-1.36-3.11-2.92v-.46h2.79v.48c0 .76.7 1.31 1.74 1.31 1.11 0 1.73-.57 1.73-1.36 0-.87-.59-1.28-1.92-1.61-1.98-.51-3.26-1.56-3.26-3.25 0-1.46 1.11-2.5 2.69-2.85V5.5h2.67v1.95c1.4.35 2.5 1.31 2.5 2.55v.52h-2.79v-.53c0-.68-.61-1.16-1.5-1.16-.94 0-1.47.51-1.47 1.25 0 .8.65 1.21 2.05 1.57 2.11.53 3.12 1.63 3.12 3.32 0 1.6-1.18 2.67-2.77 3.12z"/></svg>
+                            </div>
+                            <div className="relative z-10 flex justify-between items-end mb-2">
+                                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    Opening
+                                </div>
+                                <div className="text-sm font-semibold text-slate-600">
+                                    {formatCurrency(displayBalance.openingBalance)} <span className="text-xs font-normal ml-0.5">{displayBalance.openingBalanceType}</span>
                                 </div>
                             </div>
-                            <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                                <div className="text-[10px] text-green-600 font-extrabold uppercase tracking-widest mb-1 sm:mb-1.5">Total Credit</div>
-                                <div className="text-base sm:text-lg font-extrabold text-green-600 truncate">
-                                    {formatCurrency(displayBalance.totalCredit)}
+                            <div className="w-full h-px bg-indigo-200/50 mb-2 relative z-10"></div>
+                            <div className="relative z-10 flex flex-col items-start mt-auto">
+                                <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div> Closing
                                 </div>
-                            </div>
-                            <div className="bg-indigo-50 p-3 sm:p-4 rounded-xl border border-indigo-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-100 rounded-full blur-2xl -mr-10 -mt-10 opacity-60"></div>
-                                <div className="relative z-10">
-                                    <div className="text-[10px] text-indigo-700 font-extrabold uppercase tracking-widest mb-1 sm:mb-1.5">Closing Bal</div>
-                                    <div className="text-xl sm:text-2xl font-black text-indigo-900 leading-none truncate">
-                                        {formatCurrency(displayBalance.closingBalance)} <span className="text-[10px] sm:text-sm font-bold opacity-80 ml-0.5">{displayBalance.closingBalanceType}</span>
-                                    </div>
+                                <div className="text-xl font-black text-indigo-950 tracking-tight leading-none mt-1">
+                                    {formatCurrency(displayBalance.closingBalance)} <span className="text-sm font-bold text-indigo-600 ml-0.5">{displayBalance.closingBalanceType}</span>
                                 </div>
                             </div>
                         </div>

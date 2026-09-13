@@ -34,7 +34,7 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
     // Pagination state
     const [lastVisible, setLastVisible] = useState(null);
     const [hasMore, setHasMore] = useState(true);
-    const limitCount = 50;
+    const limitCount = 10;
     
     // Toggle state
     const [showFullDetails, setShowFullDetails] = useState(false);

@@ -5,7 +5,7 @@ import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/f
 import { 
   Search, X, Check, Clock, AlertCircle, AlertTriangle, 
   FileText, PhoneCall, History, Calendar, CheckCircle2, User,
-  Filter, ChevronDown, ChevronUp, MoreVertical
+  Filter, ChevronDown, ChevronUp, MoreVertical, Eye
 } from 'lucide-react';
 import AccountStatementModal from './AccountStatementModal';
 import UpdateFollowUpModal from './UpdateFollowUpModal';
@@ -51,13 +51,13 @@ export default function FollowUpsTab({ currentUser }) {
   const [searchAccount, setSearchAccount] = useState('');
   const [statusFilter, setStatusFilter] = useState('Today'); // Active, Today, Upcoming, Overdue, Pending, Completed, All
   const [assignedFilter, setAssignedFilter] = useState('All');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(getTodayStr());
+  const [dateTo, setDateTo] = useState(getTodayStr());
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchFollowUps();
@@ -145,7 +145,11 @@ export default function FollowUpsTab({ currentUser }) {
     } else if (status === 'Pending') {
       filtered = filtered.filter(fu => !fu.completed && !fu.nextFollowUpDate);
     } else if (status === 'Completed') {
-      filtered = filtered.filter(fu => !!fu.completed);
+      filtered = filtered.filter(fu => {
+        if (!fu.completed) return false;
+        // Only show if completed today
+        return fu.history && fu.history.some(h => h.type === 'completed' && h.date === today);
+      });
     }
     // If status === 'All', no filter on completion status
 
@@ -173,9 +177,9 @@ export default function FollowUpsTab({ currentUser }) {
     setSearchAccount('');
     setStatusFilter('Active');
     setAssignedFilter('All');
-    setDateFrom('');
-    setDateTo('');
-    applyFilters(followUps, '', 'Active', 'All', '', '');
+    setDateFrom(getTodayStr());
+    setDateTo(getTodayStr());
+    applyFilters(followUps, '', 'Active', 'All', getTodayStr(), getTodayStr());
   };
 
   const handleStatusCardClick = (newStatus) => {
@@ -234,7 +238,10 @@ export default function FollowUpsTab({ currentUser }) {
   const countToday = followUps.filter(f => !f.completed && f.nextFollowUpDate === getTodayStr()).length;
   const countOverdue = followUps.filter(f => !f.completed && f.nextFollowUpDate && f.nextFollowUpDate < getTodayStr()).length;
   const countUpcoming = followUps.filter(f => !f.completed && f.nextFollowUpDate && f.nextFollowUpDate > getTodayStr()).length;
-  const countCompleted = followUps.filter(f => !!f.completed).length;
+  const countCompleted = followUps.filter(fu => {
+    if (!fu.completed) return false;
+    return fu.history && fu.history.some(h => h.type === 'completed' && h.date === getTodayStr());
+  }).length;
 
   // Pagination logic
   const totalPages = Math.ceil(filteredFollowUps.length / itemsPerPage);
@@ -294,7 +301,7 @@ export default function FollowUpsTab({ currentUser }) {
                   { id: 'Today', label: 'Today', count: countToday, color: 'text-amber-700 bg-amber-100 border-amber-200' },
                   { id: 'Overdue', label: 'Overdue', count: countOverdue, color: 'text-red-700 bg-red-100 border-red-200' },
                   { id: 'Upcoming', label: 'Upcoming', count: countUpcoming, color: 'text-indigo-700 bg-indigo-100 border-indigo-200' },
-                  { id: 'Completed', label: 'Completed', count: countCompleted, color: 'text-green-700 bg-green-100 border-green-200' }
+                  { id: 'Completed', label: 'Today Completed', count: countCompleted, color: 'text-green-700 bg-green-100 border-green-200' }
                 ].map(statusObj => {
                   const isSelected = statusFilter === statusObj.id;
                   return (
@@ -398,7 +405,7 @@ export default function FollowUpsTab({ currentUser }) {
                     <option value="Overdue">Overdue</option>
                     <option value="Upcoming">Upcoming</option>
                     <option value="Pending">No Date (Pending)</option>
-                    <option value="Completed">Completed (Archived)</option>
+                    <option value="Completed">Completed Today</option>
                     <option value="All">All Records (incl. Completed)</option>
                   </select>
                 </div>
@@ -705,32 +712,36 @@ export default function FollowUpsTab({ currentUser }) {
                             <button
                               type="button"
                               onClick={() => handleOpenUpdate(fu)}
-                              className="py-1.5 px-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 shadow-sm truncate"
+                              className="py-2 px-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition-colors flex flex-col items-center justify-center gap-1 shadow-sm"
                               title="Reschedule"
                             >
-                              <PhoneCall className="w-3.5 h-3.5 shrink-0" />
-                              <span className="truncate hidden sm:inline">Resched.</span>
+                              <div className="flex items-center justify-center gap-1">
+                                <PhoneCall className="w-4 h-4 shrink-0" />
+                              </div>
+                              <span className="truncate w-full text-center">Reschedule</span>
                             </button>
                           )}
                           <button
                             type="button"
                             onClick={() => handleOpenUpdate(fu, 'history')}
-                            className={`${fu.completed ? 'col-span-1 px-3 py-2' : 'py-1.5 px-1'} bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-bold transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 shadow-sm truncate`}
+                            className={`${fu.completed ? 'col-span-1 px-3 py-2.5 flex-row' : 'py-2 px-1 flex-col'} bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm`}
                             title="History"
                           >
-                            <History className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                            <span className="truncate hidden sm:inline">History</span>
-                            <span className="bg-white border border-gray-200 text-gray-700 text-[9px] px-1 rounded-full font-black shrink-0">{historyCount}</span>
+                            <div className="flex items-center justify-center gap-1">
+                              <History className="w-4 h-4 text-gray-500 shrink-0" />
+                              <span className="bg-white border border-gray-200 text-gray-700 text-[9px] px-1.5 rounded-full font-black shrink-0">{historyCount}</span>
+                            </div>
+                            <span className={`truncate ${fu.completed ? 'w-auto' : 'w-full text-center'}`}>History</span>
                           </button>
                           
                           <button
                             type="button"
                             onClick={() => handleOpenStatement(fu.accountName)}
-                            className={`${fu.completed ? 'col-span-1 px-3 py-2' : 'py-1.5 px-1'} bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 rounded-lg text-[10px] font-bold transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 shadow-sm truncate`}
-                            title="Statement"
+                            className={`${fu.completed ? 'col-span-1 px-3 py-2 flex-row gap-1.5' : 'py-2 px-1 flex-col'} flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition border border-blue-100 shadow-sm`}
+                            title="View Statement"
                           >
-                             <FileText className="w-3.5 h-3.5 shrink-0" />
-                             <span className="truncate hidden sm:inline">Stmt</span>
+                            <Eye size={16} className={fu.completed ? '' : 'mb-1'} />
+                            <span className="text-[9px] font-bold">Stmt</span>
                           </button>
                         </div>
                       </div>

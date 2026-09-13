@@ -120,7 +120,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     // All data state
     const [allAccounts, setAllAccounts] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 15;
+    const pageSize = 10;
 
     useEffect(() => {
         const loadAllAccounts = async () => {
@@ -464,7 +464,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     where('debitAccount', '==', accName), 
                     where('creditAccount', '==', accName)
                 ),
-                limit(50)
+                limit(10)
             );
 
             if (isLoadMore && lastVisibleTxn) {
@@ -488,7 +488,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             const combinedTxns = isLoadMore ? [...accountTxns, ...fyFilteredTxns] : fyFilteredTxns;
             setAccountTxns(combinedTxns);
             setLastVisibleTxn(snap.docs[snap.docs.length - 1]);
-            setHasMoreTxns(snap.docs.length === 50);
+            setHasMoreTxns(snap.docs.length === 10);
 
         } catch (err) {
             console.error("Error fetching transactions:", err);
