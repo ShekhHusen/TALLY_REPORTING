@@ -30,6 +30,10 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
     const [hasCachedTxn, setHasCachedTxn] = useState(false);
     const [hasCachedMaster, setHasCachedMaster] = useState(false);
 
+    // New account detection states
+    const [existingAccountNames, setExistingAccountNames] = useState(null); // null = not fetched, Set = fetched
+    const [loadingAccounts, setLoadingAccounts] = useState(false);
+
     useEffect(() => {
         try {
             setHasCachedTxn(Boolean(localStorage.getItem('testImport_transactions')));
@@ -46,6 +50,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
     const [txnFilterType, setTxnFilterType] = useState('');   // selected voucher type
     const [txnFilterVchNo, setTxnFilterVchNo] = useState(''); // vch no search text
     const [txnFilterMulti, setTxnFilterMulti] = useState(''); // '' (all), 'multi', 'single'
+    const [txnFilterNewAcct, setTxnFilterNewAcct] = useState(false); // filter: only txns with new accounts
 
     const handleTxnSort = (field) => {
         if (txnSortField === field) {
@@ -69,6 +74,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
         setTxnFilterType('');
         setTxnFilterVchNo('');
         setTxnFilterMulti('');
+        setTxnFilterNewAcct(false);
         setPreviewPage(1);
     };
 
@@ -85,6 +91,70 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
         if (previewType !== 'transaction' || !Array.isArray(previewData)) return 0;
         return previewData.filter(t => (t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1 || ((t.allDebitEntries?.length || 0) + (t.allCreditEntries?.length || 0) > 2))).length;
     }, [previewData, previewType]);
+
+    // Fetch existing account names from Firestore for new-account detection
+    const fetchExistingAccountNames = async () => {
+        try {
+            setLoadingAccounts(true);
+            const snap = await getDocs(query(collection(db, 'accounts')));
+            const names = new Set();
+            snap.forEach(d => {
+                const data = d.data();
+                const name = (data.name || '').toLowerCase().trim();
+                if (name) names.add(name);
+            });
+            setExistingAccountNames(names);
+        } catch (err) {
+            console.error('Error fetching existing accounts for preview:', err);
+            setExistingAccountNames(new Set());
+        } finally {
+            setLoadingAccounts(false);
+        }
+    };
+
+    // Compute set of NEW account names (present in transactions but not in Firestore)
+    const newAccountNames = useMemo(() => {
+        if (previewType !== 'transaction' || !Array.isArray(previewData) || existingAccountNames === null) return new Set();
+        const newNames = new Set();
+        previewData.forEach(t => {
+            const allAccounts = [
+                ...(t.allDebitAccounts || []),
+                ...(t.allCreditAccounts || []),
+            ];
+            // Fallback for transactions without allDebitAccounts/allCreditAccounts arrays
+            if (allAccounts.length === 0) {
+                if (t.debitAccount && t.debitAccount !== '-') allAccounts.push(t.debitAccount);
+                if (t.creditAccount && t.creditAccount !== '-') allAccounts.push(t.creditAccount);
+            }
+            allAccounts.forEach(name => {
+                if (name && name !== '-' && !existingAccountNames.has(name.toLowerCase().trim())) {
+                    newNames.add(name);
+                }
+            });
+        });
+        return newNames;
+    }, [previewData, previewType, existingAccountNames]);
+
+    const isNewAccount = (name) => {
+        if (!name || name === '-' || existingAccountNames === null) return false;
+        return !existingAccountNames.has(name.toLowerCase().trim());
+    };
+
+    // Count of transactions that contain at least one new account
+    const newAcctTxnCount = useMemo(() => {
+        if (previewType !== 'transaction' || !Array.isArray(previewData) || newAccountNames.size === 0) return 0;
+        return previewData.filter(t => {
+            const allAccounts = [
+                ...(t.allDebitAccounts || []),
+                ...(t.allCreditAccounts || []),
+            ];
+            if (allAccounts.length === 0) {
+                if (t.debitAccount && t.debitAccount !== '-') allAccounts.push(t.debitAccount);
+                if (t.creditAccount && t.creditAccount !== '-') allAccounts.push(t.creditAccount);
+            }
+            return allAccounts.some(name => name && name !== '-' && isNewAccount(name));
+        }).length;
+    }, [previewData, previewType, newAccountNames]);
     
     useEffect(() => {
         const loadFYs = async () => {
@@ -173,7 +243,10 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                 setTxnFilterType('');
                 setTxnFilterVchNo('');
                 setTxnFilterMulti('');
+                setTxnFilterNewAcct(false);
                 setPreviewOpen(true);
+                // Fetch existing accounts for new-account detection in transaction preview
+                if (type === 'transaction') fetchExistingAccountNames();
             } catch (err) {
                 alert(`Error parsing file: ${err.message}`);
                 console.error(err);
@@ -203,7 +276,9 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
             setTxnFilterType('');
             setTxnFilterVchNo('');
             setTxnFilterMulti('');
+            setTxnFilterNewAcct(false);
             setPreviewOpen(true);
+            if (type === 'transaction') fetchExistingAccountNames();
         } catch (e) {
             alert("Error loading preview from cache: " + e.message);
         }
@@ -311,7 +386,122 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
             await batch.commit();
         }
 
-        return affectedAccountNames.size;
+        return affectedAccountNames;
+    };
+
+    const syncBalancesForImportedAccounts = async (parsedTransactions, activeFY) => {
+        // Step 1: Locally calculate per-account debit/credit from imported transactions
+        const accountDeltas = new Map(); // lowercase name -> { debit, credit }
+        
+        parsedTransactions.forEach(t => {
+            const debitEntries = t.allDebitEntries || [];
+            const creditEntries = t.allCreditEntries || [];
+            
+            if (debitEntries.length > 0) {
+                debitEntries.forEach(entry => {
+                    const key = (entry.name || '').toLowerCase().trim();
+                    if (!key || key === '-') return;
+                    if (!accountDeltas.has(key)) accountDeltas.set(key, { debit: 0, credit: 0 });
+                    accountDeltas.get(key).debit += parseFloat(entry.amount || 0);
+                });
+            } else if (t.debitAccount && t.debitAccount !== '-') {
+                const key = t.debitAccount.toLowerCase().trim();
+                if (key) {
+                    if (!accountDeltas.has(key)) accountDeltas.set(key, { debit: 0, credit: 0 });
+                    accountDeltas.get(key).debit += parseFloat(t.debitAmount || 0);
+                }
+            }
+            
+            if (creditEntries.length > 0) {
+                creditEntries.forEach(entry => {
+                    const key = (entry.name || '').toLowerCase().trim();
+                    if (!key || key === '-') return;
+                    if (!accountDeltas.has(key)) accountDeltas.set(key, { debit: 0, credit: 0 });
+                    accountDeltas.get(key).credit += parseFloat(entry.amount || 0);
+                });
+            } else if (t.creditAccount && t.creditAccount !== '-') {
+                const key = t.creditAccount.toLowerCase().trim();
+                if (key) {
+                    if (!accountDeltas.has(key)) accountDeltas.set(key, { debit: 0, credit: 0 });
+                    accountDeltas.get(key).credit += parseFloat(t.creditAmount || 0);
+                }
+            }
+        });
+
+        if (accountDeltas.size === 0) return 0;
+
+        // Step 2: Fetch only affected accounts from Firestore
+        const accSnap = await getDocs(collection(db, 'accounts'));
+        const affectedAccounts = [];
+        accSnap.forEach(d => {
+            const data = d.data();
+            const key = (data.name || '').toLowerCase().trim();
+            if (accountDeltas.has(key)) {
+                affectedAccounts.push({ ...data, ref: d.ref, id: d.id, key });
+            }
+        });
+
+        if (affectedAccounts.length === 0) return 0;
+
+        // Step 3: Fetch FY docs for affected accounts only
+        const fyDocs = await Promise.all(
+            affectedAccounts.map(acc => getDoc(doc(db, 'accounts', acc.id, 'fiscalYears', activeFY.id)))
+        );
+
+        const batchOps = [];
+        const fyBatchOps = [];
+
+        // Step 4: Calculate updated balances (existing + delta)
+        affectedAccounts.forEach((acc, index) => {
+            const delta = accountDeltas.get(acc.key);
+            const fyDoc = fyDocs[index];
+            const fyData = fyDoc.exists() ? fyDoc.data() : { openingBalance: 0, openingBalanceType: '' };
+            
+            const newTotalDebit = (fyData.totalDebit || 0) + delta.debit;
+            const newTotalCredit = (fyData.totalCredit || 0) + delta.credit;
+            
+            // Recalculate closing from opening + updated totals
+            const ob = parseFloat(fyData.openingBalance || 0);
+            const obSigned = fyData.openingBalanceType === 'Cr' ? -ob : ob;
+            const closingSigned = obSigned + newTotalDebit - newTotalCredit;
+            
+            let closingBalanceType = closingSigned < 0 ? 'Cr' : (closingSigned > 0 ? 'Dr' : '');
+            let closingBalance = Math.abs(closingSigned);
+            
+            batchOps.push({
+                ref: acc.ref,
+                data: { totalDebit: newTotalDebit, totalCredit: newTotalCredit, closingBalance, closingBalanceType }
+            });
+            
+            fyBatchOps.push({
+                ref: doc(db, 'accounts', acc.id, 'fiscalYears', activeFY.id),
+                data: {
+                    totalDebit: newTotalDebit,
+                    totalCredit: newTotalCredit,
+                    closingBalance,
+                    closingBalanceType,
+                    fyId: activeFY.id,
+                    fyName: activeFY.name
+                }
+            });
+        });
+
+        // Step 5: Batch write updates
+        const chunks = chunkArray(batchOps, 450);
+        for (const chunk of chunks) {
+            const batch = writeBatch(db);
+            chunk.forEach(op => batch.update(op.ref, op.data));
+            await batch.commit();
+        }
+
+        const fyChunks = chunkArray(fyBatchOps, 450);
+        for (const chunk of fyChunks) {
+            const batch = writeBatch(db);
+            chunk.forEach(op => batch.set(op.ref, op.data, { merge: true }));
+            await batch.commit();
+        }
+
+        return affectedAccounts.length;
     };
 
     const handleFileUpload = (e, type) => {
@@ -393,13 +583,17 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                         await batch.commit();
                     }
 
-                    const affectedCount = await processAffectedAccounts(validTransactions, activeFY);
+                    const affectedAccountNames = await processAffectedAccounts(validTransactions, activeFY);
+                    
+                    setLoadingTransactions(true); // Ensure loading is still true
+                    const syncedCount = await syncBalancesForImportedAccounts(validTransactions, activeFY);
 
                     let msg = `Successfully imported ${validTransactions.length} transactions.`;
                     if (invalidCount > 0) {
                         msg += `\nSkipped ${invalidCount} transactions that were outside the ${activeFY.name} period.`;
                     }
-                    msg += `\n${affectedCount} affected accounts processed.`;
+                    msg += `\n${affectedAccountNames.size} affected accounts processed.`;
+                    msg += `\n${syncedCount} account balances auto-synced.`;
                     
                     alert(msg);
                     setLoadingTransactions(false);
@@ -459,13 +653,17 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                 }
 
                 setSaveStatusText('Processing affected accounts & balances...');
-                const affectedCount = await processAffectedAccounts(validTransactions, activeFY);
+                const affectedAccountNames = await processAffectedAccounts(validTransactions, activeFY);
+                
+                setSaveStatusText('Syncing balances for affected accounts...');
+                const syncedCount = await syncBalancesForImportedAccounts(validTransactions, activeFY);
 
                 let msg = `Successfully saved ${validTransactions.length} transactions to Firestore (FY: ${activeFY.name})!`;
                 if (invalidCount > 0) {
                     msg += `\nSkipped ${invalidCount} transactions that were outside the ${activeFY.name} period.`;
                 }
-                msg += `\n${affectedCount} affected accounts updated.`;
+                msg += `\n${affectedAccountNames.size} affected accounts updated.`;
+                msg += `\n${syncedCount} account balances auto-synced.`;
 
                 alert(msg);
                 setPreviewOpen(false);
@@ -854,7 +1052,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
             {/* Test Import Preview Modal */}
             {previewOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 sm:p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-h-[95vh] flex flex-col overflow-hidden">
                         {/* Modal Header */}
                         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-teal-50">
                             <div>
@@ -862,9 +1060,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                     <Eye size={22} className="text-emerald-600" />
                                     {previewType === 'master' ? 'Test Master Preview' : 'Test Transaction Preview'}
                                 </h2>
-                                <p className="text-sm text-gray-500 mt-0.5 font-medium">
-                                    यह data import करने पर Firestore में जाएगा — अभी सिर्फ preview है (locally saved)
-                                </p>
+                            
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
@@ -931,6 +1127,24 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                     Multi-Entry: {multiEntryCount}
                                 </button>
                             )}
+                            {previewType === 'transaction' && newAcctTxnCount > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setTxnFilterNewAcct(prev => !prev);
+                                        setPreviewPage(1);
+                                    }}
+                                    className={`px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
+                                        txnFilterNewAcct
+                                            ? 'bg-rose-600 text-white shadow-xs'
+                                            : 'bg-rose-100 hover:bg-rose-200 text-rose-900'
+                                    }`}
+                                    title="Click to filter only transactions containing new accounts"
+                                >
+                                    {loadingAccounts ? <RefreshCw size={13} className="animate-spin" /> : <AlertTriangle size={13} />}
+                                    New Accounts: {newAcctTxnCount}
+                                </button>
+                            )}
                             {previewType === 'transaction' && (txnFilterDate || txnFilterType || txnFilterVchNo || txnFilterMulti || txnSortField) && (
                                 <button
                                     type="button"
@@ -957,7 +1171,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                 />
                             </div>
                         </div>
-
+            
                         {/* Table Content */}
                         <div className="flex-1 overflow-auto">
                             {previewType === 'master' ? (() => {
@@ -1073,6 +1287,19 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                                         (txn.allCreditEntries && txn.allCreditEntries.length > 1) || 
                                                         ((txn.allDebitEntries?.length || 0) + (txn.allCreditEntries?.length || 0) > 2);
                                         if (isMulti) return false;
+                                    }
+                                    if (txnFilterNewAcct) {
+                                        const allAccounts = [
+                                            ...(txn.allDebitAccounts || []),
+                                            ...(txn.allCreditAccounts || []),
+                                        ];
+                                        if (allAccounts.length === 0) {
+                                            if (txn.debitAccount && txn.debitAccount !== '-') allAccounts.push(txn.debitAccount);
+                                            if (txn.creditAccount && txn.creditAccount !== '-') allAccounts.push(txn.creditAccount);
+                                        }
+                                        if (!allAccounts.some(name => name && name !== '-' && isNewAccount(name))) {
+                                            return false;
+                                        }
                                     }
                                     return true;
                                 });
@@ -1263,8 +1490,11 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                                                             <div className="space-y-1">
                                                                                 {txn.allDebitEntries.map((e, idx) => (
                                                                                     <div key={idx} className="flex items-center justify-between gap-1.5 text-xs bg-red-50/40 border border-red-100 rounded px-2 py-1">
-                                                                                        <span className="font-semibold text-gray-900 truncate" title={e.name}>
-                                                                                            {e.name}
+                                                                                        <span className="font-semibold text-gray-900 truncate flex items-center gap-1.5" title={e.name}>
+                                                                                            <span className="truncate">{e.name}</span>
+                                                                                            {isNewAccount(e.name) && (
+                                                                                                <span className="bg-rose-100 text-rose-700 text-[9px] px-1 py-0.5 rounded uppercase font-extrabold tracking-wide shrink-0" title="This account will be created during import">NEW</span>
+                                                                                            )}
                                                                                         </span>
                                                                                         <span className="font-mono font-bold text-red-700 whitespace-nowrap ml-1 shrink-0 text-[11px]">
                                                                                             ₹{Number(e.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -1274,8 +1504,11 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                                                             </div>
                                                                         </div>
                                                                     ) : (
-                                                                        <span className="font-bold text-gray-900 truncate block" title={txn.debitAccount}>
-                                                                            {txn.debitAccount || '-'}
+                                                                        <span className="font-bold text-gray-900 truncate flex items-center gap-1.5" title={txn.debitAccount}>
+                                                                            <span className="truncate">{txn.debitAccount || '-'}</span>
+                                                                            {isNewAccount(txn.debitAccount) && (
+                                                                                <span className="bg-rose-100 text-rose-700 text-[9px] px-1 py-0.5 rounded uppercase font-extrabold tracking-wide shrink-0" title="This account will be created during import">NEW</span>
+                                                                            )}
                                                                         </span>
                                                                     )}
                                                                 </td>
@@ -1299,8 +1532,11 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                                                             <div className="space-y-1">
                                                                                 {txn.allCreditEntries.map((e, idx) => (
                                                                                     <div key={idx} className="flex items-center justify-between gap-1.5 text-xs bg-green-50/40 border border-green-100 rounded px-2 py-1">
-                                                                                        <span className="font-semibold text-gray-900 truncate" title={e.name}>
-                                                                                            {e.name}
+                                                                                        <span className="font-semibold text-gray-900 truncate flex items-center gap-1.5" title={e.name}>
+                                                                                            <span className="truncate">{e.name}</span>
+                                                                                            {isNewAccount(e.name) && (
+                                                                                                <span className="bg-rose-100 text-rose-700 text-[9px] px-1 py-0.5 rounded uppercase font-extrabold tracking-wide shrink-0" title="This account will be created during import">NEW</span>
+                                                                                            )}
                                                                                         </span>
                                                                                         <span className="font-mono font-bold text-green-700 whitespace-nowrap ml-1 shrink-0 text-[11px]">
                                                                                             ₹{Number(e.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -1310,8 +1546,11 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                                                             </div>
                                                                         </div>
                                                                     ) : (
-                                                                        <span className="font-bold text-gray-900 truncate block" title={txn.creditAccount}>
-                                                                            {txn.creditAccount || '-'}
+                                                                        <span className="font-bold text-gray-900 truncate flex items-center gap-1.5" title={txn.creditAccount}>
+                                                                            <span className="truncate">{txn.creditAccount || '-'}</span>
+                                                                            {isNewAccount(txn.creditAccount) && (
+                                                                                <span className="bg-rose-100 text-rose-700 text-[9px] px-1 py-0.5 rounded uppercase font-extrabold tracking-wide shrink-0" title="This account will be created during import">NEW</span>
+                                                                            )}
                                                                         </span>
                                                                     )}
                                                                 </td>
@@ -1437,11 +1676,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                         <RefreshCw size={15} className="animate-spin shrink-0" />
                                         <span>{saveStatusText || 'Saving data to Firebase Firestore...'}</span>
                                     </div>
-                                ) : (
-                                    <p className="text-xs text-gray-500 font-medium">
-                                        ⚠️ यह अभी सिर्फ preview है — डेटाबेस में इंपोर्ट करने के लिए <span className="font-bold text-emerald-700">"Save to Firebase"</span> बटन दबाएं
-                                    </p>
-                                )}
+                                ) : null}
                             </div>
                             <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
                                 <button 
