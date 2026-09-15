@@ -145,11 +145,7 @@ export default function FollowUpsTab({ currentUser }) {
     } else if (status === 'Pending') {
       filtered = filtered.filter(fu => !fu.completed && !fu.nextFollowUpDate);
     } else if (status === 'Completed') {
-      filtered = filtered.filter(fu => {
-        if (!fu.completed) return false;
-        // Only show if completed today
-        return fu.history && fu.history.some(h => h.type === 'completed' && h.date === today);
-      });
+      filtered = filtered.filter(fu => fu.completed);
     }
     // If status === 'All', no filter on completion status
 
@@ -157,12 +153,28 @@ export default function FollowUpsTab({ currentUser }) {
       filtered = filtered.filter(fu => fu.assignedToUid === assigned);
     }
 
-    if (from) {
-      filtered = filtered.filter(fu => fu.date >= from);
+    const ignoreDateFilter = ['Active', 'Overdue', 'Today', 'Upcoming', 'Pending'].includes(status);
+
+    if (from && !ignoreDateFilter) {
+      filtered = filtered.filter(fu => {
+        if (status === 'Completed') {
+           const comp = fu.history?.find(h => h.type === 'completed');
+           const d = comp ? comp.date : fu.date;
+           return d >= from;
+        }
+        return fu.date >= from;
+      });
     }
 
-    if (to) {
-      filtered = filtered.filter(fu => fu.date <= to);
+    if (to && !ignoreDateFilter) {
+      filtered = filtered.filter(fu => {
+        if (status === 'Completed') {
+           const comp = fu.history?.find(h => h.type === 'completed');
+           const d = comp ? comp.date : fu.date;
+           return d <= to;
+        }
+        return fu.date <= to;
+      });
     }
 
     setFilteredFollowUps(filtered);
@@ -240,7 +252,11 @@ export default function FollowUpsTab({ currentUser }) {
   const countUpcoming = followUps.filter(f => !f.completed && f.nextFollowUpDate && f.nextFollowUpDate > getTodayStr()).length;
   const countCompleted = followUps.filter(fu => {
     if (!fu.completed) return false;
-    return fu.history && fu.history.some(h => h.type === 'completed' && h.date === getTodayStr());
+    const comp = fu.history?.find(h => h.type === 'completed');
+    const compDate = comp ? comp.date : fu.date;
+    if (dateFrom && compDate < dateFrom) return false;
+    if (dateTo && compDate > dateTo) return false;
+    return true;
   }).length;
 
   // Pagination logic
@@ -301,7 +317,7 @@ export default function FollowUpsTab({ currentUser }) {
                   { id: 'Today', label: 'Today', count: countToday, color: 'text-amber-700 bg-amber-100 border-amber-200' },
                   { id: 'Overdue', label: 'Overdue', count: countOverdue, color: 'text-red-700 bg-red-100 border-red-200' },
                   { id: 'Upcoming', label: 'Upcoming', count: countUpcoming, color: 'text-indigo-700 bg-indigo-100 border-indigo-200' },
-                  { id: 'Completed', label: 'Today Completed', count: countCompleted, color: 'text-green-700 bg-green-100 border-green-200' }
+                  { id: 'Completed', label: 'Completed', count: countCompleted, color: 'text-green-700 bg-green-100 border-green-200' }
                 ].map(statusObj => {
                   const isSelected = statusFilter === statusObj.id;
                   return (
@@ -405,7 +421,7 @@ export default function FollowUpsTab({ currentUser }) {
                     <option value="Overdue">Overdue</option>
                     <option value="Upcoming">Upcoming</option>
                     <option value="Pending">No Date (Pending)</option>
-                    <option value="Completed">Completed Today</option>
+                    <option value="Completed">Completed</option>
                     <option value="All">All Records (incl. Completed)</option>
                   </select>
                 </div>
