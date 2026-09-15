@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
-import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or, getDoc, setDoc, updateDoc, collectionGroup } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
 import AccountSearchDropdown from './AccountSearchDropdown';
 import { jsPDF } from "jspdf";
@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import EditAccountModal from './EditAccountModal';
 import FollowUpModal from './FollowUpModal';
-import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, Check, CheckCircle2, MoreVertical, X } from 'lucide-react';
+import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X } from 'lucide-react';
 import { deleteTransactionRecord } from '../utils/transactionOperations';
 
 const formatCurrency = (num) => {
@@ -95,21 +95,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [detailFY, setDetailFY] = useState('');
     const [detailFYData, setDetailFYData] = useState(null);
 
-    useEffect(() => {
-        const loadFYs = async () => {
-            const fys = await fetchFiscalYears();
-            setFyOptions(fys);
-            const current = getCurrentFYObject(fys);
-            if (current) {
-                setSelectedFY(current.id);
-                setDetailFY(current.id);
-            } else if (fys.length > 0) {
-                setSelectedFY(fys[0].id);
-                setDetailFY(fys[0].id);
-            }
-        };
-        loadFYs();
-    }, []);
+    // FY and Account loading are now handled in the parallel initData useEffect below
     const [accountTxns, setAccountTxns] = useState([]);
     const [loadingTxns, setLoadingTxns] = useState(false);
     const [lastVisibleTxn, setLastVisibleTxn] = useState(null);
@@ -123,10 +109,29 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const pageSize = 10;
 
     useEffect(() => {
-        const loadAllAccounts = async () => {
+        const initData = async () => {
             setLoadingAccounts(true);
             try {
-                const snap = await getDocs(collection(db, 'accounts'));
+                // Fetch both FYs and Accounts in parallel
+                const [fys, snap] = await Promise.all([
+                    fetchFiscalYears(),
+                    getDocs(collection(db, 'accounts'))
+                ]);
+
+                // Process FYs
+                setFyOptions(fys);
+                let currentFyId = selectedFY;
+                // Set initial FY only if it hasn't been set yet
+                if (!currentFyId) {
+                    const current = getCurrentFYObject(fys);
+                    currentFyId = current ? current.id : (fys.length > 0 ? fys[0].id : '');
+                    if (currentFyId) {
+                        setSelectedFY(currentFyId);
+                        setDetailFY(currentFyId);
+                    }
+                }
+
+                // Process Accounts
                 const accMap = new Map();
                 snap.forEach(d => {
                     const data = d.data();
@@ -165,44 +170,80 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 accs.sort((a, b) => a.name.localeCompare(b.name));
                 setAllAccounts(accs);
             } catch (err) {
-                console.error("Error fetching all accounts:", err);
+                console.error("Error loading initial data:", err);
             }
-            setLoadingAccounts(false);
+            // Not setting setLoadingAccounts(false) here because fetchAllFYBalances will trigger next and handle it
         };
-        loadAllAccounts();
+        initData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [updateTrigger]);
 
     useEffect(() => {
         const fetchAllFYBalances = async () => {
             if (allAccounts.length === 0 || !selectedFY) {
-                setFyBalances({});
+                // Do not clear fyBalances here to keep previous data cached during transition
                 return;
             }
             setLoadingAccounts(true);
-            setFyBalances({});
-            const balances = {};
-            const chunkSize = 100;
-            for (let i = 0; i < allAccounts.length; i += chunkSize) {
-                const chunk = allAccounts.slice(i, i + chunkSize);
-                const promises = chunk.map(async (acc) => {
-                    try {
-                        const ids = acc.allDocIds && acc.allDocIds.length > 0 ? acc.allDocIds : [acc.id];
-                        for (const docId of ids) {
-                            const fyDoc = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', selectedFY));
-                            if (fyDoc.exists()) {
-                                balances[acc.id] = fyDoc.data();
-                                break;
-                            }
+            
+            try {
+                // Try optimized collectionGroup query
+                const q = query(
+                    collectionGroup(db, 'fiscalYears'),
+                    where('fyId', '==', selectedFY)
+                );
+                const snap = await getDocs(q);
+                
+                // Map physical docIds back to our merged logical account IDs
+                const accountDocIdToLogicalId = {};
+                allAccounts.forEach(acc => {
+                    const ids = acc.allDocIds && acc.allDocIds.length > 0 ? acc.allDocIds : [acc.id];
+                    ids.forEach(id => {
+                        accountDocIdToLogicalId[id] = acc.id;
+                    });
+                });
+
+                const finalBalances = {};
+                snap.forEach(docSnap => {
+                    const parentRef = docSnap.ref.parent?.parent;
+                    if (parentRef) {
+                        const logicalId = accountDocIdToLogicalId[parentRef.id];
+                        // If we haven't already set a balance for this logical account, set it
+                        if (logicalId && !finalBalances[logicalId]) {
+                            finalBalances[logicalId] = docSnap.data();
                         }
-                    } catch (e) {
-                        console.error(`Error fetching FY data for ${acc.name}:`, e);
                     }
                 });
-                await Promise.all(promises);
+                
+                setFyBalances(finalBalances);
+            } catch (error) {
+                console.warn("CollectionGroup query failed (likely missing index). Falling back to chunked reads.", error);
+                
+                // Fallback to legacy chunked approach
+                const balances = {};
+                const chunkSize = 100;
+                for (let i = 0; i < allAccounts.length; i += chunkSize) {
+                    const chunk = allAccounts.slice(i, i + chunkSize);
+                    const promises = chunk.map(async (acc) => {
+                        try {
+                            const ids = acc.allDocIds && acc.allDocIds.length > 0 ? acc.allDocIds : [acc.id];
+                            for (const docId of ids) {
+                                const fyDoc = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', selectedFY));
+                                if (fyDoc.exists()) {
+                                    balances[acc.id] = fyDoc.data();
+                                    break;
+                                }
+                            }
+                        } catch (e) {
+                            console.error(`Error fetching FY data for ${acc.name}:`, e);
+                        }
+                    });
+                    await Promise.all(promises);
+                }
+                setFyBalances(balances);
+            } finally {
+                setLoadingAccounts(false);
             }
-            setFyBalances(balances);
-            setLoadingAccounts(false);
         };
         fetchAllFYBalances();
     }, [selectedFY, allAccounts]);
@@ -274,7 +315,11 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         
         if (verificationStatus === 'ignored') {
             result = result.filter(a => isAccountIgnored(a));
-        } else if (!showIgnored) {
+        } else if (showIgnored) {
+            // showIgnored ON = show ONLY ignored accounts
+            result = result.filter(a => isAccountIgnored(a));
+        } else {
+            // Default: hide ignored accounts
             result = result.filter(a => !isAccountIgnored(a));
         }
 
@@ -936,8 +981,32 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             />
                         </div>
 
-                        {/* Right: Filter Toggle Button (Desktop) */}
-                        <div className="shrink-0 hidden sm:block">
+                        {/* Right: Ignored Accounts Toggle + Filter Toggle Button (Desktop) */}
+                        <div className="shrink-0 hidden sm:flex items-center gap-2">
+                            {/* Ignored Accounts Toggle - Desktop Only */}
+                            <button
+                                type="button"
+                                onClick={() => setShowIgnored(prev => !prev)}
+                                className={`flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm border ${
+                                    showIgnored 
+                                        ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100' 
+                                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                                }`}
+                            >
+                                <EyeOff className="w-4 h-4" />
+                                <span>Ignored</span>
+                                {(() => {
+                                    const ignoredCount = allAccounts.filter(a => isAccountIgnored(a) && (!selectedFY || !!fyBalances[a.id])).length;
+                                    return ignoredCount > 0 ? (
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5 ${
+                                            showIgnored ? 'bg-amber-200 text-amber-900' : 'bg-gray-200 text-gray-700'
+                                        }`}>
+                                            {ignoredCount}
+                                        </span>
+                                    ) : null;
+                                })()}
+                            </button>
+                            {/* Filter Button */}
                             <button
                                 type="button"
                                 onClick={() => setShowMobileFilters(prev => !prev)}
@@ -1061,7 +1130,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                     {/* Toggles */}
                                     <div className="flex flex-col gap-3 py-3 border-y border-gray-100 my-1">
                                         <label className="flex items-center justify-between text-sm text-gray-800 font-semibold cursor-pointer group">
-                                            <span>Include Ignored Accounts</span>
+                                            <span>Ignored Accounts</span>
                                             <input 
                                                 type="checkbox" 
                                                 checked={showIgnored}
@@ -1118,7 +1187,80 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 
                 <div className="overflow-auto flex-1 relative">
                     {loadingAccounts ? (
-                        <div className="flex justify-center items-center h-full text-gray-500">Loading accounts...</div>
+                        <>
+                            {/* Desktop Skeleton */}
+                            <div className="hidden md:block">
+                                <div className="min-w-full">
+                                    {/* Skeleton Header */}
+                                    <div className="flex bg-gray-50 border-b border-gray-200 px-4 py-3 gap-4">
+                                        <div className="w-16 h-3 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="flex-1 h-3 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="w-20 h-3 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="w-16 h-3 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="w-16 h-3 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="w-20 h-3 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="w-20 h-3 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="w-16 h-3 bg-gray-200 rounded animate-pulse"></div>
+                                    </div>
+                                    {/* Skeleton Rows */}
+                                    {[...Array(7)].map((_, i) => (
+                                        <div key={i} className="flex items-center px-4 py-3.5 gap-4 border-b border-gray-100" style={{ animationDelay: `${i * 80}ms` }}>
+                                            <div className="w-16 flex gap-1.5 shrink-0">
+                                                <div className="w-7 h-7 bg-gray-100 rounded animate-pulse"></div>
+                                                <div className="w-7 h-7 bg-gray-100 rounded animate-pulse"></div>
+                                            </div>
+                                            <div className="flex-1 flex flex-col gap-1.5">
+                                                <div className={`h-3.5 bg-gray-200 rounded animate-pulse`} style={{ width: `${45 + Math.random() * 35}%` }}></div>
+                                                <div className="h-2.5 bg-gray-100 rounded animate-pulse w-20"></div>
+                                            </div>
+                                            <div className="w-20 h-3.5 bg-gray-100 rounded animate-pulse"></div>
+                                            <div className="w-16 h-3.5 bg-gray-100 rounded animate-pulse"></div>
+                                            <div className="w-16 h-3.5 bg-gray-100 rounded animate-pulse"></div>
+                                            <div className="w-20 h-3.5 bg-gray-200 rounded animate-pulse"></div>
+                                            <div className="w-20 h-3 bg-gray-100 rounded-full animate-pulse"></div>
+                                            <div className="w-16 h-6 bg-gray-100 rounded animate-pulse"></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* Mobile Skeleton */}
+                            <div className="block md:hidden divide-y divide-gray-100">
+                                {[...Array(4)].map((_, i) => (
+                                    <div key={i} className="p-4" style={{ animationDelay: `${i * 100}ms` }}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex-1 flex flex-col gap-1.5">
+                                                <div className="h-4 bg-gray-200 rounded animate-pulse" style={{ width: `${50 + Math.random() * 30}%` }}></div>
+                                                <div className="h-2.5 bg-gray-100 rounded animate-pulse w-16"></div>
+                                            </div>
+                                            <div className="w-16 h-5 bg-gray-100 rounded animate-pulse ml-2"></div>
+                                        </div>
+                                        <div className="flex justify-between items-end mb-3">
+                                            <div className="h-2.5 bg-gray-100 rounded animate-pulse w-20"></div>
+                                            <div className="h-4 bg-gray-200 rounded animate-pulse w-28"></div>
+                                        </div>
+                                        <div className="flex justify-between items-center bg-gray-50 rounded-xl p-2.5 mb-3">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="h-2 bg-gray-200 rounded animate-pulse w-12"></div>
+                                                <div className="h-3 bg-gray-100 rounded animate-pulse w-20"></div>
+                                            </div>
+                                            <div className="flex flex-col gap-1 items-center">
+                                                <div className="h-2 bg-gray-200 rounded animate-pulse w-10"></div>
+                                                <div className="h-3 bg-gray-100 rounded animate-pulse w-16"></div>
+                                            </div>
+                                            <div className="flex flex-col gap-1 items-end">
+                                                <div className="h-2 bg-gray-200 rounded animate-pulse w-10"></div>
+                                                <div className="h-3 bg-gray-100 rounded animate-pulse w-16"></div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-1.5">
+                                            {[...Array(4)].map((_, j) => (
+                                                <div key={j} className="h-12 bg-gray-50 rounded-lg animate-pulse border border-gray-100"></div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
                     ) : (
                         <>
                             {/* Desktop Table View */}
