@@ -1086,6 +1086,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-h-[95vh] flex flex-col overflow-hidden">
                         {/* Modal Header */}
                         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-teal-50">
+                            
                             <div>
                                 <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 flex items-center gap-2">
                                     <Eye size={22} className="text-emerald-600" />
@@ -1093,6 +1094,39 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                                 </h2>
                             
                             </div>
+                            
+                            {/* Stats Bar */}
+                        <div className="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-100 text-sm">
+                            <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg font-bold">
+                                Total: {previewData.length} {previewType === 'master' ? 'Accounts' : 'Transactions'}
+                            </span>
+                            {previewType === 'transaction' && previewData._skippedCount > 0 && (
+                                <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-lg font-bold">
+                                    Skipped (Out of FY): {previewData._skippedCount}
+                                </span>
+                            )}
+                            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg font-bold">
+                                FY: {activeFYName}
+                            </span>
+                            <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg font-bold">
+                                Saved to localStorage ✓
+                            </span>
+                            
+                            {previewType === 'transaction' && (txnFilterDate || txnFilterType || txnFilterVchNo || txnFilterMulti || txnSortField) && (
+                                <button
+                                    type="button"
+                                    onClick={resetTxnFilters}
+                                    className="inline-flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer ml-auto"
+                                    title="Clear all column filters and sorting"
+                                >
+                                    <RotateCcw size={13} />
+                                    Reset Filters & Sort
+                                </button>
+                            )}
+                        </div>
+
+
+
                             <div className="flex items-center gap-2">
                                 {previewType === 'transaction' && (
                                     <button
@@ -1138,81 +1172,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                             </div>
                         </div>
 
-                        {/* Stats Bar */}
-                        <div className="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-100 text-sm">
-                            <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg font-bold">
-                                Total: {previewData.length} {previewType === 'master' ? 'Accounts' : 'Transactions'}
-                            </span>
-                            {previewType === 'transaction' && previewData._skippedCount > 0 && (
-                                <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-lg font-bold">
-                                    Skipped (Out of FY): {previewData._skippedCount}
-                                </span>
-                            )}
-                            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg font-bold">
-                                FY: {activeFYName}
-                            </span>
-                            <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg font-bold">
-                                Saved to localStorage ✓
-                            </span>
-                            {previewType === 'transaction' && affectedAccountsCount > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setDeltaModalOpen(true)}
-                                    className="px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-xs hover:shadow"
-                                    title="Open local delta calculation breakdown for changed accounts"
-                                >
-                                    <Calculator size={13} />
-                                    Changed Accounts (Delta): {affectedAccountsCount}
-                                </button>
-                            )}
-                            {previewType === 'transaction' && multiEntryCount > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setTxnFilterMulti(prev => prev === 'multi' ? '' : 'multi');
-                                        setPreviewPage(1);
-                                    }}
-                                    className={`px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
-                                        txnFilterMulti === 'multi'
-                                            ? 'bg-purple-600 text-white shadow-xs'
-                                            : 'bg-purple-100 hover:bg-purple-200 text-purple-900'
-                                    }`}
-                                    title="Click to filter only transactions with multiple accounts"
-                                >
-                                    <Layers size={13} />
-                                    Multi-Entry: {multiEntryCount}
-                                </button>
-                            )}
-                            {previewType === 'transaction' && newAcctTxnCount > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setTxnFilterNewAcct(prev => !prev);
-                                        setPreviewPage(1);
-                                    }}
-                                    className={`px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
-                                        txnFilterNewAcct
-                                            ? 'bg-rose-600 text-white shadow-xs'
-                                            : 'bg-rose-100 hover:bg-rose-200 text-rose-900'
-                                    }`}
-                                    title="Click to filter only transactions containing new accounts"
-                                >
-                                    {loadingAccounts ? <RefreshCw size={13} className="animate-spin" /> : <AlertTriangle size={13} />}
-                                    New Accounts: {newAcctTxnCount}
-                                </button>
-                            )}
-                            {previewType === 'transaction' && (txnFilterDate || txnFilterType || txnFilterVchNo || txnFilterMulti || txnSortField) && (
-                                <button
-                                    type="button"
-                                    onClick={resetTxnFilters}
-                                    className="inline-flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer ml-auto"
-                                    title="Clear all column filters and sorting"
-                                >
-                                    <RotateCcw size={13} />
-                                    Reset Filters & Sort
-                                </button>
-                            )}
-                        </div>
+                        
 
                         {/* Search Bar */}
                         <div className="px-4 sm:px-5 py-3 border-b border-gray-100">
@@ -1724,45 +1684,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                             })()}
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 sm:p-5 border-t border-gray-100 bg-gray-50">
-                            <div className="text-xs sm:text-sm text-gray-500 w-full sm:w-auto">
-                                {savingPreview ? (
-                                    <div className="flex items-center gap-2 text-emerald-700 font-bold animate-pulse">
-                                        <RefreshCw size={15} className="animate-spin shrink-0" />
-                                        <span>{saveStatusText || 'Saving data to Firebase Firestore...'}</span>
-                                    </div>
-                                ) : null}
-                            </div>
-                            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-                                <button 
-                                    type="button"
-                                    onClick={() => setPreviewOpen(false)}
-                                    disabled={savingPreview}
-                                    className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-50"
-                                >
-                                    Close Preview
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleSavePreviewToFirebase}
-                                    disabled={savingPreview || previewData.length === 0}
-                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                                >
-                                    {savingPreview ? (
-                                        <>
-                                            <RefreshCw size={16} className="animate-spin" />
-                                            <span>{saveStatusText || 'Saving to Firebase...'}</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <UploadCloud size={16} />
-                                            <span>Save to Firebase ({previewData.length})</span>
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
+                        
                     </div>
                 </div>
             )}

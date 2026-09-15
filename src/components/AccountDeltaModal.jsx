@@ -397,8 +397,8 @@ export default function AccountDeltaModal({ isOpen, onClose, transactions = [], 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-0">
+  <div className="bg-white w-full h-full max-w-none max-h-none rounded-none shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                 
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-50 via-emerald-50 to-indigo-50">
@@ -438,77 +438,7 @@ export default function AccountDeltaModal({ isOpen, onClose, transactions = [], 
                     </div>
                 </div>
 
-                {/* KPI Summary Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 p-4 bg-gray-50/70 border-b border-gray-100 text-xs sm:text-sm">
-                    {/* Card 1: Total Accounts */}
-                    <div className="bg-white p-3 rounded-xl border border-gray-200/80 shadow-2xs">
-                        <span className="text-gray-500 text-[11px] font-semibold uppercase tracking-wider block">
-                            Affected Accounts
-                        </span>
-                        <div className="flex items-baseline justify-between mt-1">
-                            <span className="text-xl font-black text-gray-900 font-mono">
-                                {summary.totalAccounts}
-                            </span>
-                            <span className="text-[10px] text-gray-500 font-bold">
-                                {summary.newAccountsCount} New / {summary.existingAccountsCount} Exist
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Card 2: Delta Debit */}
-                    <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs">
-                        <span className="text-blue-600 text-[11px] font-semibold uppercase tracking-wider block flex items-center gap-1">
-                            <ArrowUpRight size={13} /> Total Delta Debit
-                        </span>
-                        <span className="text-lg font-black text-blue-700 font-mono mt-1 block">
-                            ₹ {formatCurrency(summary.totalDebit)}
-                        </span>
-                    </div>
-
-                    {/* Card 3: Delta Credit */}
-                    <div className="bg-white p-3 rounded-xl border border-amber-100 shadow-2xs">
-                        <span className="text-amber-600 text-[11px] font-semibold uppercase tracking-wider block flex items-center gap-1">
-                            <ArrowDownRight size={13} /> Total Delta Credit
-                        </span>
-                        <span className="text-lg font-black text-amber-700 font-mono mt-1 block">
-                            ₹ {formatCurrency(summary.totalCredit)}
-                        </span>
-                    </div>
-
-                    {/* Card 4: Net Movement */}
-                    <div className="bg-white p-3 rounded-xl border border-purple-100 shadow-2xs col-span-2 sm:col-span-1">
-                        <span className="text-purple-600 text-[11px] font-semibold uppercase tracking-wider block flex items-center gap-1">
-                            <Scale size={13} /> Net Movement
-                        </span>
-                        <div className="flex items-center gap-1.5 mt-1">
-                            <span className="text-lg font-black text-purple-800 font-mono">
-                                ₹ {formatCurrency(summary.netMovement)}
-                            </span>
-                            {summary.netMovementType && (
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                    summary.netMovementType === 'Dr' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
-                                }`}>
-                                    {summary.netMovementType}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Card 5: New Accounts Alert */}
-                    <div className="bg-white p-3 rounded-xl border border-rose-100 shadow-2xs col-span-2 sm:col-span-1">
-                        <span className="text-rose-600 text-[11px] font-semibold uppercase tracking-wider block flex items-center gap-1">
-                            <Sparkles size={13} /> New Ledgers
-                        </span>
-                        <div className="flex items-baseline justify-between mt-1">
-                            <span className="text-xl font-black text-rose-700 font-mono">
-                                {summary.newAccountsCount}
-                            </span>
-                            <span className="text-[10px] text-gray-500 font-medium">
-                                Will be auto-created
-                            </span>
-                        </div>
-                    </div>
-                </div>
+              
 
                 {/* Filters & Search Toolbar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-5 py-3 border-b border-gray-100 bg-white">
@@ -913,26 +843,6 @@ export default function AccountDeltaModal({ isOpen, onClose, transactions = [], 
                             )}
                         </tbody>
                     </table>
-                </div>
-
-                {/* Footer */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-gray-100 bg-gray-50/80">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
-                        <span>
-                            All delta numbers and projected balances are calculated locally in preview. Nothing has been modified in Firestore yet.
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="w-full sm:w-auto px-5 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer shadow-2xs"
-                        >
-                            Back to Preview
-                        </button>
-                    </div>
                 </div>
 
             </div>
