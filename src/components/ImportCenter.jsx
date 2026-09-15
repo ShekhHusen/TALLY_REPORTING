@@ -4,7 +4,8 @@ import { collection, writeBatch, doc, getDocs, query, getDoc } from 'firebase/fi
 import { processMaster, processTransactions } from '../utils/parser';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import PushTransactionModal from './PushTransactionModal';
-import { PlusCircle, UploadCloud, RefreshCw, AlertTriangle, Database, Eye, X, Search, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Filter, RotateCcw, Layers, Package } from 'lucide-react';
+import AccountDeltaModal from './AccountDeltaModal';
+import { PlusCircle, UploadCloud, RefreshCw, AlertTriangle, Database, Eye, X, Search, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Filter, RotateCcw, Layers, Package, Calculator } from 'lucide-react';
 
 export default function ImportCenter({ setUpdateTrigger, currentUser }) {
     const [loadingMaster, setLoadingMaster] = useState(false);
@@ -33,6 +34,9 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
     // New account detection states
     const [existingAccountNames, setExistingAccountNames] = useState(null); // null = not fetched, Set = fetched
     const [loadingAccounts, setLoadingAccounts] = useState(false);
+    
+    // Delta Preview Modal state
+    const [deltaModalOpen, setDeltaModalOpen] = useState(false);
 
     useEffect(() => {
         try {
@@ -155,6 +159,33 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
             return allAccounts.some(name => name && name !== '-' && isNewAccount(name));
         }).length;
     }, [previewData, previewType, newAccountNames]);
+
+    // Count of unique affected accounts in transaction preview for Delta Calculation
+    const affectedAccountsCount = useMemo(() => {
+        if (previewType !== 'transaction' || !Array.isArray(previewData)) return 0;
+        const set = new Set();
+        previewData.forEach(t => {
+            const debitEntries = t.allDebitEntries || [];
+            const creditEntries = t.allCreditEntries || [];
+            if (debitEntries.length > 0) {
+                debitEntries.forEach(entry => {
+                    const key = (entry.name || '').toLowerCase().trim();
+                    if (key && key !== '-') set.add(key);
+                });
+            } else if (t.debitAccount && t.debitAccount !== '-') {
+                set.add(t.debitAccount.toLowerCase().trim());
+            }
+            if (creditEntries.length > 0) {
+                creditEntries.forEach(entry => {
+                    const key = (entry.name || '').toLowerCase().trim();
+                    if (key && key !== '-') set.add(key);
+                });
+            } else if (t.creditAccount && t.creditAccount !== '-') {
+                set.add(t.creditAccount.toLowerCase().trim());
+            }
+        });
+        return set.size;
+    }, [previewData, previewType]);
     
     useEffect(() => {
         const loadFYs = async () => {
@@ -1063,6 +1094,20 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                             
                             </div>
                             <div className="flex items-center gap-2">
+                                {previewType === 'transaction' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeltaModalOpen(true)}
+                                        className="inline-flex items-center gap-1.5 bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-800 px-3 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                                        title="View locally calculated changes for affected accounts"
+                                    >
+                                        <Calculator size={15} className="text-emerald-600" />
+                                        <span className="hidden sm:inline">Account Deltas</span>
+                                        <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-1.5 py-0.5 rounded-full">
+                                            {affectedAccountsCount}
+                                        </span>
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     onClick={handleSavePreviewToFirebase}
@@ -1109,6 +1154,17 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                             <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg font-bold">
                                 Saved to localStorage ✓
                             </span>
+                            {previewType === 'transaction' && affectedAccountsCount > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setDeltaModalOpen(true)}
+                                    className="px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-xs hover:shadow"
+                                    title="Open local delta calculation breakdown for changed accounts"
+                                >
+                                    <Calculator size={13} />
+                                    Changed Accounts (Delta): {affectedAccountsCount}
+                                </button>
+                            )}
                             {previewType === 'transaction' && multiEntryCount > 0 && (
                                 <button
                                     type="button"
@@ -1720,6 +1776,13 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                         setUpdateTrigger(prev => prev + 1);
                     }
                 }}
+            />
+
+            <AccountDeltaModal
+                isOpen={deltaModalOpen}
+                onClose={() => setDeltaModalOpen(false)}
+                transactions={previewType === 'transaction' ? previewData : []}
+                activeFY={fyOptions.find(f => f.id === selectedFYId)}
             />
         </div>
     );
