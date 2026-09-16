@@ -39,7 +39,7 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
     }
   }, [isOpen, account, currentUser]);
 
-  const fetchFollowUps = async () => {
+  async function fetchFollowUps() {
     if (!account) return;
     setLoading(true);
     try {
@@ -71,9 +71,9 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const fetchUsers = async () => {
+  async function fetchUsers() {
     try {
       const snapshot = await getDocs(collection(db, 'users'));
       const usersData = snapshot.docs.map(doc => ({
@@ -85,15 +85,15 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
     } catch (error) {
       console.error("Error fetching users:", error);
     }
-  };
+  }
 
-  const resetForm = () => {
+  function resetForm() {
     setDate(new Date().toISOString().split('T')[0]);
     setMessage('');
     setCompleted(false);
     setNextFollowUpDate('');
     setAssignedToUid('');
-  };
+  }
 
   const handleOpenUpdate = (fu, tab = 'update') => {
     setSelectedFollowUp(fu);

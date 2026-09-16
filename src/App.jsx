@@ -23,24 +23,6 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-    if (!db || !auth) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-xl text-center border border-red-100">
-                    <div className="text-red-500 mb-4 flex justify-center"><Settings size={48} /></div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Configuration Missing</h1>
-                    <p className="text-gray-600 mb-6">
-                        The application failed to load because the Firebase Environment Variables are missing. 
-                        If you just deployed to Vercel, you need to add your <code className="bg-gray-100 px-1 py-0.5 rounded text-sm text-red-600">VITE_FIREBASE_...</code> variables in the Vercel Dashboard Settings, then trigger a redeploy.
-                    </p>
-                    <a href="https://vercel.com/docs/projects/environment-variables" target="_blank" rel="noreferrer" className="inline-block bg-gray-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-gray-800 transition-colors">
-                        View Vercel Documentation
-                    </a>
-                </div>
-            </div>
-        );
-    }
-
     const [currentUser, setCurrentUser] = useState(() => {
         try {
             const saved = sessionStorage.getItem('currentUser');
@@ -82,7 +64,9 @@ export default function App() {
 
     const handleLogout = async () => {
         try {
-            await signOut(auth);
+            if (auth) {
+                await signOut(auth);
+            }
         } catch (e) {
             console.error(e);
         }
@@ -91,7 +75,7 @@ export default function App() {
     };
 
     const handleChangePassword = async () => {
-        if (!newPassword) return;
+        if (!newPassword || !db || !currentUser) return;
         try {
             const userRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userRef, { customPassword: newPassword });
@@ -104,6 +88,21 @@ export default function App() {
             alert("Failed to change password");
         }
     };
+
+    if (!db || !auth) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-xl text-center border border-red-100">
+                    <div className="text-red-500 mb-4 flex justify-center"><Settings size={48} /></div>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Configuration Missing</h1>
+                    <p className="text-gray-600 mb-6">
+                        The application failed to load because the Firebase configuration is missing or could not initialize.
+                        Please provide valid Firebase credentials in your environment variables.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     if (!currentUser) {
         return <LoginScreen onLoginSuccess={handleSetCurrentUser} />;
@@ -136,9 +135,14 @@ export default function App() {
             <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-2.5 flex justify-between items-center shadow-sm z-30">
                 <div className="flex items-center gap-4 lg:gap-6">
                     {/* LOGO */}
-                    <div>
-                        <h1 className="text-lg md:text-xl font-extrabold text-blue-700 tracking-tight leading-none">Tally Analyzer</h1>
-                        <p className="text-[9px] md:text-[10px] text-gray-500 mt-1 font-medium leading-none">Deep Data Analysis</p>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-lg shadow-sm border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                            <img src="/LOGO%20WON.png" alt="Logo" className="w-full h-full object-contain" />
+                        </div>
+                        <div>
+                            <h1 className="text-lg md:text-xl font-extrabold text-blue-700 tracking-tight leading-none">Jay Baudhimai Traders</h1>
+                            <p className="text-[9px] md:text-[10px] text-gray-500 mt-1 font-medium leading-none">Accounts Reporting Portal</p>
+                        </div>
                     </div>
 
                     {/* PAGE TITLE (Moved to Nav) */}

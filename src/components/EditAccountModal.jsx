@@ -23,7 +23,7 @@ export default function EditAccountModal({ isOpen, onClose, account, fyOptions, 
     }
   }, [isOpen, account, selectedFY]);
 
-  const fetchAccountData = async (fyId) => {
+  async function fetchAccountData(fyId) {
     if (!account || !account.allDocIds || account.allDocIds.length === 0) return;
     
     setFetching(true);

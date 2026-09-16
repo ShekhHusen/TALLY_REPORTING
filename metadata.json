@@ -1,0 +1,6 @@
+{
+  "name": "Jay Baudhimai Traders",
+  "description": "Financial accounts reporting dashboard for Jay Baudhimai Traders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

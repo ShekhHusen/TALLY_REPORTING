@@ -64,7 +64,7 @@ export default function FollowUpsTab({ currentUser }) {
     fetchUsers();
   }, [currentUser]);
 
-  const fetchUsers = async () => {
+  async function fetchUsers() {
     try {
       const snapshot = await getDocs(collection(db, 'users'));
       const usersList = snapshot.docs.map(doc => ({
@@ -76,9 +76,9 @@ export default function FollowUpsTab({ currentUser }) {
     } catch (error) {
       console.error('Error fetching users:', error);
     }
-  };
+  }
 
-  const fetchFollowUps = async () => {
+  async function fetchFollowUps() {
     setLoading(true);
     try {
       const snapshot = await getDocs(collection(db, 'followUps'));
@@ -114,7 +114,7 @@ export default function FollowUpsTab({ currentUser }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const getStatus = (fu) => {
     if (fu.completed) return 'Completed';

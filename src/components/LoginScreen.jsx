@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
 import { auth, googleProvider, db } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
-import { collection, query, where, getDocs, setDoc, doc, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, setDoc, doc } from 'firebase/firestore';
+import { 
+    Briefcase, 
+    Lock, 
+    User, 
+    Eye, 
+    EyeOff, 
+    ArrowRight, 
+    Clock, 
+    ShieldCheck, 
+    AlertCircle, 
+    KeyRound, 
+    CheckCircle2
+} from 'lucide-react';
 
 export default function LoginScreen({ onLoginSuccess }) {
+    const [loginMethod, setLoginMethod] = useState('credentials'); // 'credentials' | 'google'
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [pendingMsg, setPendingMsg] = useState('');
@@ -11,6 +25,7 @@ export default function LoginScreen({ onLoginSuccess }) {
     // Custom login state
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleGoogleSignIn = async () => {
         setLoading(true);
@@ -31,7 +46,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                 const newUser = {
                     uid: user.uid,
                     email: user.email,
-                    name: user.displayName,
+                    name: user.displayName || user.email.split('@')[0],
                     role: isAdmin ? 'admin' : 'user',
                     status: isAdmin ? 'active' : 'pending',
                     customUsername: isAdmin ? 'admin' : '',
@@ -45,16 +60,16 @@ export default function LoginScreen({ onLoginSuccess }) {
                 if (isAdmin) {
                     onLoginSuccess(newUser);
                 } else {
-                    setPendingMsg('Your access request has been sent. Please wait for an Admin to verify and approve your account.');
+                    setPendingMsg('Your access request has been submitted. Please notify an administrator to approve your account.');
                 }
             } else {
                 const userData = snapshot.docs[0].data();
                 if (userData.status === 'active') {
                     onLoginSuccess(userData);
                 } else if (userData.status === 'pending') {
-                    setPendingMsg('Your account is still pending admin approval.');
+                    setPendingMsg('Your account is awaiting admin approval. Please check back shortly.');
                 } else {
-                    setError('Your account has been rejected or suspended.');
+                    setError('Your account has been deactivated or suspended. Please contact your administrator.');
                 }
             }
         } catch (err) {
@@ -73,11 +88,10 @@ export default function LoginScreen({ onLoginSuccess }) {
         
         try {
             if (username === 'admin' && password === 'admin') {
-                // If it's the hardcoded admin login
+                // If it's the default admin login
                 const adminQuery = query(collection(db, 'users'), where('email', '==', 'husnailalam06@gmail.com'));
                 const adminSnap = await getDocs(adminQuery);
                 if (adminSnap.empty) {
-                    // Seed the admin user if they haven't logged in with Google yet
                     const uid = 'admin_uid_' + Date.now();
                     const newAdmin = {
                         uid,
@@ -101,20 +115,20 @@ export default function LoginScreen({ onLoginSuccess }) {
             const snapshot = await getDocs(q);
             
             if (snapshot.empty) {
-                setError('Invalid username or password.');
+                setError('Invalid username or password. Please verify your credentials.');
             } else {
                 const userData = snapshot.docs[0].data();
                 if (userData.status === 'active') {
                     onLoginSuccess(userData);
                 } else if (userData.status === 'pending') {
-                    setPendingMsg('Your account is still pending admin approval.');
+                    setPendingMsg('Your account is awaiting admin approval.');
                 } else {
-                    setError('Your account has been rejected or suspended.');
+                    setError('Your account has been deactivated or suspended.');
                 }
             }
         } catch (err) {
             console.error(err);
-            setError('Failed to login. Please try again.');
+            setError('Failed to log in. Please check your connection and try again.');
         } finally {
             setLoading(false);
         }
@@ -122,16 +136,36 @@ export default function LoginScreen({ onLoginSuccess }) {
 
     if (pendingMsg) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-                <div className="sm:mx-auto sm:w-full sm:max-w-md bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center">
-                    <svg className="mx-auto h-12 w-12 text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">Access Pending</h2>
-                    <p className="text-sm text-gray-600 mb-6">{pendingMsg}</p>
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 font-sans relative overflow-hidden">
+                {/* Background Glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+
+                <div className="relative w-full max-w-md bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 p-8 text-center">
+                    <div className="w-16 h-16 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-center mx-auto mb-5 text-amber-500 shadow-inner">
+                        <Clock className="w-8 h-8 animate-pulse" />
+                    </div>
+                    
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100/70 text-amber-800 mb-3 border border-amber-200/50">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        Verification Pending
+                    </span>
+
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">Access Under Review</h2>
+                    <p className="text-sm text-slate-500 leading-relaxed mb-6">
+                        {pendingMsg}
+                    </p>
+
+                    <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 text-left mb-6 space-y-1.5">
+                        <p className="font-semibold text-slate-900">What happens next?</p>
+                        <p>• An administrator will review your account role and assigned ledger permissions.</p>
+                        <p>• Once approved, you can log in immediately with the same credentials.</p>
+                    </div>
+
                     <button 
-                        onClick={() => setPendingMsg('')}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                        onClick={() => { setPendingMsg(''); setError(''); }}
+                        className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-slate-900/20 border border-transparent"
                     >
-                        Return to Login
+                        Return to Sign In
                     </button>
                 </div>
             </div>
@@ -139,75 +173,188 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-8">
-                <h2 className="text-3xl font-extrabold text-gray-900">Tally Analyzer</h2>
-                <p className="mt-2 text-sm text-gray-600">Sign in to access your reports</p>
+        <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 sm:p-6 font-sans relative overflow-hidden">
+            
+            {/* Background Ambient Glows */}
+            <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 blur-[150px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-400/10 blur-[150px] rounded-full pointer-events-none"></div>
+
+            {/* BRAND HEADER */}
+            <div className="relative w-full max-w-md text-center mb-8 z-10">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-[0_0_40px_rgba(37,99,235,0.2)] mb-5 border border-blue-500/20 p-2">
+                    <img src="/LOGO%20WON.png" alt="Jay Baudhimai Traders Logo" className="w-full h-full object-contain" />
+                </div>
+                <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-2">
+                    Jay Baudhimai Traders
+                </h1>
+                <p className="text-xs font-bold tracking-widest uppercase text-blue-600 mt-2">
+                    Accounts Reporting Portal
+                </p>
             </div>
 
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-                    
-                    {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded">{error}</div>}
+            {/* MAIN LOGIN CARD */}
+            <div className="relative w-full max-w-md bg-white/80 backdrop-blur-2xl rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200/80 overflow-hidden z-10">
+                
+                {/* METHOD TOGGLE TABS */}
+                <div className="flex p-1.5 bg-slate-100/80 border-b border-slate-200/50 gap-1 text-xs font-bold mx-4 mt-4 rounded-xl">
+                    <button
+                        type="button"
+                        onClick={() => { setLoginMethod('credentials'); setError(''); }}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${
+                            loginMethod === 'credentials'
+                                ? 'bg-white text-blue-700 shadow-sm border border-slate-200/60'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                        }`}
+                    >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        Credentials
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setLoginMethod('google'); setError(''); }}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${
+                            loginMethod === 'google'
+                                ? 'bg-white text-blue-700 shadow-sm border border-slate-200/60'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                        }`}
+                    >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                            <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                            <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                            <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                        </svg>
+                        Google
+                    </button>
+                </div>
 
-                    <div>
-                        <button
-                            onClick={handleGoogleSignIn}
-                            disabled={loading}
-                            className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
-                        >
-                            <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                            </svg>
-                            Sign in with Google
-                        </button>
-                    </div>
+                <div className="p-6 sm:p-8">
+                    {/* ERROR BANNER */}
+                    {error && (
+                        <div className="mb-5 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl flex items-start gap-2.5">
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span className="leading-snug">{error}</span>
+                        </div>
+                    )}
 
-                    <div className="mt-6">
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-300" />
+                    {loginMethod === 'credentials' ? (
+                        <form onSubmit={handleCustomLogin} className="space-y-5">
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+                                    Username or ID
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <User className="w-4 h-4" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Enter your username"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200/80 rounded-xl text-sm text-slate-900 placeholder-slate-400 transition-all focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 shadow-sm"
+                                    />
+                                </div>
                             </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-gray-500">Or use Admin credentials</span>
+
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                        Password
+                                    </label>
+                                </div>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <Lock className="w-4 h-4" />
+                                    </div>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full pl-10 pr-11 py-3 bg-white border border-slate-200/80 rounded-xl text-sm text-slate-900 placeholder-slate-400 transition-all focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 shadow-sm"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                                        title={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20 disabled:opacity-50 disabled:shadow-none transition-all"
+                            >
+                                {loading ? (
+                                    <span className="inline-flex items-center gap-2">
+                                        <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                        </svg>
+                                        Authenticating...
+                                    </span>
+                                ) : (
+                                    <>
+                                        <span>Sign In Securely</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    ) : (
+                        <div className="space-y-5 text-center">
+                            <p className="text-xs text-slate-500 leading-relaxed px-2">
+                                Sign in seamlessly with your authorized Google Workspace account.
+                            </p>
+
+                            <button
+                                onClick={handleGoogleSignIn}
+                                disabled={loading}
+                                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+                            >
+                                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                </svg>
+                                {loading ? 'Authenticating...' : 'Continue with Google'}
+                            </button>
+
+                            <div className="text-left bg-blue-50 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-800 space-y-1">
+                                <p className="font-semibold text-blue-900 flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                                    First-time user?
+                                </p>
+                                <p className="opacity-90">New sign-ins will automatically request approval from an administrator.</p>
                             </div>
                         </div>
-                    </div>
+                    )}
+                </div>
 
-                    <form className="mt-6 space-y-4" onSubmit={handleCustomLogin}>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Username</label>
-                            <input
-                                type="text"
-                                required
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Password</label>
-                            <input
-                                type="password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                        >
-                            Sign in
-                        </button>
-                    </form>
+                {/* FOOTER REASSURANCE */}
+                <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-200/60 flex items-center justify-center gap-4 text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+                    <span className="flex items-center gap-1.5 text-slate-600">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                        Role-Based Access
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                    <span>Audit Ready</span>
                 </div>
             </div>
+
+            {/* COPYRIGHT / VERSION */}
+            <p className="relative z-10 text-center text-[11px] text-slate-400 mt-8 font-medium tracking-wide">
+                Jay Baudhimai Traders Portal &copy; {new Date().getFullYear()} • All rights reserved
+            </p>
         </div>
     );
 }
+
