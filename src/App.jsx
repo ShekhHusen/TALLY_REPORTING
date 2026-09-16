@@ -132,30 +132,30 @@ export default function App() {
         <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
             
             {/* TOP NAVIGATION BAR */}
-            <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-2.5 flex justify-between items-center shadow-sm z-30">
+            <header className="bg-white border-b border-red-100 px-4 md:px-6 py-2.5 flex justify-between items-center shadow-sm z-30">
                 <div className="flex items-center gap-4 lg:gap-6">
                     {/* LOGO */}
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white rounded-lg shadow-sm border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                            <img src="/LOGO%20WON.png" alt="Logo" className="w-full h-full object-contain" />
+                        <div className="w-12 h-12 flex items-center justify-center shrink-0 overflow-visible">
+                            <img src="/LOGO%20WON.png" alt="Logo" className="w-full h-full object-contain mix-blend-multiply" />
                         </div>
                         <div>
-                            <h1 className="text-lg md:text-xl font-extrabold text-blue-700 tracking-tight leading-none">Jay Baudhimai Traders</h1>
-                            <p className="text-[9px] md:text-[10px] text-gray-500 mt-1 font-medium leading-none">Accounts Reporting Portal</p>
+                            <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight leading-none">Jay Baudhimai Traders</h1>
+                            <p className="text-[9px] md:text-[10px] text-red-600 mt-1 font-bold tracking-widest uppercase leading-none">Accounts Reporting Portal</p>
                         </div>
                     </div>
 
                     {/* PAGE TITLE (Moved to Nav) */}
-                    <div className="hidden md:block h-6 w-px bg-gray-300 mx-1"></div>
-                    <h2 className="hidden md:flex text-base lg:text-lg font-bold text-gray-800 items-center gap-2">
-                        {activeTabObj && <activeTabObj.icon className="w-5 h-5 text-blue-600" />}
+                    <div className="hidden md:block h-6 w-px bg-slate-200 mx-1"></div>
+                    <h2 className="hidden md:flex text-base lg:text-lg font-bold text-slate-800 items-center gap-2">
+                        {activeTabObj && <activeTabObj.icon className="w-5 h-5 text-red-600" />}
                         {activeTabObj ? activeTabObj.label : 'Dashboard'}
                     </h2>
                 </div>
 
                 <div className="flex items-center gap-3 lg:gap-5">
                     {/* DESKTOP NAVIGATION (Compact Section) */}
-                    <nav className="hidden md:flex items-center p-1 bg-slate-50/80 border border-slate-200/60 rounded-xl shadow-sm gap-0.5">
+                    <nav className="hidden md:flex items-center p-1 bg-slate-100/80 border border-slate-200 rounded-xl shadow-sm gap-0.5">
                         {availableTabs.map(tab => {
                             const isActive = activeTab === tab.id;
                             return (
@@ -164,11 +164,11 @@ export default function App() {
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
                                         isActive 
-                                        ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' 
-                                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/50'
+                                        ? 'bg-red-600 text-white shadow-md' 
+                                        : 'text-slate-500 hover:text-slate-900 hover:bg-white'
                                     }`}
                                 >
-                                    <tab.icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                    <tab.icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                                     <span className={isActive ? 'inline-block' : 'hidden lg:inline-block'}>{tab.label}</span>
                                 </button>
                             );
@@ -194,35 +194,35 @@ export default function App() {
                     {/* MOBILE MENU BUTTON */}
                     <button 
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        className="md:hidden p-2 -mr-2 text-gray-600 hover:text-gray-900 focus:outline-none"
+                        className="md:hidden p-2 -mr-2 text-slate-600 hover:text-red-600 focus:outline-none"
                     >
                         <User className="w-6 h-6" />
                     </button>
 
                     {/* DESKTOP USER MENU (Hover Dropdown) */}
                     <div className="hidden md:block relative group">
-                        <button className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-50 transition-colors focus:outline-none">
-                            <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shadow-inner">
+                        <button className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-50 transition-colors focus:outline-none">
+                            <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold shadow-inner">
                                 {currentUser.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="hidden lg:block text-left mr-1">
-                                <p className="text-sm font-bold text-gray-900 max-w-[120px] truncate leading-tight">{currentUser.name}</p>
-                                <p className="text-xs text-gray-500 capitalize leading-tight">{currentUser.role}</p>
+                                <p className="text-sm font-bold text-slate-900 max-w-[120px] truncate leading-tight">{currentUser.name}</p>
+                                <p className="text-xs text-slate-500 capitalize leading-tight">{currentUser.role}</p>
                             </div>
                         </button>
                         
                         {/* Dropdown Panel */}
-                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
-                            <div className="p-4 border-b border-gray-50">
-                                <p className="text-sm font-bold text-gray-900 truncate">{currentUser.name}</p>
-                                <p className="text-xs text-gray-500 capitalize mt-0.5">{currentUser.role} Account</p>
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
+                            <div className="p-4 border-b border-slate-50">
+                                <p className="text-sm font-bold text-slate-900 truncate">{currentUser.name}</p>
+                                <p className="text-xs text-slate-500 capitalize mt-0.5">{currentUser.role} Account</p>
                             </div>
                             <div className="p-2 space-y-1">
                                 <button 
                                     onClick={() => setShowChangePassword(true)}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
                                 >
-                                    <Key className="w-4 h-4 text-gray-500" /> Change Password
+                                    <Key className="w-4 h-4 text-slate-500" /> Change Password
                                 </button>
                                 <button 
                                     onClick={handleLogout}
@@ -238,14 +238,14 @@ export default function App() {
 
             {/* MOBILE USER MENU DROPDOWN */}
             {mobileMenuOpen && (
-                <div className="md:hidden absolute top-[60px] left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-40 p-4">
-                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
-                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg">
+                <div className="md:hidden absolute top-[60px] left-0 right-0 bg-white border-b border-slate-200 shadow-lg z-40 p-4">
+                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold text-lg">
                             {currentUser.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <p className="text-base font-bold text-gray-900">{currentUser.name}</p>
-                            <p className="text-sm text-gray-500 capitalize">{currentUser.role} Account</p>
+                            <p className="text-base font-bold text-slate-900">{currentUser.name}</p>
+                            <p className="text-sm text-slate-500 capitalize">{currentUser.role} Account</p>
                         </div>
                     </div>
                     <div className="flex flex-col gap-2">

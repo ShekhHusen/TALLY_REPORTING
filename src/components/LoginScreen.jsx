@@ -138,14 +138,14 @@ export default function LoginScreen({ onLoginSuccess }) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 font-sans relative overflow-hidden">
                 {/* Background Glow */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-red-500/10 blur-[120px] rounded-full pointer-events-none"></div>
 
                 <div className="relative w-full max-w-md bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 p-8 text-center">
-                    <div className="w-16 h-16 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-center mx-auto mb-5 text-amber-500 shadow-inner">
+                    <div className="w-16 h-16 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center mx-auto mb-5 text-red-500 shadow-inner">
                         <Clock className="w-8 h-8 animate-pulse" />
                     </div>
                     
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100/70 text-amber-800 mb-3 border border-amber-200/50">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100/70 text-red-800 mb-3 border border-red-200/50">
                         <ShieldCheck className="w-3.5 h-3.5" />
                         Verification Pending
                     </span>
@@ -176,18 +176,18 @@ export default function LoginScreen({ onLoginSuccess }) {
         <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 sm:p-6 font-sans relative overflow-hidden">
             
             {/* Background Ambient Glows */}
-            <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 blur-[150px] rounded-full pointer-events-none"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-400/10 blur-[150px] rounded-full pointer-events-none"></div>
+            <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-red-400/20 blur-[150px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orange-400/10 blur-[150px] rounded-full pointer-events-none"></div>
 
             {/* BRAND HEADER */}
-            <div className="relative w-full max-w-md text-center mb-8 z-10">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-[0_0_40px_rgba(37,99,235,0.2)] mb-5 border border-blue-500/20 p-2">
-                    <img src="/LOGO%20WON.png" alt="Jay Baudhimai Traders Logo" className="w-full h-full object-contain" />
+            <div className="relative w-full max-w-md text-center mb-8 z-10 flex flex-col items-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 sm:w-28 sm:h-28 mb-4 sm:mb-5 overflow-visible">
+                    <img src="/LOGO%20WON.png" alt="Jay Baudhimai Traders Logo" className="w-full h-full object-contain mix-blend-multiply" />
                 </div>
                 <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-2">
                     Jay Baudhimai Traders
                 </h1>
-                <p className="text-xs font-bold tracking-widest uppercase text-blue-600 mt-2">
+                <p className="text-xs font-bold tracking-widest uppercase text-red-600 mt-2">
                     Accounts Reporting Portal
                 </p>
             </div>
@@ -202,7 +202,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                         onClick={() => { setLoginMethod('credentials'); setError(''); }}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${
                             loginMethod === 'credentials'
-                                ? 'bg-white text-blue-700 shadow-sm border border-slate-200/60'
+                                ? 'bg-white text-red-700 shadow-sm border border-slate-200/60'
                                 : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                         }`}
                     >
@@ -214,7 +214,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                         onClick={() => { setLoginMethod('google'); setError(''); }}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${
                             loginMethod === 'google'
-                                ? 'bg-white text-blue-700 shadow-sm border border-slate-200/60'
+                                ? 'bg-white text-red-700 shadow-sm border border-slate-200/60'
                                 : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                         }`}
                     >
@@ -253,7 +253,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                                         placeholder="Enter your username"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200/80 rounded-xl text-sm text-slate-900 placeholder-slate-400 transition-all focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 shadow-sm"
+                                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200/80 rounded-xl text-sm text-slate-900 placeholder-slate-400 transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 shadow-sm"
                                     />
                                 </div>
                             </div>
@@ -274,7 +274,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                                         placeholder="••••••••"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full pl-10 pr-11 py-3 bg-white border border-slate-200/80 rounded-xl text-sm text-slate-900 placeholder-slate-400 transition-all focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 shadow-sm"
+                                        className="w-full pl-10 pr-11 py-3 bg-white border border-slate-200/80 rounded-xl text-sm text-slate-900 placeholder-slate-400 transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 shadow-sm"
                                     />
                                     <button
                                         type="button"
@@ -290,7 +290,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20 disabled:opacity-50 disabled:shadow-none transition-all"
+                                className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-600/20 disabled:opacity-50 disabled:shadow-none transition-all"
                             >
                                 {loading ? (
                                     <span className="inline-flex items-center gap-2">
@@ -328,9 +328,9 @@ export default function LoginScreen({ onLoginSuccess }) {
                                 {loading ? 'Authenticating...' : 'Continue with Google'}
                             </button>
 
-                            <div className="text-left bg-blue-50 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-800 space-y-1">
-                                <p className="font-semibold text-blue-900 flex items-center gap-1.5">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                            <div className="text-left bg-red-50 border border-red-100 rounded-xl p-3 text-[11px] text-red-800 space-y-1">
+                                <p className="font-semibold text-red-900 flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-red-600" />
                                     First-time user?
                                 </p>
                                 <p className="opacity-90">New sign-ins will automatically request approval from an administrator.</p>
