@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { X, Plus, Calendar, Trash2 } from 'lucide-react';
+import { collection, getDocs, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { X, Plus, Calendar, Trash2, Database } from 'lucide-react';
 
 export default function SettingsTab({ currentUser }) {
     const [fiscalYears, setFiscalYears] = useState([]);
@@ -12,6 +12,74 @@ export default function SettingsTab({ currentUser }) {
     const [endDate, setEndDate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isAddFYModalOpen, setIsAddFYModalOpen] = useState(false);
+    const [isMigrating, setIsMigrating] = useState(false);
+    const [migrationStatus, setMigrationStatus] = useState('');
+
+    const handleMigrateTransactions = async () => {
+        if (!window.confirm("This will process all transactions and link them to Account GUIDs for robust searching. Proceed?")) return;
+        setIsMigrating(true);
+        setMigrationStatus("Fetching accounts...");
+        try {
+            // Build map of account name -> IDs
+            const accSnap = await getDocs(collection(db, 'accounts'));
+            const existingAccounts = new Map();
+            accSnap.forEach(d => {
+                const key = (d.data().name || '').toLowerCase().trim();
+                if (!key) return;
+                if (!existingAccounts.has(key)) existingAccounts.set(key, []);
+                existingAccounts.get(key).push(d.id);
+            });
+
+            setMigrationStatus("Fetching all transactions...");
+            const snap = await getDocs(collection(db, 'transactions'));
+            const txns = [];
+            snap.forEach(d => txns.push({ id: d.id, ref: d.ref, ...d.data() }));
+            
+            setMigrationStatus(`Processing ${txns.length} transactions...`);
+            let count = 0;
+            
+            const chunkArray = (arr, size) => {
+                const chunked = [];
+                for (let i = 0; i < arr.length; i += size) {
+                    chunked.push(arr.slice(i, i + size));
+                }
+                return chunked;
+            };
+
+            const chunks = chunkArray(txns, 450);
+            for (let i = 0; i < chunks.length; i++) {
+                setMigrationStatus(`Saving batch ${i + 1} of ${chunks.length}...`);
+                const batch = writeBatch(db);
+                chunks[i].forEach(t => {
+                    const allDebit = t.allDebitAccounts || [];
+                    const allCredit = t.allCreditAccounts || [];
+                    const ids = new Set();
+                    const lowers = new Set();
+                    [...allDebit, ...allCredit].forEach(name => {
+                        const key = name.toLowerCase().trim();
+                        if (key) lowers.add(key);
+                        if (existingAccounts.has(key)) {
+                            existingAccounts.get(key).forEach(id => ids.add(id));
+                        }
+                    });
+                    
+                    const involvedAccountIds = Array.from(ids);
+                    const involvedAccountsLower = Array.from(lowers);
+                    batch.update(t.ref, { involvedAccountIds, involvedAccountsLower });
+                    count++;
+                });
+                await batch.commit();
+            }
+            alert(`Migration complete! Successfully updated ${count} transactions with GUIDs.`);
+            setMigrationStatus("");
+        } catch (err) {
+            console.error(err);
+            alert("Migration failed: " + err.message);
+        } finally {
+            setIsMigrating(false);
+            setMigrationStatus("");
+        }
+    };
 
     const fetchFiscalYears = async () => {
         setLoading(true);
@@ -146,6 +214,41 @@ export default function SettingsTab({ currentUser }) {
                             </tbody>
                         </table>
                     )}
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 flex flex-col min-h-0 overflow-hidden">
+                <div className="p-4 sm:px-6 sm:py-4 border-b border-slate-100 bg-white flex justify-between items-center shrink-0 z-10">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
+                            <Database className="w-5 h-5 stroke-[2.5]" />
+                        </div>
+                        <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Data Maintenance</h2>
+                    </div>
+                </div>
+                <div className="p-4 sm:p-6 bg-slate-50/50 flex flex-col gap-4">
+                    <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center shadow-sm">
+                        <div>
+                            <h3 className="font-bold text-slate-900 text-sm sm:text-base">Migrate Transactions (Link by GUID)</h3>
+                            <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xl">
+                                Scans all transactions and maps their ledger names to actual Account IDs (GUIDs). This creates an `involvedAccountIds` field for robust, duplicate-proof searching across all statements. Run this once!
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleMigrateTransactions}
+                            disabled={isMigrating}
+                            className="shrink-0 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm disabled:opacity-50 transition-all flex items-center gap-2"
+                        >
+                            {isMigrating ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                    <span>{migrationStatus || 'Running...'}</span>
+                                </>
+                            ) : (
+                                'Run Transaction Migration'
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
 

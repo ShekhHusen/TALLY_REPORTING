@@ -417,7 +417,7 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
             await batch.commit();
         }
 
-        return affectedAccountNames;
+        return { affectedAccountNames, existingAccounts };
     };
 
     const syncBalancesForImportedAccounts = async (parsedTransactions, activeFY) => {
@@ -604,6 +604,20 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                         return;
                     }
                     
+                    const { affectedAccountNames, existingAccounts } = await processAffectedAccounts(validTransactions, activeFY);
+
+                    // Add involvedAccountIds to transactions before saving
+                    validTransactions.forEach(txn => {
+                        const ids = new Set();
+                        [...(txn.allDebitAccounts || []), ...(txn.allCreditAccounts || [])].forEach(name => {
+                            const key = name.toLowerCase().trim();
+                            if (existingAccounts.has(key)) {
+                                existingAccounts.get(key).forEach(id => ids.add(id));
+                            }
+                        });
+                        txn.involvedAccountIds = Array.from(ids);
+                    });
+
                     const chunks = chunkArray(validTransactions, 450);
                     for (const chunk of chunks) {
                         const batch = writeBatch(db);
@@ -613,8 +627,6 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                         });
                         await batch.commit();
                     }
-
-                    const affectedAccountNames = await processAffectedAccounts(validTransactions, activeFY);
                     
                     setLoadingTransactions(true); // Ensure loading is still true
                     const syncedCount = await syncBalancesForImportedAccounts(validTransactions, activeFY);
@@ -672,6 +684,21 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                 setSavingPreview(true);
                 setSaveStatusText('Preparing batches...');
 
+                setSaveStatusText('Processing affected accounts...');
+                const { affectedAccountNames, existingAccounts } = await processAffectedAccounts(validTransactions, activeFY);
+
+                // Add involvedAccountIds to transactions before saving
+                validTransactions.forEach(txn => {
+                    const ids = new Set();
+                    [...(txn.allDebitAccounts || []), ...(txn.allCreditAccounts || [])].forEach(name => {
+                        const key = name.toLowerCase().trim();
+                        if (existingAccounts.has(key)) {
+                            existingAccounts.get(key).forEach(id => ids.add(id));
+                        }
+                    });
+                    txn.involvedAccountIds = Array.from(ids);
+                });
+
                 const chunks = chunkArray(validTransactions, 450);
                 for (let i = 0; i < chunks.length; i++) {
                     setSaveStatusText(`Saving transactions: batch ${i + 1} of ${chunks.length}...`);
@@ -683,9 +710,6 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                     await batch.commit();
                 }
 
-                setSaveStatusText('Processing affected accounts & balances...');
-                const affectedAccountNames = await processAffectedAccounts(validTransactions, activeFY);
-                
                 setSaveStatusText('Syncing balances for affected accounts...');
                 const syncedCount = await syncBalancesForImportedAccounts(validTransactions, activeFY);
 

@@ -97,20 +97,17 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
         if (!accountName) return;
         setLoadingTxns(true);
         try {
-            const accNameLower = accountName.toLowerCase();
-            let q = query(
-                collection(db, 'transactions'),
-                or(
-                    where('debitAccount', '==', accNameLower),
-                    where('creditAccount', '==', accNameLower),
-                    where('debitAccount', '==', accountName), 
-                    where('creditAccount', '==', accountName)
-                ),
-                limit(10)
-            );
-
-            if (isLoadMore && lastVisibleTxn) {
-                q = query(q, startAfter(lastVisibleTxn));
+            // First collect the IDs we need to look up. If we have the account data, use its IDs
+            const idsToSearch = (accountData?.allDocIds || (accountData?.id ? [accountData.id] : [])).slice(0, 10);
+            
+            let q;
+            if (idsToSearch.length > 0) {
+                q = query(
+                    collection(db, 'transactions'),
+                    where('involvedAccountIds', 'array-contains-any', idsToSearch)
+                );
+            } else {
+                q = query(collection(db, 'transactions'), limit(0));
             }
 
             const snap = await getDocs(q);
@@ -124,10 +121,8 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
             const fyFiltered = txns.filter(t => t.date >= start && t.date <= end);
             fyFiltered.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            const combined = isLoadMore ? [...transactions, ...fyFiltered] : fyFiltered;
-            setTransactions(combined);
-            setLastVisibleTxn(snap.docs[snap.docs.length - 1]);
-            setHasMoreTxns(snap.docs.length === 10);
+            setTransactions(fyFiltered);
+            setHasMoreTxns(false);
         } catch (err) {
             console.error("Error fetching transactions for statement:", err);
         } finally {
@@ -179,13 +174,13 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
     }, [transactions, fyData, accountName]);
 
     useEffect(() => {
-        if (isOpen && accountName && selectedFY) {
+        if (isOpen && accountName && selectedFY && accountData) {
             setTransactions([]);
             setLastVisibleTxn(null);
             fetchTransactions(false);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, accountName, selectedFY, fyData]);
+    }, [isOpen, accountName, selectedFY, fyData, accountData]);
 
     const handleDelete = async (t) => {
         const ok = await deleteTransactionRecord(t);

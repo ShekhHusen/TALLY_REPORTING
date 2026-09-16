@@ -101,6 +101,11 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
                 constraints.push(where("type", "==", voucherType));
             }
 
+            const targetAccount = allowedAccount || accountName;
+            if (targetAccount) {
+                constraints.push(where('involvedAccountsLower', 'array-contains', targetAccount.toLowerCase().trim()));
+            }
+
             if (isLoadMore && lastVisible) {
                 constraints.push(startAfter(lastVisible));
             }
@@ -111,21 +116,6 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
             
             let fetched = [];
             snap.forEach(d => fetched.push({ id: d.id, ...d.data() }));
-
-            // Client side filtering for account name if specified
-            const targetAccount = allowedAccount || accountName;
-            if (targetAccount) {
-                const lowerTarget = targetAccount.toLowerCase();
-                fetched = fetched.filter(t => {
-                    if ((t.debitAccount && t.debitAccount.toLowerCase() === lowerTarget) || 
-                        (t.creditAccount && t.creditAccount.toLowerCase() === lowerTarget)) {
-                        return true;
-                    }
-                    if (t.allDebitAccounts && t.allDebitAccounts.some(n => n.toLowerCase() === lowerTarget)) return true;
-                    if (t.allCreditAccounts && t.allCreditAccounts.some(n => n.toLowerCase() === lowerTarget)) return true;
-                    return false;
-                });
-            }
 
             if (isLoadMore) {
                 setTransactions(prev => [...prev, ...fetched]);

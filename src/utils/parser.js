@@ -112,6 +112,12 @@ export function processTransactions(json) {
             const allDebitAccountNames = [...new Set(debitAccounts.map(a => a.name).filter(n => n))];
             const allCreditAccountNames = [...new Set(creditAccounts.map(a => a.name).filter(n => n))];
 
+            // For fast, case-insensitive querying
+            const involvedAccountsLower = [...new Set([
+                ...allDebitAccountNames.map(n => n.toLowerCase().trim()),
+                ...allCreditAccountNames.map(n => n.toLowerCase().trim())
+            ])];
+
             return {
                 id: m.guid || crypto.randomUUID(),
                 date: formattedDate,
@@ -127,6 +133,7 @@ export function processTransactions(json) {
                 // Unique account names for easy filtering
                 allDebitAccounts: allDebitAccountNames,
                 allCreditAccounts: allCreditAccountNames,
+                involvedAccountsLower,
                 inventory,
                 narration,
                 enteredBy

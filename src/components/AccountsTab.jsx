@@ -500,20 +500,15 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const fetchAccountTransactions = async (accName, isLoadMore = false, fyId = detailFY) => {
         setLoadingTxns(true);
         try {
-            const accNameLower = accName.toLowerCase();
-            let q = query(
-                collection(db, 'transactions'),
-                or(
-                    where('debitAccount', '==', accNameLower),
-                    where('creditAccount', '==', accNameLower),
-                    where('debitAccount', '==', accName), 
-                    where('creditAccount', '==', accName)
-                ),
-                limit(10)
-            );
-
-            if (isLoadMore && lastVisibleTxn) {
-                q = query(q, startAfter(lastVisibleTxn));
+            const idsToSearch = (selectedAccount?.allDocIds || (selectedAccount?.id ? [selectedAccount.id] : [])).slice(0, 10);
+            let q;
+            if (idsToSearch.length > 0) {
+                q = query(
+                    collection(db, 'transactions'),
+                    where('involvedAccountIds', 'array-contains-any', idsToSearch)
+                );
+            } else {
+                q = query(collection(db, 'transactions'), limit(0));
             }
 
             const snap = await getDocs(q);
@@ -524,16 +519,11 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             const start = activeFY?.startDate || '1900-01-01';
             const end = activeFY?.endDate || '2100-12-31';
 
-            const fyFilteredTxns = txns.filter(t => t.date >= start && t.date <= end);
+            const fyFiltered = txns.filter(t => t.date >= start && t.date <= end);
+            fyFiltered.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            // Sort Oldest to Newest for Running Balance
-            fyFilteredTxns.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            // Merge with previous if load more
-            const combinedTxns = isLoadMore ? [...accountTxns, ...fyFilteredTxns] : fyFilteredTxns;
-            setAccountTxns(combinedTxns);
-            setLastVisibleTxn(snap.docs[snap.docs.length - 1]);
-            setHasMoreTxns(snap.docs.length === 10);
+            setAccountTxns(fyFiltered);
+            setHasMoreTxns(false);
 
         } catch (err) {
             console.error("Error fetching transactions:", err);
