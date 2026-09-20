@@ -39,9 +39,14 @@ export default function App() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [lastUpdatedDate, setLastUpdatedDate] = useState('');
 
-    // Fetch last updated date for admin
+    // Helper role checks
+    const isSuperAdmin = Boolean(currentUser?.role === 'admin' && currentUser?.adminType !== 'secondary');
+    const isSecondaryAdmin = Boolean(currentUser?.role === 'secondary_admin' || (currentUser?.role === 'admin' && currentUser?.adminType === 'secondary'));
+    const isAdmin = isSuperAdmin || isSecondaryAdmin;
+
+    // Fetch last updated date for admin (super or secondary)
     useEffect(() => {
-        if (!db || currentUser?.role !== 'admin') return;
+        if (!db || !isAdmin) return;
 
         let isMounted = true;
         const fetchLastUpdated = async () => {
@@ -100,13 +105,15 @@ export default function App() {
     // Initial default tab when user logs in
     useEffect(() => {
         if (currentUser && !activeTab) {
-            if (currentUser.role === 'admin') {
+            if (isSuperAdmin) {
                 setActiveTab('users');
             } else if (currentUser.allowedTabs && currentUser.allowedTabs.length > 0) {
                 setActiveTab(currentUser.allowedTabs[0]);
+            } else {
+                setActiveTab('accounts');
             }
         }
-    }, [currentUser, activeTab]);
+    }, [currentUser, activeTab, isSuperAdmin]);
 
     const handleLogout = async () => {
         try {
@@ -155,8 +162,11 @@ export default function App() {
     }
 
     const hasTabAccess = (tabId) => {
-        if (currentUser.role === 'admin') return true;
-        return currentUser.allowedTabs?.includes(tabId);
+        if (isSuperAdmin) return true;
+        if (isSecondaryAdmin) {
+            return Boolean(currentUser.allowedTabs?.includes(tabId));
+        }
+        return Boolean(currentUser.allowedTabs?.includes(tabId));
     };
 
     const NAV_ITEMS = [
@@ -168,11 +178,33 @@ export default function App() {
         { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
     ];
 
-    const availableTabs = NAV_ITEMS.filter(item => 
-        item.adminOnly ? currentUser.role === 'admin' : hasTabAccess(item.id)
-    );
+    const availableTabs = NAV_ITEMS.filter(item => {
+        if (isSuperAdmin) return true;
+        if (isSecondaryAdmin) {
+            // Secondary admins only see tabs explicitly assigned to them
+            return Boolean(currentUser.allowedTabs?.includes(item.id));
+        }
+        // Standard user cannot access adminOnly tabs
+        if (item.adminOnly) return false;
+        return hasTabAccess(item.id);
+    });
+
+    // Ensure activeTab stays synchronized with permitted tabs
+    useEffect(() => {
+        if (currentUser && availableTabs.length > 0) {
+            if (!availableTabs.some(t => t.id === activeTab)) {
+                setActiveTab(availableTabs[0].id);
+            }
+        }
+    }, [currentUser, availableTabs, activeTab]);
 
     const activeTabObj = availableTabs.find(t => t.id === activeTab) || availableTabs[0];
+
+    const roleDisplayName = isSuperAdmin 
+        ? 'Super Admin' 
+        : isSecondaryAdmin 
+        ? 'Secondary Admin' 
+        : 'User';
 
     return (
         <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
@@ -198,7 +230,7 @@ export default function App() {
                             {activeTabObj && <activeTabObj.icon className="w-5 h-5 text-red-600" />}
                             {activeTabObj ? activeTabObj.label : 'Dashboard'}
                         </h2>
-                        {currentUser?.role === 'admin' && (
+                        {isAdmin && (
                             <p className="text-[11px] text-slate-500 font-medium leading-none mt-1">
                                 last updated on : <span className="font-semibold text-slate-700">{lastUpdatedDate || '...'}</span>
                             </p>
@@ -260,7 +292,7 @@ export default function App() {
                             </div>
                             <div className="hidden lg:block text-left mr-1">
                                 <p className="text-sm font-bold text-slate-900 max-w-[120px] truncate leading-tight">{currentUser.name}</p>
-                                <p className="text-xs text-slate-500 capitalize leading-tight">{currentUser.role}</p>
+                                <p className="text-xs text-slate-500 font-semibold leading-tight">{roleDisplayName}</p>
                             </div>
                         </button>
                         
@@ -268,7 +300,7 @@ export default function App() {
                         <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
                             <div className="p-4 border-b border-slate-50">
                                 <p className="text-sm font-bold text-slate-900 truncate">{currentUser.name}</p>
-                                <p className="text-xs text-slate-500 capitalize mt-0.5">{currentUser.role} Account</p>
+                                <p className="text-xs text-slate-500 font-medium mt-0.5">{roleDisplayName}</p>
                             </div>
                             <div className="p-2 space-y-1">
                                 <button 
@@ -298,7 +330,7 @@ export default function App() {
                         </div>
                         <div>
                             <p className="text-base font-bold text-slate-900">{currentUser.name}</p>
-                            <p className="text-sm text-slate-500 capitalize">{currentUser.role} Account</p>
+                            <p className="text-sm text-slate-500 font-medium">{roleDisplayName}</p>
                         </div>
                     </div>
                     <div className="flex flex-col gap-2">
@@ -355,17 +387,17 @@ export default function App() {
                     )}
 
                     <div className="max-w-7xl mx-auto w-full flex-1 min-h-0 flex flex-col">
-                        <div style={{ display: activeTab === 'users' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
-                            {activeTab === 'users' && <UserManagementTab updateTrigger={updateTrigger} currentUser={currentUser} />}
+                        <div style={{ display: (activeTab === 'users' && hasTabAccess('users')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
+                            {activeTab === 'users' && hasTabAccess('users') && <UserManagementTab updateTrigger={updateTrigger} currentUser={currentUser} />}
                         </div>
-                        <div style={{ display: activeTab === 'settings' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col overflow-y-auto">
-                            {activeTab === 'settings' && <SettingsTab currentUser={currentUser} />}
+                        <div style={{ display: (activeTab === 'settings' && hasTabAccess('settings')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col overflow-y-auto">
+                            {activeTab === 'settings' && hasTabAccess('settings') && <SettingsTab currentUser={currentUser} />}
                         </div>
-                        <div style={{ display: activeTab === 'import' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col overflow-y-auto">
-                            {activeTab === 'import' && <ImportCenter setUpdateTrigger={setUpdateTrigger} currentUser={currentUser} />}
+                        <div style={{ display: (activeTab === 'import' && hasTabAccess('import')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col overflow-y-auto">
+                            {activeTab === 'import' && hasTabAccess('import') && <ImportCenter setUpdateTrigger={setUpdateTrigger} currentUser={currentUser} />}
                         </div>
-                        <div style={{ display: activeTab === 'accounts' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
-                            {activeTab === 'accounts' && (
+                        <div style={{ display: (activeTab === 'accounts' && hasTabAccess('accounts')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
+                            {activeTab === 'accounts' && hasTabAccess('accounts') && (
                                 <AccountsTab 
                                     updateTrigger={updateTrigger}
                                     setUpdateTrigger={setUpdateTrigger}
@@ -375,8 +407,8 @@ export default function App() {
                                 />
                             )}
                         </div>
-                        <div style={{ display: activeTab === 'transactions' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
-                            {activeTab === 'transactions' && (
+                        <div style={{ display: (activeTab === 'transactions' && hasTabAccess('transactions')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
+                            {activeTab === 'transactions' && hasTabAccess('transactions') && (
                                 <TransactionsTab 
                                     updateTrigger={updateTrigger}
                                     setUpdateTrigger={setUpdateTrigger}
@@ -385,8 +417,8 @@ export default function App() {
                                 />
                             )}
                         </div>
-                        <div style={{ display: activeTab === 'followups' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
-                            {activeTab === 'followups' && <FollowUpsTab currentUser={currentUser} />}
+                        <div style={{ display: (activeTab === 'followups' && hasTabAccess('followups')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
+                            {activeTab === 'followups' && hasTabAccess('followups') && <FollowUpsTab currentUser={currentUser} />}
                         </div>
                     </div>
                 </main>

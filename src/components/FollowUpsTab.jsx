@@ -13,6 +13,7 @@ import UpdateFollowUpModal from './UpdateFollowUpModal';
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
 export default function FollowUpsTab({ currentUser }) {
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'secondary_admin' || currentUser?.adminType === 'secondary';
   const [followUps, setFollowUps] = useState([]);
   const [filteredFollowUps, setFilteredFollowUps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,9 +89,10 @@ export default function FollowUpsTab({ currentUser }) {
       }));
 
       // Role-based filtering:
-      // Admin sees ALL follow-ups.
+      // Admin (Super or Secondary) sees ALL follow-ups.
       // Normal user sees ONLY follow-ups assigned to them (by UID or by Name).
-      if (currentUser?.role !== 'admin') {
+      const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'secondary_admin' || currentUser?.adminType === 'secondary';
+      if (!isAdmin) {
         const userUid = currentUser?.uid;
         const userNameLower = (currentUser?.name || '').trim().toLowerCase();
         data = data.filter(fu => {
@@ -427,7 +429,7 @@ export default function FollowUpsTab({ currentUser }) {
                 </div>
 
                 {/* Assigned To */}
-                {currentUser?.role === 'admin' && (
+                {isAdmin && (
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Assigned To</label>
                     <select

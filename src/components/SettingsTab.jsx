@@ -81,8 +81,12 @@ export default function SettingsTab({ currentUser }) {
         }
     };
 
-    if (currentUser?.role !== 'admin') {
-        return <div className="p-6 text-rose-600 font-bold">Access Denied. Admins only.</div>;
+    const isSuperAdmin = currentUser?.role === 'admin' && currentUser?.adminType !== 'secondary';
+    const isSecondaryAdmin = currentUser?.role === 'secondary_admin' || currentUser?.adminType === 'secondary';
+    const canAccessSettings = isSuperAdmin || (isSecondaryAdmin && currentUser?.allowedTabs?.includes('settings'));
+
+    if (!canAccessSettings) {
+        return <div className="p-6 text-rose-600 font-bold">Access Denied. Admins with Settings permission only.</div>;
     }
 
     return (

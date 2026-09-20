@@ -8,6 +8,7 @@ import {
 import UpdateFollowUpModal from './UpdateFollowUpModal';
 
 export default function FollowUpModal({ isOpen, onClose, account, currentUser }) {
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'secondary_admin' || currentUser?.adminType === 'secondary';
   const [followUps, setFollowUps] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -109,7 +110,7 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
     try {
       let assignedToName = currentUser?.name || '';
       let targetAssignedToUid = assignedToUid;
-      if (currentUser?.role === 'admin' && assignedToUid) {
+      if (isAdmin && assignedToUid) {
         const selectedUser = users.find(u => u.uid === assignedToUid);
         if (selectedUser) {
           assignedToName = selectedUser.name;
@@ -360,7 +361,7 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
                     />
                   </div>
                   
-                  {currentUser?.role === 'admin' && (
+                  {isAdmin && (
 
                     <div>
                       <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Assign To</label>

@@ -11,19 +11,45 @@ import {
     Search, 
     Check, 
     Trash2,
-    ShieldCheck
+    ShieldCheck,
+    Briefcase,
+    ArrowRightLeft,
+    Clock,
+    UploadCloud,
+    Settings
 } from 'lucide-react';
+
+export const ALL_SYSTEM_TABS = [
+    { id: 'accounts', label: 'Accounts', desc: 'Ledgers, balances, statements & vouchers', icon: Briefcase },
+    { id: 'transactions', label: 'Transactions', desc: 'Voucher entries & transaction search', icon: ArrowRightLeft },
+    { id: 'followups', label: 'Follow-ups', desc: 'Customer follow-up logs & reminder schedules', icon: Clock },
+    { id: 'import', label: 'Import Center', desc: 'Upload Daybook, Accounts & Voucher files', icon: UploadCloud },
+    { id: 'settings', label: 'Fiscal Settings', desc: 'Fiscal year setup & active FY selection', icon: Settings },
+    { id: 'users', label: 'User Management', desc: 'View user accounts & team directory', icon: Users },
+];
+
+export const STANDARD_USER_TABS = [
+    { id: 'accounts', label: 'Accounts', desc: 'Ledgers, balances & statements' },
+    { id: 'transactions', label: 'Transactions', desc: 'Voucher entries & search' },
+    { id: 'followups', label: 'Follow-ups', desc: 'Customer follow-up schedules' },
+    { id: 'import', label: 'Import Center', desc: 'Upload Daybook & Vouchers' },
+];
+
+export const isSuperAdminUser = (u) => Boolean(u && u.role === 'admin' && u.adminType !== 'secondary');
+export const isSecondaryAdminUser = (u) => Boolean(u && (u.role === 'secondary_admin' || (u.role === 'admin' && u.adminType === 'secondary')));
+export const isAnyAdminUser = (u) => isSuperAdminUser(u) || isSecondaryAdminUser(u);
+export const isStandardUser = (u) => !isSuperAdminUser(u) && !isSecondaryAdminUser(u);
 
 export default function UserManagementTab({ updateTrigger, currentUser }) {
     const [users, setUsers] = useState([]);
     const [accounts, setAccounts] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Filter and search
+    // Filter and search: 'all' | 'super' | 'secondary' | 'user'
     const [searchQuery, setSearchQuery] = useState('');
-    const [roleFilter, setRoleFilter] = useState('all'); // 'all', 'admin', 'user'
+    const [roleFilter, setRoleFilter] = useState('all');
 
-    // Edit modal states
+    // Edit modal states: 'admin' (super) | 'secondary_admin' | 'user'
     const [editingUser, setEditingUser] = useState(null);
     const [role, setRole] = useState('user');
     const [status, setStatus] = useState('active');
@@ -37,7 +63,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [newName, setNewName] = useState('');
     const [newEmail, setNewEmail] = useState('');
-    const [newRole, setNewRole] = useState('admin');
+    const [newRole, setNewRole] = useState('secondary_admin');
     const [newStatus, setNewStatus] = useState('active');
     const [newUsername, setNewUsername] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -76,10 +102,12 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
             const usersSnap = await getDocs(query(collection(db, 'users')));
             const usersData = [];
             usersSnap.forEach(d => usersData.push({ id: d.id, ...d.data() }));
-            // Sort: admins first, then by name
+            // Sort: Super Admins -> Secondary Admins -> Standard Users, then by name
             usersData.sort((a, b) => {
-                if (a.role === 'admin' && b.role !== 'admin') return -1;
-                if (a.role !== 'admin' && b.role === 'admin') return 1;
+                if (isSuperAdminUser(a) && !isSuperAdminUser(b)) return -1;
+                if (!isSuperAdminUser(a) && isSuperAdminUser(b)) return 1;
+                if (isSecondaryAdminUser(a) && !isSecondaryAdminUser(b)) return -1;
+                if (!isSecondaryAdminUser(a) && isSecondaryAdminUser(b)) return 1;
                 return (a.name || '').localeCompare(b.name || '');
             });
             setUsers(usersData);
@@ -96,45 +124,63 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
 
     const handleEditClick = (user) => {
         setEditingUser(user);
-        setRole(user.role || 'user');
+        const isSup = isSuperAdminUser(user);
+        const isSec = isSecondaryAdminUser(user);
+        const currentRole = isSup ? 'admin' : isSec ? 'secondary_admin' : 'user';
+        setRole(currentRole);
         setStatus(user.status || 'active');
         setCustomUsername(user.customUsername || '');
         setCustomPassword(user.customPassword || '');
-        setAllowedTabs(user.allowedTabs && user.allowedTabs.length > 0 ? user.allowedTabs : ['accounts', 'transactions', 'followups', 'import']);
+        if (isSup) {
+            setAllowedTabs(ALL_SYSTEM_TABS.map(t => t.id));
+        } else if (user.allowedTabs && user.allowedTabs.length > 0) {
+            setAllowedTabs(user.allowedTabs);
+        } else {
+            setAllowedTabs(['accounts', 'transactions', 'followups', 'import']);
+        }
         setAllowedAccount(user.allowedAccount || '');
     };
 
-    const handleTabToggle = (tab) => {
+    const handleTabToggle = (tabId) => {
         setAllowedTabs(prev => 
-            prev.includes(tab) ? prev.filter(t => t !== tab) : [...prev, tab]
+            prev.includes(tabId) ? prev.filter(t => t !== tabId) : [...prev, tabId]
         );
     };
 
-    const handleNewTabToggle = (tab) => {
+    const handleNewTabToggle = (tabId) => {
         setNewAllowedTabs(prev => 
-            prev.includes(tab) ? prev.filter(t => t !== tab) : [...prev, tab]
+            prev.includes(tabId) ? prev.filter(t => t !== tabId) : [...prev, tabId]
         );
     };
 
     const handleSaveEdit = async () => {
         if (!editingUser) return;
 
-        // Warn if demoting self
-        if (editingUser.id === currentUser?.uid && editingUser.role === 'admin' && role !== 'admin') {
-            const ok = window.confirm("Warning: You are demoting your own account from Admin to Standard User. You will lose access to User Management and Settings upon saving. Do you wish to continue?");
-            if (!ok) return;
+        // Disallow non-super admins from modifying a super admin
+        if (!isSuperAdminUser(currentUser) && isSuperAdminUser(editingUser)) {
+            setToast({ type: 'error', message: "Only a Super Admin can edit another Super Admin account." });
+            return;
         }
 
         setSaving(true);
         try {
             const userRef = doc(db, 'users', editingUser.id);
+            const isSavingSuper = role === 'admin';
+            const isSavingSecondary = role === 'secondary_admin';
+            
+            // For super admin: all tabs; for secondary admin: customized allowedTabs; for standard: user allowedTabs
+            const computedAllowedTabs = isSavingSuper 
+                ? ALL_SYSTEM_TABS.map(t => t.id)
+                : allowedTabs;
+
             const payload = {
-                role,
+                role: isSavingSecondary ? 'secondary_admin' : role,
+                adminType: isSavingSuper ? 'primary' : isSavingSecondary ? 'secondary' : null,
                 status,
                 customUsername: customUsername.trim(),
                 customPassword: customPassword.trim(),
-                allowedTabs: role === 'admin' ? ['accounts', 'transactions', 'followups', 'import'] : allowedTabs,
-                allowedAccount: role === 'admin' ? null : (allowedAccount || null)
+                allowedTabs: computedAllowedTabs,
+                allowedAccount: isSavingSuper ? null : (allowedAccount || null)
             };
             await updateDoc(userRef, payload);
 
@@ -167,17 +213,24 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
             const newUid = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
             const email = newEmail.trim() || `${(newUsername.trim() || newName.trim().replace(/\s+/g, '').toLowerCase())}@local.app`;
             
+            const isCreatingSuper = newRole === 'admin';
+            const isCreatingSecondary = newRole === 'secondary_admin';
+            const computedAllowedTabs = isCreatingSuper
+                ? ALL_SYSTEM_TABS.map(t => t.id)
+                : (newAllowedTabs.length > 0 ? newAllowedTabs : ['accounts', 'transactions', 'followups', 'import']);
+
             const newUserDoc = {
                 id: newUid,
                 uid: newUid,
                 name: newName.trim(),
                 email: email,
-                role: newRole,
+                role: isCreatingSecondary ? 'secondary_admin' : newRole,
+                adminType: isCreatingSuper ? 'primary' : isCreatingSecondary ? 'secondary' : null,
                 status: newStatus,
-                customUsername: newUsername.trim() || (newRole === 'admin' ? `admin_${Date.now().toString().slice(-4)}` : newName.trim().toLowerCase().replace(/\s+/g, '')),
+                customUsername: newUsername.trim() || (isCreatingSuper ? `superadmin_${Date.now().toString().slice(-4)}` : isCreatingSecondary ? `secadmin_${Date.now().toString().slice(-4)}` : newName.trim().toLowerCase().replace(/\s+/g, '')),
                 customPassword: newPassword.trim() || 'password123',
-                allowedTabs: newRole === 'admin' ? ['accounts', 'transactions', 'followups', 'import'] : newAllowedTabs,
-                allowedAccount: newRole === 'admin' ? null : (newAllowedAccount || null),
+                allowedTabs: computedAllowedTabs,
+                allowedAccount: isCreatingSuper ? null : (newAllowedAccount || null),
                 createdAt: new Date().toISOString()
             };
 
@@ -186,8 +239,10 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
             setUsers(prev => {
                 const next = [newUserDoc, ...prev];
                 next.sort((a, b) => {
-                    if (a.role === 'admin' && b.role !== 'admin') return -1;
-                    if (a.role !== 'admin' && b.role === 'admin') return 1;
+                    if (isSuperAdminUser(a) && !isSuperAdminUser(b)) return -1;
+                    if (!isSuperAdminUser(a) && isSuperAdminUser(b)) return 1;
+                    if (isSecondaryAdminUser(a) && !isSecondaryAdminUser(b)) return -1;
+                    if (!isSecondaryAdminUser(a) && isSecondaryAdminUser(b)) return 1;
                     return (a.name || '').localeCompare(b.name || '');
                 });
                 return next;
@@ -196,16 +251,17 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
             setShowAddModal(false);
             setNewName('');
             setNewEmail('');
-            setNewRole('admin');
+            setNewRole('secondary_admin');
             setNewStatus('active');
             setNewUsername('');
             setNewPassword('');
             setNewAllowedTabs(['accounts', 'transactions', 'followups', 'import']);
             setNewAllowedAccount('');
 
+            const roleLabel = isCreatingSuper ? 'Super Admin' : isCreatingSecondary ? 'Secondary Admin' : 'User';
             setToast({
                 type: 'success',
-                message: `New ${newRole === 'admin' ? 'Admin' : 'User'} "${newUserDoc.name}" created (User: ${newUserDoc.customUsername})`
+                message: `New ${roleLabel} "${newUserDoc.name}" created (Username: ${newUserDoc.customUsername})`
             });
         } catch (err) {
             console.error("Error creating user:", err);
@@ -286,8 +342,10 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
         return users.filter(u => {
             const matchesRole = 
                 roleFilter === 'all' ? true :
-                roleFilter === 'admin' ? u.role === 'admin' :
-                u.role !== 'admin';
+                roleFilter === 'super' ? isSuperAdminUser(u) :
+                roleFilter === 'secondary' ? isSecondaryAdminUser(u) :
+                roleFilter === 'admin' ? isAnyAdminUser(u) :
+                isStandardUser(u);
 
             const q = searchQuery.toLowerCase().trim();
             const matchesQuery = !q || 
@@ -300,8 +358,9 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
         });
     }, [users, roleFilter, searchQuery]);
 
-    const adminCount = useMemo(() => users.filter(u => u.role === 'admin').length, [users]);
-    const standardUserCount = useMemo(() => users.filter(u => u.role !== 'admin').length, [users]);
+    const superAdminCount = useMemo(() => users.filter(isSuperAdminUser).length, [users]);
+    const secondaryAdminCount = useMemo(() => users.filter(isSecondaryAdminUser).length, [users]);
+    const standardUserCount = useMemo(() => users.filter(isStandardUser).length, [users]);
 
     if (loading) {
         return (
@@ -364,11 +423,18 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                             All ({users.length})
                         </button>
                         <button
-                            onClick={() => setRoleFilter('admin')}
-                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${roleFilter === 'admin' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-700 hover:bg-purple-50'}`}
+                            onClick={() => setRoleFilter('super')}
+                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${roleFilter === 'super' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-700 hover:bg-purple-50'}`}
                         >
                             <Shield size={13} />
-                            Admins ({adminCount})
+                            Super ({superAdminCount})
+                        </button>
+                        <button
+                            onClick={() => setRoleFilter('secondary')}
+                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${roleFilter === 'secondary' ? 'bg-indigo-600 text-white shadow-sm' : 'text-indigo-700 hover:bg-indigo-50'}`}
+                        >
+                            <ShieldCheck size={13} />
+                            Secondary ({secondaryAdminCount})
                         </button>
                         <button
                             onClick={() => setRoleFilter('user')}
@@ -380,7 +446,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
 
                     <button
                         onClick={() => {
-                            setNewRole('admin');
+                            setNewRole('secondary_admin');
                             setShowAddModal(true);
                         }}
                         className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm shadow-indigo-200 transition-all cursor-pointer"
@@ -436,7 +502,8 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                     (currentUser?.uid && (u.id === currentUser.uid || u.uid === currentUser.uid)) ||
                                     (currentUser?.email && u.email && u.email.toLowerCase() === currentUser.email.toLowerCase())
                                 );
-                                const isAdmin = u.role === 'admin';
+                                const isSup = isSuperAdminUser(u);
+                                const isSec = isSecondaryAdminUser(u);
 
                                 return (
                                     <tr key={u.id || u.uid} className="hover:bg-slate-50/50 transition-colors group">
@@ -452,11 +519,18 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             <div className="text-[11px] font-medium text-slate-500">{u.email}</div>
                                         </td>
                                         <td className="px-5 py-3">
-                                            {isAdmin ? (
+                                            {isSup ? (
                                                 <div className="flex items-center gap-1.5">
                                                     <span className="px-2.5 py-1 inline-flex items-center text-[10px] uppercase tracking-wider font-extrabold rounded-md bg-purple-100 text-purple-700 border border-purple-200 shadow-2xs">
                                                         <Shield size={12} className="mr-1 stroke-[2.5]" />
-                                                        Admin
+                                                        Super Admin
+                                                    </span>
+                                                </div>
+                                            ) : isSec ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="px-2.5 py-1 inline-flex items-center text-[10px] uppercase tracking-wider font-extrabold rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-2xs">
+                                                        <ShieldCheck size={12} className="mr-1 stroke-[2.5]" />
+                                                        Secondary Admin
                                                     </span>
                                                 </div>
                                             ) : (
@@ -483,10 +557,33 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             ) : <span className="text-slate-400">-</span>}
                                         </td>
                                         <td className="hidden md:table-cell px-5 py-3 text-[11px] text-slate-600 font-medium">
-                                            {isAdmin ? (
-                                                <span className="text-purple-700 font-bold text-[11px] bg-purple-50 px-2 py-0.5 rounded inline-flex items-center gap-1">
-                                                    <ShieldCheck size={13} /> Full Access (All Tabs)
+                                            {isSup ? (
+                                                <span className="text-purple-700 font-bold text-[11px] bg-purple-50 px-2 py-0.5 rounded inline-flex items-center gap-1 border border-purple-100">
+                                                    <ShieldCheck size={13} /> Full Access (All 6 Tabs)
                                                 </span>
+                                            ) : isSec ? (
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-indigo-700 font-extrabold text-[10px] bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                                                            {u.allowedTabs ? u.allowedTabs.length : 4} / 6 Tabs
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {u.allowedTabs && u.allowedTabs.length > 0 
+                                                            ? u.allowedTabs.map(t => (
+                                                                <span key={t} className="bg-indigo-50/80 text-indigo-700 border border-indigo-200/60 px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px] font-bold">
+                                                                    {t}
+                                                                </span>
+                                                            ))
+                                                            : <span className="text-rose-500 italic text-[10px]">No tabs assigned</span>
+                                                        }
+                                                    </div>
+                                                    {u.allowedAccount && (
+                                                        <div className="text-slate-600 font-bold bg-slate-100 px-1.5 py-0.5 rounded w-fit max-w-[160px] truncate text-[10px]" title={u.allowedAccount}>
+                                                            Acct: {u.allowedAccount}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             ) : (
                                                 <div className="flex flex-col gap-1">
                                                     <div className="flex flex-wrap gap-1">
@@ -561,12 +658,13 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                         </div>
                         
                         <div className="p-4 sm:p-6 bg-slate-50/50 overflow-y-auto flex-1 space-y-5">
-                            {/* ROLE SELECTION CARDS - THE CORE FEATURE */}
+                            {/* ROLE SELECTION CARDS - 3 OPTIONS */}
                             <div>
                                 <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">
-                                    Account Role (Make Admin or Standard User)
+                                    Account Role
                                 </label>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                    {/* SUPER ADMIN */}
                                     <button
                                         type="button"
                                         onClick={() => setRole('admin')}
@@ -577,35 +675,58 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                         }`}
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className="font-black text-sm flex items-center gap-1.5 text-purple-700">
-                                                <Shield size={16} className="stroke-[2.5]" />
-                                                Admin
+                                            <span className="font-black text-xs flex items-center gap-1.5 text-purple-700">
+                                                <Shield size={14} className="stroke-[2.5]" />
+                                                Super Admin
                                             </span>
-                                            {role === 'admin' && <Check size={16} className="text-purple-600 stroke-[3]" />}
+                                            {role === 'admin' && <Check size={14} className="text-purple-600 stroke-[3]" />}
                                         </div>
-                                        <p className="text-[11px] text-slate-500 leading-tight">
-                                            Full administrative privileges. Access to User Management, Settings, Imports, and all accounts.
+                                        <p className="text-[10px] text-slate-500 leading-tight">
+                                            Unrestricted full access to all 6 system tabs.
                                         </p>
                                     </button>
 
+                                    {/* SECONDARY ADMIN (LIMITED TABS) */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setRole('secondary_admin')}
+                                        className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                                            role === 'secondary_admin'
+                                                ? 'bg-indigo-50/90 border-indigo-500 ring-2 ring-indigo-500/20 text-indigo-950 shadow-sm'
+                                                : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-200'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-black text-xs flex items-center gap-1.5 text-indigo-700">
+                                                <ShieldCheck size={14} className="stroke-[2.5]" />
+                                                Secondary Admin
+                                            </span>
+                                            {role === 'secondary_admin' && <Check size={14} className="text-indigo-600 stroke-[3]" />}
+                                        </div>
+                                        <p className="text-[10px] text-indigo-600 font-semibold leading-tight">
+                                            Admin with customizable tab access.
+                                        </p>
+                                    </button>
+
+                                    {/* STANDARD USER */}
                                     <button
                                         type="button"
                                         onClick={() => setRole('user')}
                                         className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
                                             role === 'user'
-                                                ? 'bg-indigo-50/80 border-indigo-500 ring-2 ring-indigo-500/20 text-indigo-950 shadow-sm'
-                                                : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-200'
+                                                ? 'bg-slate-100 border-slate-400 ring-2 ring-slate-400/20 text-slate-900 shadow-sm'
+                                                : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
                                         }`}
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className="font-black text-sm flex items-center gap-1.5 text-indigo-700">
-                                                <Users size={16} className="stroke-[2.5]" />
+                                            <span className="font-black text-xs flex items-center gap-1.5 text-slate-700">
+                                                <Users size={14} className="stroke-[2.5]" />
                                                 Standard User
                                             </span>
-                                            {role === 'user' && <Check size={16} className="text-indigo-600 stroke-[3]" />}
+                                            {role === 'user' && <Check size={14} className="text-slate-600 stroke-[3]" />}
                                         </div>
-                                        <p className="text-[11px] text-slate-500 leading-tight">
-                                            Custom permissions. Restrict to specific tabs or a single ledger account.
+                                        <p className="text-[10px] text-slate-500 leading-tight">
+                                            Restricted user with custom tabs or ledger limits.
                                         </p>
                                     </button>
                                 </div>
@@ -614,11 +735,97 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                     <div className="mt-2.5 p-2.5 bg-purple-50 rounded-xl border border-purple-100 flex items-start gap-2 text-xs text-purple-800 font-medium">
                                         <ShieldCheck size={16} className="text-purple-600 shrink-0 mt-0.5" />
                                         <span>
-                                            <strong>Admin Rights Activated:</strong> This user can access the User Management tab, promote/demote other users, configure fiscal years, run imports, and view all accounts.
+                                            <strong>Super Admin Activated:</strong> Unrestricted access to all 6 tabs (Accounts, Transactions, Follow-ups, Import Center, Fiscal Settings, and User Management).
                                         </span>
                                     </div>
                                 )}
                             </div>
+
+                            {/* TAB PERMISSIONS FOR SECONDARY ADMIN */}
+                            {role === 'secondary_admin' && (
+                                <div className="space-y-3 p-3.5 bg-indigo-50/50 rounded-2xl border border-indigo-100/80">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <div>
+                                            <label className="block text-xs font-black text-indigo-950 uppercase tracking-wider">
+                                                Secondary Admin Tab Access ({allowedTabs.length} of {ALL_SYSTEM_TABS.length} Allowed)
+                                            </label>
+                                            <p className="text-[11px] text-indigo-700 font-medium">
+                                                Choose which specific tabs this secondary admin can view and manage:
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => setAllowedTabs(ALL_SYSTEM_TABS.map(t => t.id))}
+                                                className="px-2 py-1 text-[10px] font-bold bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 shadow-2xs cursor-pointer"
+                                            >
+                                                All 6
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAllowedTabs(['accounts', 'transactions', 'followups', 'import'])}
+                                                className="px-2 py-1 text-[10px] font-bold bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 shadow-2xs cursor-pointer"
+                                            >
+                                                Operational (4)
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAllowedTabs([])}
+                                                className="px-2 py-1 text-[10px] font-bold bg-white text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 shadow-2xs cursor-pointer"
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {ALL_SYSTEM_TABS.map(tab => {
+                                            const isChecked = allowedTabs.includes(tab.id);
+                                            const TabIcon = tab.icon;
+                                            return (
+                                                <label 
+                                                    key={tab.id} 
+                                                    className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                                                        isChecked 
+                                                            ? 'bg-white border-indigo-400 ring-1 ring-indigo-300/40 shadow-xs text-slate-900' 
+                                                            : 'bg-white/60 border-slate-200 text-slate-500 hover:border-indigo-200'
+                                                    }`}
+                                                >
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isChecked} 
+                                                        onChange={() => handleTabToggle(tab.id)}
+                                                        className="w-4 h-4 mt-0.5 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded shrink-0 cursor-pointer"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold flex items-center gap-1.5 text-slate-800">
+                                                            {TabIcon && <TabIcon size={13} className={isChecked ? 'text-indigo-600' : 'text-slate-400'} />}
+                                                            {tab.label}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                                                            {tab.desc}
+                                                        </span>
+                                                    </div>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="pt-2 border-t border-indigo-100">
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                                            Optional Account Restriction (Leave blank for all accounts)
+                                        </label>
+                                        <input 
+                                            type="text"
+                                            list="userAccountsListEdit"
+                                            value={allowedAccount} 
+                                            onChange={(e) => setAllowedAccount(e.target.value)}
+                                            placeholder="-- No Restriction (All Accounts) --"
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Account Status</label>
@@ -705,7 +912,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                         </div>
 
                         <div className="p-4 sm:px-6 sm:py-4 border-t border-slate-100 bg-white flex items-center justify-between gap-3 shrink-0">
-                            {!Boolean(
+                            {!(
                                 (currentUser?.uid && (editingUser.id === currentUser.uid || editingUser.uid === currentUser.uid)) ||
                                 (currentUser?.email && editingUser.email && editingUser.email.toLowerCase() === currentUser.email.toLowerCase())
                             ) ? (
@@ -767,12 +974,13 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
 
                         <form onSubmit={handleCreateUser} className="flex flex-col flex-1 min-h-0">
                             <div className="p-4 sm:p-6 bg-slate-50/50 overflow-y-auto flex-1 space-y-5">
-                                {/* ROLE SELECTION */}
+                                {/* ROLE SELECTION - 3 CHOICES */}
                                 <div>
                                     <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">
                                         Assign Role
                                     </label>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                        {/* SUPER ADMIN */}
                                         <button
                                             type="button"
                                             onClick={() => setNewRole('admin')}
@@ -783,39 +991,148 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             }`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <span className="font-black text-sm flex items-center gap-1.5 text-purple-700">
-                                                    <Shield size={16} className="stroke-[2.5]" />
-                                                    Admin
+                                                <span className="font-black text-xs flex items-center gap-1.5 text-purple-700">
+                                                    <Shield size={14} className="stroke-[2.5]" />
+                                                    Super Admin
                                                 </span>
-                                                {newRole === 'admin' && <Check size={16} className="text-purple-600 stroke-[3]" />}
+                                                {newRole === 'admin' && <Check size={14} className="text-purple-600 stroke-[3]" />}
                                             </div>
-                                            <p className="text-[11px] text-slate-500 leading-tight">
-                                                Full administrative privileges. Full access to User Management, Settings, Imports, and accounts.
+                                            <p className="text-[10px] text-slate-500 leading-tight">
+                                                Full access to all 6 tabs including Settings & Users.
                                             </p>
                                         </button>
 
+                                        {/* SECONDARY ADMIN */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewRole('secondary_admin')}
+                                            className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                                                newRole === 'secondary_admin'
+                                                    ? 'bg-indigo-50/90 border-indigo-500 ring-2 ring-indigo-500/20 text-indigo-950 shadow-sm'
+                                                    : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-200'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-black text-xs flex items-center gap-1.5 text-indigo-700">
+                                                    <ShieldCheck size={14} className="stroke-[2.5]" />
+                                                    Secondary Admin
+                                                </span>
+                                                {newRole === 'secondary_admin' && <Check size={14} className="text-indigo-600 stroke-[3]" />}
+                                            </div>
+                                            <p className="text-[10px] text-indigo-600 font-semibold leading-tight">
+                                                Admin with limited/custom tab access.
+                                            </p>
+                                        </button>
+
+                                        {/* STANDARD USER */}
                                         <button
                                             type="button"
                                             onClick={() => setNewRole('user')}
                                             className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
                                                 newRole === 'user'
-                                                    ? 'bg-indigo-50/80 border-indigo-500 ring-2 ring-indigo-500/20 text-indigo-950 shadow-sm'
-                                                    : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-200'
+                                                    ? 'bg-slate-100 border-slate-400 ring-2 ring-slate-400/20 text-slate-900 shadow-sm'
+                                                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
                                             }`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <span className="font-black text-sm flex items-center gap-1.5 text-indigo-700">
-                                                    <Users size={16} className="stroke-[2.5]" />
+                                                <span className="font-black text-xs flex items-center gap-1.5 text-slate-700">
+                                                    <Users size={14} className="stroke-[2.5]" />
                                                     Standard User
                                                 </span>
-                                                {newRole === 'user' && <Check size={16} className="text-indigo-600 stroke-[3]" />}
+                                                {newRole === 'user' && <Check size={14} className="text-slate-600 stroke-[3]" />}
                                             </div>
-                                            <p className="text-[11px] text-slate-500 leading-tight">
-                                                Standard access with custom tab permissions or single-ledger account restrictions.
+                                            <p className="text-[10px] text-slate-500 leading-tight">
+                                                Standard access with custom tab permissions.
                                             </p>
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* SECONDARY ADMIN TAB SELECTION */}
+                                {newRole === 'secondary_admin' && (
+                                    <div className="space-y-3 p-3.5 bg-indigo-50/50 rounded-2xl border border-indigo-100/80">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                            <div>
+                                                <label className="block text-xs font-black text-indigo-950 uppercase tracking-wider">
+                                                    Secondary Admin Tab Access ({newAllowedTabs.length} of {ALL_SYSTEM_TABS.length} Allowed)
+                                                </label>
+                                                <p className="text-[11px] text-indigo-700 font-medium">
+                                                    Choose which specific tabs this secondary admin can view and manage:
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewAllowedTabs(ALL_SYSTEM_TABS.map(t => t.id))}
+                                                    className="px-2 py-1 text-[10px] font-bold bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 shadow-2xs cursor-pointer"
+                                                >
+                                                    All 6
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewAllowedTabs(['accounts', 'transactions', 'followups', 'import'])}
+                                                    className="px-2 py-1 text-[10px] font-bold bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 shadow-2xs cursor-pointer"
+                                                >
+                                                    Operational (4)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewAllowedTabs([])}
+                                                    className="px-2 py-1 text-[10px] font-bold bg-white text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 shadow-2xs cursor-pointer"
+                                                >
+                                                    Clear
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {ALL_SYSTEM_TABS.map(tab => {
+                                                const isChecked = newAllowedTabs.includes(tab.id);
+                                                const TabIcon = tab.icon;
+                                                return (
+                                                    <label 
+                                                        key={tab.id} 
+                                                        className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                                                            isChecked 
+                                                                ? 'bg-white border-indigo-400 ring-1 ring-indigo-300/40 shadow-xs text-slate-900' 
+                                                                : 'bg-white/60 border-slate-200 text-slate-500 hover:border-indigo-200'
+                                                        }`}
+                                                    >
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={isChecked} 
+                                                            onChange={() => handleNewTabToggle(tab.id)}
+                                                            className="w-4 h-4 mt-0.5 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded shrink-0 cursor-pointer"
+                                                        />
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-bold flex items-center gap-1.5 text-slate-800">
+                                                                {TabIcon && <TabIcon size={13} className={isChecked ? 'text-indigo-600' : 'text-slate-400'} />}
+                                                                {tab.label}
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                                                                {tab.desc}
+                                                            </span>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="pt-2 border-t border-indigo-100">
+                                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                                                Optional Account Restriction (Leave blank for all accounts)
+                                            </label>
+                                            <input 
+                                                type="text"
+                                                list="newAccountsList"
+                                                value={newAllowedAccount} 
+                                                onChange={(e) => setNewAllowedAccount(e.target.value)}
+                                                placeholder="-- No Restriction (All Accounts) --"
+                                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
@@ -945,7 +1262,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                     disabled={creatingSaving}
                                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow-xs disabled:opacity-50 transition-all text-sm flex items-center justify-center min-w-[140px] cursor-pointer"
                                 >
-                                    {creatingSaving ? 'Creating...' : `Create ${newRole === 'admin' ? 'Admin' : 'User'}`}
+                                    {creatingSaving ? 'Creating...' : `Create ${newRole === 'admin' ? 'Super Admin' : newRole === 'secondary_admin' ? 'Secondary Admin' : 'User'}`}
                                 </button>
                             </div>
                         </form>

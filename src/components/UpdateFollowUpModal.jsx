@@ -15,6 +15,7 @@ export default function UpdateFollowUpModal({
   onSuccess,
   initialTab = 'update'
 }) {
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'secondary_admin' || currentUser?.adminType === 'secondary';
   const [callDate, setCallDate] = useState(new Date().toISOString().split('T')[0]);
   const [callRemarks, setCallRemarks] = useState('');
   const [newNextDate, setNewNextDate] = useState('');
@@ -293,7 +294,7 @@ export default function UpdateFollowUpModal({
                     <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
                       Assigned To
                     </label>
-                    {currentUser?.role === 'admin' ? (
+                    {isAdmin ? (
                       <select
                         value={assignedToUid}
                         onChange={(e) => setAssignedToUid(e.target.value)}
