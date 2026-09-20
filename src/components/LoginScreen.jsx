@@ -41,7 +41,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             const snapshot = await getDocs(q);
             
             if (snapshot.empty) {
-                const isAdmin = user.email === 'husnailalam06@gmail.com';
+                const isAdmin = user.email === 'husnailalam06@gmail.com' || user.email === 'jaybaudhimaitraders@gmail.com';
 
                 const newUser = {
                     uid: user.uid,

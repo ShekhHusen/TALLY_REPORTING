@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, writeBatch, doc, getDocs, query, getDoc } from 'firebase/firestore';
+import { collection, writeBatch, doc, getDocs, query, getDoc, setDoc } from 'firebase/firestore';
 import { processMaster, processTransactions } from '../utils/parser';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import PushTransactionModal from './PushTransactionModal';
@@ -637,6 +637,19 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                     }
                     msg += `\n${affectedAccountNames.size} affected accounts processed.`;
                     msg += `\n${syncedCount} account balances auto-synced.`;
+
+                    // Update system metadata with latest imported transaction date
+                    try {
+                        const txnDates = validTransactions.map(t => t.date).filter(Boolean).sort();
+                        const latestDate = txnDates[txnDates.length - 1] || new Date().toISOString().split('T')[0];
+                        await setDoc(doc(db, 'system', 'metadata'), {
+                            lastUpdatedDate: latestDate,
+                            updatedAt: new Date().toISOString(),
+                            updatedBy: currentUser?.name || 'Admin'
+                        }, { merge: true });
+                    } catch (e) {
+                        console.warn("Could not update system metadata:", e);
+                    }
                     
                     alert(msg);
                     setLoadingTransactions(false);
@@ -719,6 +732,19 @@ export default function ImportCenter({ setUpdateTrigger, currentUser }) {
                 }
                 msg += `\n${affectedAccountNames.size} affected accounts updated.`;
                 msg += `\n${syncedCount} account balances auto-synced.`;
+
+                // Update system metadata with latest imported transaction date
+                try {
+                    const txnDates = validTransactions.map(t => t.date).filter(Boolean).sort();
+                    const latestDate = txnDates[txnDates.length - 1] || new Date().toISOString().split('T')[0];
+                    await setDoc(doc(db, 'system', 'metadata'), {
+                        lastUpdatedDate: latestDate,
+                        updatedAt: new Date().toISOString(),
+                        updatedBy: currentUser?.name || 'Admin'
+                    }, { merge: true });
+                } catch (e) {
+                    console.warn("Could not update system metadata:", e);
+                }
 
                 alert(msg);
                 setPreviewOpen(false);

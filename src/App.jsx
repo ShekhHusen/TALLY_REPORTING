@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import ImportCenter from './components/ImportCenter';
 import AccountsTab from './components/AccountsTab';
@@ -37,6 +37,52 @@ export default function App() {
 
     const [updateTrigger, setUpdateTrigger] = useState(0);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [lastUpdatedDate, setLastUpdatedDate] = useState('');
+
+    // Fetch last updated date for admin
+    useEffect(() => {
+        if (!db || currentUser?.role !== 'admin') return;
+
+        let isMounted = true;
+        const fetchLastUpdated = async () => {
+            try {
+                // 1. Check system metadata document
+                const metaSnap = await getDoc(doc(db, 'system', 'metadata'));
+                if (metaSnap.exists()) {
+                    const data = metaSnap.data();
+                    const d = data.lastUpdatedDate || data.lastUpdated;
+                    if (d && isMounted) {
+                        setLastUpdatedDate(d);
+                        return;
+                    }
+                }
+
+                // 2. Query most recent transaction date from Firestore
+                const q = query(collection(db, 'transactions'), orderBy('date', 'desc'), limit(1));
+                const txnSnap = await getDocs(q);
+                if (!txnSnap.empty) {
+                    const latestDate = txnSnap.docs[0].data()?.date;
+                    if (latestDate && isMounted) {
+                        setLastUpdatedDate(latestDate);
+                        return;
+                    }
+                }
+
+                // 3. Fallback to today if no transaction exists
+                if (isMounted) {
+                    setLastUpdatedDate(new Date().toISOString().split('T')[0]);
+                }
+            } catch (err) {
+                console.error('Failed to fetch last updated date:', err);
+                if (isMounted) {
+                    setLastUpdatedDate(new Date().toISOString().split('T')[0]);
+                }
+            }
+        };
+
+        fetchLastUpdated();
+        return () => { isMounted = false; };
+    }, [currentUser, updateTrigger]);
 
     // Wrapper to sync user state with sessionStorage
     const handleSetCurrentUser = (valOrFn) => {
@@ -147,10 +193,17 @@ export default function App() {
 
                     {/* PAGE TITLE (Moved to Nav) */}
                     <div className="hidden md:block h-6 w-px bg-slate-200 mx-1"></div>
-                    <h2 className="hidden md:flex text-base lg:text-lg font-bold text-slate-800 items-center gap-2">
-                        {activeTabObj && <activeTabObj.icon className="w-5 h-5 text-red-600" />}
-                        {activeTabObj ? activeTabObj.label : 'Dashboard'}
-                    </h2>
+                    <div className="hidden md:flex flex-col justify-center">
+                        <h2 className="flex text-base lg:text-lg font-bold text-slate-800 items-center gap-2 leading-tight">
+                            {activeTabObj && <activeTabObj.icon className="w-5 h-5 text-red-600" />}
+                            {activeTabObj ? activeTabObj.label : 'Dashboard'}
+                        </h2>
+                        {currentUser?.role === 'admin' && (
+                            <p className="text-[11px] text-slate-500 font-medium leading-none mt-1">
+                                last updated on : <span className="font-semibold text-slate-700">{lastUpdatedDate || '...'}</span>
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3 lg:gap-5">
@@ -303,7 +356,7 @@ export default function App() {
 
                     <div className="max-w-7xl mx-auto w-full flex-1 min-h-0 flex flex-col">
                         <div style={{ display: activeTab === 'users' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
-                            {activeTab === 'users' && <UserManagementTab updateTrigger={updateTrigger} />}
+                            {activeTab === 'users' && <UserManagementTab updateTrigger={updateTrigger} currentUser={currentUser} />}
                         </div>
                         <div style={{ display: activeTab === 'settings' ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col overflow-y-auto">
                             {activeTab === 'settings' && <SettingsTab currentUser={currentUser} />}
