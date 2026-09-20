@@ -22,6 +22,15 @@ import {
     User
 } from 'lucide-react';
 
+const NAV_ITEMS = [
+    { id: 'users', label: 'Users', icon: Users, adminOnly: true },
+    { id: 'accounts', label: 'Accounts', icon: Briefcase },
+    { id: 'transactions', label: 'Transactions', icon: ArrowRightLeft },
+    { id: 'followups', label: 'Follow-ups', icon: Clock },
+    { id: 'import', label: 'Import', icon: UploadCloud },
+    { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
+];
+
 export default function App() {
     const [currentUser, setCurrentUser] = useState(() => {
         try {
@@ -43,6 +52,39 @@ export default function App() {
     const isSuperAdmin = Boolean(currentUser?.role === 'admin' && currentUser?.adminType !== 'secondary');
     const isSecondaryAdmin = Boolean(currentUser?.role === 'secondary_admin' || (currentUser?.role === 'admin' && currentUser?.adminType === 'secondary'));
     const isAdmin = isSuperAdmin || isSecondaryAdmin;
+
+    const hasTabAccess = (tabId) => {
+        if (!currentUser) return false;
+        if (isSuperAdmin) return true;
+        if (isSecondaryAdmin) {
+            return Boolean(currentUser.allowedTabs?.includes(tabId));
+        }
+        return Boolean(currentUser.allowedTabs?.includes(tabId));
+    };
+
+    const availableTabs = !currentUser ? [] : NAV_ITEMS.filter(item => {
+        if (isSuperAdmin) return true;
+        if (isSecondaryAdmin) {
+            // Secondary admins only see tabs explicitly assigned to them
+            return Boolean(currentUser.allowedTabs?.includes(item.id));
+        }
+        // Standard user cannot access adminOnly tabs
+        if (item.adminOnly) return false;
+        return hasTabAccess(item.id);
+    });
+
+    // Ensure activeTab stays synchronized with permitted tabs
+    useEffect(() => {
+        if (currentUser && availableTabs.length > 0) {
+            if (!activeTab || !availableTabs.some(t => t.id === activeTab)) {
+                if (isSuperAdmin && availableTabs.some(t => t.id === 'users')) {
+                    setActiveTab('users');
+                } else {
+                    setActiveTab(availableTabs[0].id);
+                }
+            }
+        }
+    }, [currentUser, availableTabs, activeTab, isSuperAdmin]);
 
     // Fetch last updated date for admin (super or secondary)
     useEffect(() => {
@@ -87,7 +129,7 @@ export default function App() {
 
         fetchLastUpdated();
         return () => { isMounted = false; };
-    }, [currentUser, updateTrigger]);
+    }, [currentUser, updateTrigger, isAdmin]);
 
     // Wrapper to sync user state with sessionStorage
     const handleSetCurrentUser = (valOrFn) => {
@@ -101,19 +143,6 @@ export default function App() {
             return next;
         });
     };
-
-    // Initial default tab when user logs in
-    useEffect(() => {
-        if (currentUser && !activeTab) {
-            if (isSuperAdmin) {
-                setActiveTab('users');
-            } else if (currentUser.allowedTabs && currentUser.allowedTabs.length > 0) {
-                setActiveTab(currentUser.allowedTabs[0]);
-            } else {
-                setActiveTab('accounts');
-            }
-        }
-    }, [currentUser, activeTab, isSuperAdmin]);
 
     const handleLogout = async () => {
         try {
@@ -160,43 +189,6 @@ export default function App() {
     if (!currentUser) {
         return <LoginScreen onLoginSuccess={handleSetCurrentUser} />;
     }
-
-    const hasTabAccess = (tabId) => {
-        if (isSuperAdmin) return true;
-        if (isSecondaryAdmin) {
-            return Boolean(currentUser.allowedTabs?.includes(tabId));
-        }
-        return Boolean(currentUser.allowedTabs?.includes(tabId));
-    };
-
-    const NAV_ITEMS = [
-        { id: 'users', label: 'Users', icon: Users, adminOnly: true },
-        { id: 'accounts', label: 'Accounts', icon: Briefcase },
-        { id: 'transactions', label: 'Transactions', icon: ArrowRightLeft },
-        { id: 'followups', label: 'Follow-ups', icon: Clock },
-        { id: 'import', label: 'Import', icon: UploadCloud },
-        { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
-    ];
-
-    const availableTabs = NAV_ITEMS.filter(item => {
-        if (isSuperAdmin) return true;
-        if (isSecondaryAdmin) {
-            // Secondary admins only see tabs explicitly assigned to them
-            return Boolean(currentUser.allowedTabs?.includes(item.id));
-        }
-        // Standard user cannot access adminOnly tabs
-        if (item.adminOnly) return false;
-        return hasTabAccess(item.id);
-    });
-
-    // Ensure activeTab stays synchronized with permitted tabs
-    useEffect(() => {
-        if (currentUser && availableTabs.length > 0) {
-            if (!availableTabs.some(t => t.id === activeTab)) {
-                setActiveTab(availableTabs[0].id);
-            }
-        }
-    }, [currentUser, availableTabs, activeTab]);
 
     const activeTabObj = availableTabs.find(t => t.id === activeTab) || availableTabs[0];
 
