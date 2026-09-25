@@ -1562,6 +1562,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 onClose={() => { setFollowUpModalOpen(false); setFollowUpAccount(null); }}
                 account={followUpAccount}
                 currentUser={currentUser}
+                hideMarkCompleted={true}
             />
         </div>
     );

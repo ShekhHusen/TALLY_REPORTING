@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import UpdateFollowUpModal from './UpdateFollowUpModal';
 
-export default function FollowUpModal({ isOpen, onClose, account, currentUser }) {
+export default function FollowUpModal({ isOpen, onClose, account, currentUser, hideMarkCompleted = false }) {
   const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'secondary_admin' || currentUser?.adminType === 'secondary';
   const [followUps, setFollowUps] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -336,21 +336,23 @@ export default function FollowUpModal({ isOpen, onClose, account, currentUser })
                 />
               </div>
 
-              <div className="hidden sm:flex items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
-                <input
-                  type="checkbox"
-                  id="completed"
-                  checked={completed}
-                  onChange={(e) => setCompleted(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
-                />
-                <label htmlFor="completed" className="ml-2 block text-xs font-bold text-gray-800 cursor-pointer">
-                  Mark as Completed (No further follow-up needed)
-                </label>
-              </div>
+              {!hideMarkCompleted && (
+                <div className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <input
+                    type="checkbox"
+                    id="completed"
+                    checked={completed}
+                    onChange={(e) => setCompleted(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                  />
+                  <label htmlFor="completed" className="ml-2 block text-xs font-bold text-gray-800 cursor-pointer">
+                    Mark as Completed (No further follow-up needed)
+                  </label>
+                </div>
+              )}
 
-              {!completed && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+              {(!completed || hideMarkCompleted) && (
+                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!hideMarkCompleted ? 'pt-3 border-t border-gray-100' : ''}`}>
                   <div>
                     <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">Next Follow-up Date</label>
                     <input

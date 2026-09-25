@@ -31,8 +31,10 @@ export default function UpdateFollowUpModal({
       setNewNextDate(followUp.nextFollowUpDate || '');
       setIsCompleted(!!followUp.completed);
       setAssignedToUid(followUp.assignedToUid || currentUser?.uid || '');
-      // Respect initialTab prop, override if already completed
-      if (followUp.completed || initialTab === 'history') {
+      // Respect initialTab prop: if 'update' is requested, open 'update', otherwise if 'history' or completed default to 'history'
+      if (initialTab === 'update') {
+        setActiveTab('update');
+      } else if (initialTab === 'history' || followUp.completed) {
         setActiveTab('history');
       } else {
         setActiveTab('update');
@@ -188,19 +190,17 @@ export default function UpdateFollowUpModal({
 
         {/* Tab Navigation (Update Form vs Full Audit History) */}
         <div className="flex border-b border-gray-100 bg-gray-50/50 px-6 pt-2 shrink-0">
-          {!followUp.completed && (
-            <button
-              onClick={() => setActiveTab('update')}
-              className={`py-3 px-5 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${
-                activeTab === 'update' 
-                  ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-sm' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <PhoneCall className="w-4 h-4" />
-              Log Call & Reschedule
-            </button>
-          )}
+          <button
+            onClick={() => setActiveTab('update')}
+            className={`py-3 px-5 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === 'update' 
+                ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-sm' 
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <PhoneCall className="w-4 h-4" />
+            Log Call & Reschedule
+          </button>
           <button
             onClick={() => setActiveTab('history')}
             className={`py-3 px-5 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${

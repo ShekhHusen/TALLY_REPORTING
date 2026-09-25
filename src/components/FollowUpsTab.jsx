@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { 
-  Search, X, Check, Clock, AlertCircle, AlertTriangle, 
+  Search, X, Clock, AlertCircle, AlertTriangle, 
   FileText, PhoneCall, History, Calendar, CheckCircle2, User,
   Filter, ChevronDown, ChevronUp, MoreVertical, Eye
 } from 'lucide-react';
@@ -551,7 +551,7 @@ export default function FollowUpsTab({ currentUser }) {
                               {!fu.completed && (
                                 <button
                                   type="button"
-                                  onClick={() => { setActiveDropdown(null); handleOpenUpdate(fu, 'history'); }}
+                                  onClick={() => { setActiveDropdown(null); handleOpenUpdate(fu, 'update'); }}
                                   className="px-4 py-2 text-left text-sm font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2"
                                 >
                                   <PhoneCall className="w-4 h-4 text-blue-500" /> Update
@@ -571,15 +571,6 @@ export default function FollowUpsTab({ currentUser }) {
                               >
                                 <FileText className="w-4 h-4 text-gray-400" /> Ledger
                               </button>
-                              {!fu.completed && (
-                                <button
-                                  type="button"
-                                  onClick={() => { setActiveDropdown(null); handleMarkComplete(fu); }}
-                                  className="px-4 py-2 text-left text-sm font-bold text-green-700 hover:bg-green-50 flex items-center gap-2"
-                                >
-                                  <Check className="w-4 h-4 text-green-600" /> Resolve
-                                </button>
-                              )}
                             </div>
                           )}
                         </td>
