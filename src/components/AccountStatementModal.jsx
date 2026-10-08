@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, getDocs, collection, query, where, limit, startAfter, or } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, query, where, limit, startAfter, or, deleteDoc } from 'firebase/firestore';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import TransactionTable from './TransactionTable';
+import EditTransactionModal from './EditTransactionModal';
 import { deleteTransactionRecord } from '../utils/transactionOperations';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -14,7 +15,7 @@ const formatCurrency = (num) => {
     return `Rs. ${num < 0 ? '-' : ''}${formatted}`;
 };
 
-export default function AccountStatementModal({ isOpen, onClose, accountName }) {
+export default function AccountStatementModal({ isOpen, onClose, accountName, currentUser }) {
     const [fyOptions, setFyOptions] = useState([]);
     const [selectedFY, setSelectedFY] = useState('');
     const [accountData, setAccountData] = useState(null);
@@ -25,6 +26,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
     const [hasMoreTxns, setHasMoreTxns] = useState(false);
     const [showFullDetails, setShowFullDetails] = useState(false);
     const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
+    const [editingTxn, setEditingTxn] = useState(null);
 
     // 1. Fetch Fiscal Years on mount or open
     useEffect(() => {
@@ -182,11 +184,30 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, accountName, selectedFY, fyData, accountData]);
 
+    const refreshFYBalance = async () => {
+        if (selectedFY && accountData) {
+            const matchedDocIds = accountData.allDocIds || (accountData.id ? [accountData.id] : []);
+            for (const docId of matchedDocIds) {
+                const fySnap = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', selectedFY));
+                if (fySnap.exists()) {
+                    setFyData(fySnap.data());
+                    break;
+                }
+            }
+        }
+    };
+
     const handleDelete = async (t) => {
         const ok = await deleteTransactionRecord(t);
         if (ok) {
             fetchTransactions(false);
+            await refreshFYBalance();
         }
+    };
+
+    const handleTransactionSaved = async () => {
+        fetchTransactions(false);
+        await refreshFYBalance();
     };
 
     const exportToPDF = () => {
@@ -272,6 +293,57 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Statement");
         XLSX.writeFile(workbook, `${accountName}_Statement_${fyName}.xlsx`);
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!window.confirm(`WARNING: Are you sure you want to completely delete the account "${accountName}" AND all of its transactions?\n\nThis action is irreversible!`)) {
+            return;
+        }
+
+        setLoadingTxns(true);
+        try {
+            // Fetch all transactions involving this account across ALL FYs to delete them
+            const idsToSearch = accountData?.allDocIds || [];
+            let allTxns = [];
+            
+            if (idsToSearch.length > 0) {
+                const q = query(
+                    collection(db, 'transactions'),
+                    where('involvedAccountIds', 'array-contains-any', idsToSearch)
+                );
+                const snap = await getDocs(q);
+                snap.forEach(d => allTxns.push({ id: d.id, ...d.data() }));
+            } else {
+                const lowerName = accountName.trim().toLowerCase();
+                const q = query(
+                    collection(db, 'transactions'),
+                    where('involvedAccountsLower', 'array-contains', lowerName)
+                );
+                const snap = await getDocs(q);
+                snap.forEach(d => allTxns.push({ id: d.id, ...d.data() }));
+            }
+
+            // Delete transactions and recalculate balances for OTHER involved accounts
+            for (const t of allTxns) {
+                await deleteTransactionRecord(t, true);
+            }
+
+            // Delete the account document(s)
+            if (idsToSearch.length > 0) {
+                for (const docId of idsToSearch) {
+                    await deleteDoc(doc(db, 'accounts', docId));
+                }
+            }
+
+            alert("Account and all associated transactions successfully deleted.");
+            onClose();
+            // Need to trigger a global refresh? Usually closing modal and letting the parent fetch is enough.
+        } catch (error) {
+            console.error("Error deleting account:", error);
+            alert("Failed to delete account: " + error.message);
+        } finally {
+            setLoadingTxns(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -428,6 +500,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
                         isStatementView={true} 
                         selectedAccountName={accountName}
                         onDeleteTransaction={handleDelete}
+                        onEditTransaction={(t) => setEditingTxn(t)}
                     />
                     
                     {loadingTxns && (
@@ -448,6 +521,15 @@ export default function AccountStatementModal({ isOpen, onClose, accountName }) 
                         </div>
                     )}
                 </div>
+
+                {/* Edit Transaction Modal */}
+                <EditTransactionModal 
+                    isOpen={Boolean(editingTxn)} 
+                    onClose={() => setEditingTxn(null)} 
+                    transaction={editingTxn} 
+                    currentUser={currentUser} 
+                    onSaveSuccess={handleTransactionSaved} 
+                />
             </div>
         </div>
     );
