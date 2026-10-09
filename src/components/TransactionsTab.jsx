@@ -4,6 +4,7 @@ import { Filter, X, ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, getDocs, query, where, orderBy, limit, startAfter } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
+import EditTransactionModal from './EditTransactionModal';
 import AccountSearchDropdown from './AccountSearchDropdown';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import { deleteTransactionRecord } from '../utils/transactionOperations';
@@ -13,6 +14,7 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
     const [transactions, setTransactions] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [editingTxn, setEditingTxn] = useState(null);
 
     const handleDeleteTransaction = async (t) => {
         const ok = await deleteTransactionRecord(t);
@@ -20,6 +22,11 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
             fetchTransactions(inputStartDate, inputEndDate, inputAccountName, inputVoucherType, false);
             if (setUpdateTrigger) setUpdateTrigger(prev => prev + 1);
         }
+    };
+
+    const handleTransactionSaved = () => {
+        fetchTransactions(inputStartDate, inputEndDate, inputAccountName, inputVoucherType, false);
+        if (setUpdateTrigger) setUpdateTrigger(prev => prev + 1);
     };
 
     const [fyOptions, setFyOptions] = useState([]);
@@ -372,6 +379,7 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
                             transactions={transactions} 
                             showFullDetails={showFullDetails} 
                             onDeleteTransaction={handleDeleteTransaction}
+                            onEditTransaction={(t) => setEditingTxn(t)}
                         />
                     )}
                     {loadingMore && (
@@ -395,6 +403,15 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
                         )}
                     </div>
                 </div>
+
+                {/* Edit Transaction Modal */}
+                <EditTransactionModal 
+                    isOpen={Boolean(editingTxn)} 
+                    onClose={() => setEditingTxn(null)} 
+                    transaction={editingTxn} 
+                    currentUser={currentUser} 
+                    onSaveSuccess={handleTransactionSaved} 
+                />
             </div>
         </div>
     );

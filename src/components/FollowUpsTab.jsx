@@ -805,6 +805,7 @@ export default function FollowUpsTab({ currentUser }) {
         isOpen={isStatementOpen}
         onClose={() => { setIsStatementOpen(false); setStatementAccountName(''); }}
         accountName={statementAccountName}
+        currentUser={currentUser}
       />
 
       {/* Update / Reschedule / History Modal */}

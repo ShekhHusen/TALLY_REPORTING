@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
-import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or, getDoc, setDoc, updateDoc, collectionGroup } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, query, where, limit, startAfter, or, getDoc, setDoc, updateDoc, collectionGroup, deleteDoc } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
 import AccountSearchDropdown from './AccountSearchDropdown';
 import { jsPDF } from "jspdf";
@@ -9,8 +9,10 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from 'xlsx';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import EditAccountModal from './EditAccountModal';
+import EditTransactionModal from './EditTransactionModal';
 import FollowUpModal from './FollowUpModal';
-import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X } from 'lucide-react';
+import FYBalanceComparisonModal from './FYBalanceComparisonModal';
+import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X, FileText, Trash2, Scale } from 'lucide-react';
 import { deleteTransactionRecord } from '../utils/transactionOperations';
 
 const formatCurrency = (num) => {
@@ -59,6 +61,17 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [editingAccount, setEditingAccount] = useState(null);
     const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
     const [followUpAccount, setFollowUpAccount] = useState(null);
+    const [fyCompareModalOpen, setFyCompareModalOpen] = useState(false);
+    const [openMenuAccountId, setOpenMenuAccountId] = useState(null);
+    const [editingStatementTxn, setEditingStatementTxn] = useState(null);
+
+    useEffect(() => {
+        const handleClickOutside = () => setOpenMenuAccountId(null);
+        if (openMenuAccountId) {
+            document.addEventListener('click', handleClickOutside);
+            return () => document.removeEventListener('click', handleClickOutside);
+        }
+    }, [openMenuAccountId]);
 
     const handleOpenEdit = (acc) => {
         setEditingAccount(acc);
@@ -576,12 +589,42 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         });
     }, [accountTxns, detailFYData, selectedAccount, fyBalances]);
 
+    const refreshStatementFYData = async () => {
+        if (selectedAccount && detailFY) {
+            try {
+                const ids = selectedAccount.allDocIds && selectedAccount.allDocIds.length > 0 ? selectedAccount.allDocIds : [selectedAccount.id];
+                let found = null;
+                for (const docId of ids) {
+                    const fyDoc = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', detailFY));
+                    if (fyDoc.exists()) {
+                        found = fyDoc.data();
+                        break;
+                    }
+                }
+                setDetailFYData(found);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    };
+
     const handleDeleteStatementTransaction = async (t) => {
         const ok = await deleteTransactionRecord(t);
         if (ok && selectedAccount) {
             setAccountTxns([]);
             setLastVisibleTxn(null);
             fetchAccountTransactions(selectedAccount.name, false, detailFY);
+            await refreshStatementFYData();
+            if (setUpdateTrigger) setUpdateTrigger(prev => prev + 1);
+        }
+    };
+
+    const handleStatementTxnSaved = async () => {
+        if (selectedAccount) {
+            setAccountTxns([]);
+            setLastVisibleTxn(null);
+            fetchAccountTransactions(selectedAccount.name, false, detailFY);
+            await refreshStatementFYData();
             if (setUpdateTrigger) setUpdateTrigger(prev => prev + 1);
         }
     };
@@ -739,6 +782,58 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Statement");
         XLSX.writeFile(workbook, `${selectedAccount.name}_Statement_${fyName}.xlsx`);
+    };
+
+    const handleDeleteAccount = async (targetAccount = null) => {
+        const target = targetAccount || selectedAccount;
+        if (!target) return;
+        if (!window.confirm(`WARNING: Are you sure you want to completely delete the account "${target.name}" AND all of its transactions?\n\nThis action is irreversible!`)) {
+            return;
+        }
+
+        try {
+            const idsToSearch = target.allDocIds && target.allDocIds.length > 0 ? target.allDocIds : (target.id ? [target.id] : []);
+            let allTxns = [];
+            
+            if (idsToSearch.length > 0) {
+                const q = query(
+                    collection(db, 'transactions'),
+                    where('involvedAccountIds', 'array-contains-any', idsToSearch.slice(0, 10))
+                );
+                const snap = await getDocs(q);
+                snap.forEach(d => allTxns.push({ id: d.id, ...d.data() }));
+            } else {
+                const lowerName = (target.name || '').trim().toLowerCase();
+                const q = query(
+                    collection(db, 'transactions'),
+                    where('involvedAccountsLower', 'array-contains', lowerName)
+                );
+                const snap = await getDocs(q);
+                snap.forEach(d => allTxns.push({ id: d.id, ...d.data() }));
+            }
+
+            for (const t of allTxns) {
+                await deleteTransactionRecord(t, true);
+            }
+
+            if (idsToSearch.length > 0) {
+                for (const docId of idsToSearch) {
+                    await deleteDoc(doc(db, 'accounts', docId));
+                }
+            } else if (target.id) {
+                await deleteDoc(doc(db, 'accounts', target.id));
+            }
+
+            alert(`Account "${target.name}" and all associated transactions successfully deleted.`);
+            if (view === 'details') {
+                setView('directory');
+                setSelectedAccount(null);
+            }
+            if (setUpdateTrigger) setUpdateTrigger(prev => prev + 1);
+        } catch (error) {
+            console.error("Error deleting account:", error);
+            alert("Failed to delete account: " + error.message);
+        }
     };
 
     if (view === 'details' && selectedAccount) {
@@ -900,6 +995,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             isStatementView={true} 
                             selectedAccountName={selectedAccount.name} 
                             onDeleteTransaction={handleDeleteStatementTransaction}
+                            onEditTransaction={(t) => setEditingStatementTxn(t)}
                         />
                         
                         {loadingTxns && <div className="text-center p-4 text-gray-500">Loading more transactions...</div>}
@@ -921,6 +1017,15 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         )}
                     </div>
                 </div>
+
+                {/* Edit Transaction Modal */}
+                <EditTransactionModal 
+                    isOpen={Boolean(editingStatementTxn)} 
+                    onClose={() => setEditingStatementTxn(null)} 
+                    transaction={editingStatementTxn} 
+                    currentUser={currentUser} 
+                    onSaveSuccess={handleStatementTxnSaved} 
+                />
             </div>
         );
     }
@@ -930,8 +1035,8 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col flex-1 min-h-0 overflow-hidden">
                 <div className="py-[5px] px-4 sm:px-5 border-b border-gray-100 flex flex-col gap-2 sm:gap-3 bg-white rounded-t-2xl shrink-0 relative z-20">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4">
-                        {/* Mobile: Top Row (FY + Filter), Desktop: Just FY */}
-                        <div className="flex items-center justify-between gap-3 sm:w-auto">
+                        {/* Mobile: Top Row (FY + Compare + Filter), Desktop: Just FY */}
+                        <div className="flex items-center justify-between gap-2 sm:gap-3 sm:w-auto">
                             {/* Left: Fiscal Year Selector */}
                             <div className="shrink-0 flex-1 sm:flex-none">
                                 <select
@@ -942,6 +1047,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                     {fyOptions.length === 0 && <option value="">No Fiscal Years</option>}
                                     {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
                                 </select>
+                            </div>
+
+                            {/* Mobile FY Compare Button */}
+                            <div className="shrink-0 sm:hidden">
+                                <button
+                                    type="button"
+                                    onClick={() => setFyCompareModalOpen(true)}
+                                    className="flex justify-center items-center gap-1 px-2.5 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-sm cursor-pointer"
+                                    title="FY Compare"
+                                >
+                                    <Scale className="w-3.5 h-3.5 text-indigo-600" />
+                                    <span>Compare</span>
+                                </button>
                             </div>
 
                             {/* Right: Filter Toggle Button (Mobile) */}
@@ -971,8 +1089,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             />
                         </div>
 
-                        {/* Right: Ignored Accounts Toggle + Filter Toggle Button (Desktop) */}
+                        {/* Right: FY Compare + Ignored Accounts Toggle + Filter Toggle Button (Desktop) */}
                         <div className="shrink-0 hidden sm:flex items-center gap-2">
+                            {/* FY Balance Comparison Button */}
+                            <button
+                                type="button"
+                                onClick={() => setFyCompareModalOpen(true)}
+                                className="flex justify-center items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold transition shadow-sm border bg-indigo-50 border-indigo-300 text-indigo-800 hover:bg-indigo-100 cursor-pointer"
+                                title="FY Balance Comparison"
+                            >
+                                <Scale className="w-4 h-4 text-indigo-600" />
+                                <span>FY Compare</span>
+                            </button>
+
                             {/* Ignored Accounts Toggle - Desktop Only */}
                             <button
                                 type="button"
@@ -1286,25 +1415,60 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                 onClick={() => openAccountDetails(acc)}
                                                 className="cursor-pointer hover:bg-blue-50 transition"
                                             >
-                                                <td className="px-3 py-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                                <td className="px-3 py-2 text-center whitespace-nowrap relative" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center justify-center gap-1.5">
                                                         <button 
                                                             type="button"
-                                                            onClick={() => handleOpenEdit(acc)}
-                                                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition border border-blue-200"
-                                                            title="Edit Account / Opening Balance"
-                                                        >
-                                                            <Pencil size={14} />
-                                                        </button>
-                                                        <button 
-                                                            type="button"
                                                             onClick={() => handleOpenFollowUp(acc)}
-                                                            className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-100 rounded transition border border-purple-200"
+                                                            className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition border border-purple-200"
                                                             title="Follow-ups"
                                                         >
                                                             <ClipboardList size={14} />
                                                         </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setOpenMenuAccountId(openMenuAccountId === acc.id ? null : acc.id);
+                                                            }}
+                                                            className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition border border-gray-200"
+                                                            title="More Options"
+                                                        >
+                                                            <MoreVertical size={14} />
+                                                        </button>
                                                     </div>
+
+                                                    {openMenuAccountId === acc.id && (
+                                                        <div 
+                                                            className="absolute left-10 top-1 mt-1 w-32 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 flex flex-col text-left"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setOpenMenuAccountId(null);
+                                                                    handleOpenEdit(acc);
+                                                                }}
+                                                                className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition"
+                                                            >
+                                                                <Pencil size={13} className="text-blue-600" />
+                                                                <span>Edit</span>
+                                                            </button>
+                                                            {currentUser?.role === 'admin' && (
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setOpenMenuAccountId(null);
+                                                                        handleDeleteAccount(acc);
+                                                                    }}
+                                                                    className="w-full px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-100 transition"
+                                                                >
+                                                                    <Trash2 size={13} className="text-red-600" />
+                                                                    <span>Delete</span>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-2 text-gray-900 font-medium whitespace-nowrap">
                                                     {acc.name}
@@ -1563,6 +1727,13 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 account={followUpAccount}
                 currentUser={currentUser}
                 hideMarkCompleted={true}
+            />
+
+            <FYBalanceComparisonModal
+                isOpen={fyCompareModalOpen}
+                onClose={() => setFyCompareModalOpen(false)}
+                allAccounts={allAccounts}
+                fyOptions={fyOptions}
             />
         </div>
     );

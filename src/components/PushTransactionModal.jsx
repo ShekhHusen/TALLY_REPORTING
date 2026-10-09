@@ -75,16 +75,55 @@ export default function PushTransactionModal({ isOpen, onClose, currentUser, onS
     setSaveStatus('Saving transactions...');
 
     try {
-      // 1. Save all entries to transactions collection
+      // 1. Fetch accounts to get all doc IDs case-insensitively
+      const snap = await getDocs(collection(db, 'accounts'));
+      const accountDocMap = new Map();
+      snap.forEach(d => {
+        const name = d.data()?.name ? d.data().name.trim() : '';
+        if (name) {
+          const key = name.toLowerCase();
+          if (!accountDocMap.has(key)) {
+            accountDocMap.set(key, [d.id]);
+          } else {
+            accountDocMap.get(key).push(d.id);
+          }
+        }
+      });
+
+      // 2. Save all entries to transactions collection
       for (const entry of entries) {
+        const debitNameTrimmed = (entry.debitAccount || '').trim();
+        const creditNameTrimmed = (entry.creditAccount || '').trim();
+        const debitNameLower = debitNameTrimmed.toLowerCase();
+        const creditNameLower = creditNameTrimmed.toLowerCase();
+        const amountNum = parseFloat(entry.amount);
+
+        const involvedAccountsLower = [...new Set([debitNameLower, creditNameLower])];
+
+        const debitDocIds = accountDocMap.get(debitNameLower) || [];
+        const creditDocIds = accountDocMap.get(creditNameLower) || [];
+        const involvedAccountIds = [...new Set([...debitDocIds, ...creditDocIds])];
+
+        const allDebitAccounts = [debitNameTrimmed];
+        const allCreditAccounts = [creditNameTrimmed];
+
+        const allDebitEntries = [{ name: debitNameTrimmed, amount: amountNum }];
+        const allCreditEntries = [{ name: creditNameTrimmed, amount: amountNum }];
+
         await addDoc(collection(db, 'transactions'), {
           date: formDate,
           type: voucherType,
           voucherNo: voucherNo,
           debitAccount: entry.debitAccount,
           creditAccount: entry.creditAccount,
-          debitAmount: parseFloat(entry.amount),
-          creditAmount: parseFloat(entry.amount),
+          debitAmount: amountNum,
+          creditAmount: amountNum,
+          allDebitAccounts,
+          allCreditAccounts,
+          allDebitEntries,
+          allCreditEntries,
+          involvedAccountsLower,
+          involvedAccountIds,
           narration: narration,
           enteredBy: currentUser?.name || 'Unknown',
           isManual: true,
@@ -95,7 +134,7 @@ export default function PushTransactionModal({ isOpen, onClose, currentUser, onS
 
       setSaveStatus('Updating balances...');
 
-      // 2. Recalculate balances for affected accounts
+      // 3. Recalculate balances for affected accounts
       const affectedAccounts = new Set();
       entries.forEach(entry => {
         affectedAccounts.add(entry.debitAccount);
@@ -110,21 +149,6 @@ export default function PushTransactionModal({ isOpen, onClose, currentUser, onS
       }
 
       if (currentFY) {
-        // Fetch accounts to get all doc IDs case-insensitively
-        const snap = await getDocs(collection(db, 'accounts'));
-        const accountDocMap = new Map();
-        snap.forEach(d => {
-          const name = d.data()?.name ? d.data().name.trim() : '';
-          if (name) {
-            const key = name.toLowerCase();
-            if (!accountDocMap.has(key)) {
-              accountDocMap.set(key, [d.id]);
-            } else {
-              accountDocMap.get(key).push(d.id);
-            }
-          }
-        });
-
         for (const accountName of affectedAccounts) {
           const key = (accountName || '').trim().toLowerCase();
           const docIds = accountDocMap.get(key) || [];
