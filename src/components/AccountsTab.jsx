@@ -11,7 +11,8 @@ import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import EditAccountModal from './EditAccountModal';
 import EditTransactionModal from './EditTransactionModal';
 import FollowUpModal from './FollowUpModal';
-import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X, FileText, Trash2 } from 'lucide-react';
+import FYBalanceComparisonModal from './FYBalanceComparisonModal';
+import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X, FileText, Trash2, Scale } from 'lucide-react';
 import { deleteTransactionRecord } from '../utils/transactionOperations';
 
 const formatCurrency = (num) => {
@@ -60,6 +61,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [editingAccount, setEditingAccount] = useState(null);
     const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
     const [followUpAccount, setFollowUpAccount] = useState(null);
+    const [fyCompareModalOpen, setFyCompareModalOpen] = useState(false);
     const [openMenuAccountId, setOpenMenuAccountId] = useState(null);
     const [editingStatementTxn, setEditingStatementTxn] = useState(null);
 
@@ -1033,8 +1035,8 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col flex-1 min-h-0 overflow-hidden">
                 <div className="py-[5px] px-4 sm:px-5 border-b border-gray-100 flex flex-col gap-2 sm:gap-3 bg-white rounded-t-2xl shrink-0 relative z-20">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4">
-                        {/* Mobile: Top Row (FY + Filter), Desktop: Just FY */}
-                        <div className="flex items-center justify-between gap-3 sm:w-auto">
+                        {/* Mobile: Top Row (FY + Compare + Filter), Desktop: Just FY */}
+                        <div className="flex items-center justify-between gap-2 sm:gap-3 sm:w-auto">
                             {/* Left: Fiscal Year Selector */}
                             <div className="shrink-0 flex-1 sm:flex-none">
                                 <select
@@ -1045,6 +1047,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                     {fyOptions.length === 0 && <option value="">No Fiscal Years</option>}
                                     {fyOptions.map(fy => <option key={fy.id} value={fy.id}>{fy.name}</option>)}
                                 </select>
+                            </div>
+
+                            {/* Mobile FY Compare Button */}
+                            <div className="shrink-0 sm:hidden">
+                                <button
+                                    type="button"
+                                    onClick={() => setFyCompareModalOpen(true)}
+                                    className="flex justify-center items-center gap-1 px-2.5 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-sm cursor-pointer"
+                                    title="FY Compare"
+                                >
+                                    <Scale className="w-3.5 h-3.5 text-indigo-600" />
+                                    <span>Compare</span>
+                                </button>
                             </div>
 
                             {/* Right: Filter Toggle Button (Mobile) */}
@@ -1074,8 +1089,19 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             />
                         </div>
 
-                        {/* Right: Ignored Accounts Toggle + Filter Toggle Button (Desktop) */}
+                        {/* Right: FY Compare + Ignored Accounts Toggle + Filter Toggle Button (Desktop) */}
                         <div className="shrink-0 hidden sm:flex items-center gap-2">
+                            {/* FY Balance Comparison Button */}
+                            <button
+                                type="button"
+                                onClick={() => setFyCompareModalOpen(true)}
+                                className="flex justify-center items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold transition shadow-sm border bg-indigo-50 border-indigo-300 text-indigo-800 hover:bg-indigo-100 cursor-pointer"
+                                title="FY Balance Comparison"
+                            >
+                                <Scale className="w-4 h-4 text-indigo-600" />
+                                <span>FY Compare</span>
+                            </button>
+
                             {/* Ignored Accounts Toggle - Desktop Only */}
                             <button
                                 type="button"
@@ -1701,6 +1727,13 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 account={followUpAccount}
                 currentUser={currentUser}
                 hideMarkCompleted={true}
+            />
+
+            <FYBalanceComparisonModal
+                isOpen={fyCompareModalOpen}
+                onClose={() => setFyCompareModalOpen(false)}
+                allAccounts={allAccounts}
+                fyOptions={fyOptions}
             />
         </div>
     );
