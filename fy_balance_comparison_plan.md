@@ -242,7 +242,7 @@ const summary = useMemo(() => {
 }, [comparisonData]);
 ```
 
-**UI Layout** (dynamic columns based on selected FYs):
+**UI Layout** (dynamic columns based on selected FYs, interactive filter cards):
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────┐
@@ -252,11 +252,12 @@ const summary = useMemo(() => {
 │                                                              (min 2, remove ✕     │
 │                                                               disabled at 2)      │
 ├────────────────────────────────────────────────────────────────────────────────────┤
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐                          │
-│  │ Total    │  │ Matched  │  │ Mismatch │  │ Partial  │                          │
-│  │ Accounts │  │    ✓     │  │   ⚠      │  │ (not in  │                          │
-│  │   350    │  │   340    │  │   10     │  │ all FYs) │                          │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘                          │
+│  Interactive Filter Cards (Click to toggle filter):                                │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │ Total    │  │ Matched  │  │ Mismatch │  │ Partial  │  │Total Diff│              │
+│  │ Accounts │  │    ✓     │  │   ⚠      │  │ (not in  │  │ (Click to│              │
+│  │   350    │  │   340    │  │   10     │  │ all FYs) │  │ filter)  │              │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └──────────┘              │
 ├────────────────────────────────────────────────────────────────────────────────────┤
 │  [🔍 Search]  [Filter: All ▼]  [Export Excel 📥]                                 │
 ├────────┬──────────────────┬──────┬──────────────────┬──────┬──────────────────┬───┤

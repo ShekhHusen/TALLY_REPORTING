@@ -385,36 +385,90 @@ export default function FYBalanceComparisonModal({ isOpen, onClose, allAccounts,
                     )}
                 </div>
 
-                {/* === Summary KPIs === */}
+                {/* === Summary KPI Filter Cards === */}
                 {!loading && comparisonData.length > 0 && (
-                    <div className="flex flex-wrap gap-2 sm:gap-3 px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50/50 shrink-0">
-                        <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-gray-100 shadow-xs">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50/50 shrink-0">
+                        {/* Total Card (Filter: All) */}
+                        <button
+                            type="button"
+                            onClick={() => setFilterType('all')}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all cursor-pointer select-none text-left ${
+                                filterType === 'all'
+                                    ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-500 shadow-xs'
+                                    : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-700 hover:border-gray-300'
+                            }`}
+                            title="Show all accounts"
+                        >
                             <span className="text-[11px] text-gray-500 font-medium">Total</span>
                             <span className="text-sm font-extrabold text-gray-900">{summary.totalAccounts}</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-xl border border-green-100 shadow-xs">
+                        </button>
+
+                        {/* Matched Card (Filter: Matched) */}
+                        <button
+                            type="button"
+                            onClick={() => setFilterType(prev => prev === 'matched' ? 'all' : 'matched')}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all cursor-pointer select-none text-left ${
+                                filterType === 'matched'
+                                    ? 'bg-green-100 border-green-500 ring-2 ring-green-600 shadow-xs'
+                                    : 'bg-green-50/80 border-green-200 hover:bg-green-100/70 text-green-700 hover:border-green-300'
+                            }`}
+                            title="Filter by Matched accounts (Click to toggle)"
+                        >
                             <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                             <span className="text-[11px] text-green-700 font-medium">Matched</span>
                             <span className="text-sm font-extrabold text-green-700">{summary.matchedCount}</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-xl border border-red-100 shadow-xs">
+                        </button>
+
+                        {/* Mismatch Card (Filter: Mismatch) */}
+                        <button
+                            type="button"
+                            onClick={() => setFilterType(prev => prev === 'mismatch' ? 'all' : 'mismatch')}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all cursor-pointer select-none text-left ${
+                                filterType === 'mismatch'
+                                    ? 'bg-red-100 border-red-500 ring-2 ring-red-600 shadow-xs'
+                                    : 'bg-red-50/80 border-red-200 hover:bg-red-100/70 text-red-700 hover:border-red-300'
+                            }`}
+                            title="Filter by Mismatch accounts (Click to toggle)"
+                        >
                             <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
                             <span className="text-[11px] text-red-700 font-medium">Mismatch</span>
                             <span className="text-sm font-extrabold text-red-700">{summary.mismatchCount}</span>
-                        </div>
+                        </button>
+
+                        {/* Partial Card (Filter: Partial) */}
                         {summary.partialCount > 0 && (
-                            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-xl border border-amber-100 shadow-xs">
+                            <button
+                                type="button"
+                                onClick={() => setFilterType(prev => prev === 'partial' ? 'all' : 'partial')}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all cursor-pointer select-none text-left ${
+                                    filterType === 'partial'
+                                        ? 'bg-amber-100 border-amber-500 ring-2 ring-amber-600 shadow-xs'
+                                        : 'bg-amber-50/80 border-amber-200 hover:bg-amber-100/70 text-amber-700 hover:border-amber-300'
+                                }`}
+                                title="Filter by Partial accounts (Click to toggle)"
+                            >
                                 <span className="text-[11px] text-amber-700 font-medium">Partial</span>
                                 <span className="text-sm font-extrabold text-amber-700">{summary.partialCount}</span>
-                            </div>
+                            </button>
                         )}
+
+                        {/* Total Diff Card (Click to filter Mismatches) */}
                         {summary.totalMismatchAmount > 0 && (
-                            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-xl border border-red-100 shadow-xs">
+                            <button
+                                type="button"
+                                onClick={() => setFilterType(prev => prev === 'mismatch' ? 'all' : 'mismatch')}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all cursor-pointer select-none text-left ${
+                                    filterType === 'mismatch'
+                                        ? 'bg-red-100 border-red-500 ring-2 ring-red-600 shadow-xs'
+                                        : 'bg-red-50/80 border-red-200 hover:bg-red-100/70 text-red-700 hover:border-red-300'
+                                }`}
+                                title="Total discrepancy amount (Click to filter mismatches)"
+                            >
                                 <span className="text-[11px] text-red-700 font-medium">Total Diff</span>
                                 <span className="text-sm font-extrabold text-red-700">
                                     ₹{summary.totalMismatchAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </span>
-                            </div>
+                            </button>
                         )}
                     </div>
                 )}
