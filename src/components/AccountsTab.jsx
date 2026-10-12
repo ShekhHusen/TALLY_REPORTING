@@ -11,8 +11,13 @@ import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import EditAccountModal from './EditAccountModal';
 import EditTransactionModal from './EditTransactionModal';
 import FollowUpModal from './FollowUpModal';
+<<<<<<< Updated upstream
 import FYBalanceComparisonModal from './FYBalanceComparisonModal';
 import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X, FileText, Trash2, Scale } from 'lucide-react';
+=======
+import AccountStatementModal from './AccountStatementModal';
+import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X, Calculator } from 'lucide-react';
+>>>>>>> Stashed changes
 import { deleteTransactionRecord } from '../utils/transactionOperations';
 
 const formatCurrency = (num) => {
@@ -61,6 +66,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [editingAccount, setEditingAccount] = useState(null);
     const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
     const [followUpAccount, setFollowUpAccount] = useState(null);
+<<<<<<< Updated upstream
     const [fyCompareModalOpen, setFyCompareModalOpen] = useState(false);
     const [openMenuAccountId, setOpenMenuAccountId] = useState(null);
     const [editingStatementTxn, setEditingStatementTxn] = useState(null);
@@ -72,6 +78,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             return () => document.removeEventListener('click', handleClickOutside);
         }
     }, [openMenuAccountId]);
+=======
+    const [statementModalOpen, setStatementModalOpen] = useState(false);
+>>>>>>> Stashed changes
 
     const handleOpenEdit = (acc) => {
         setEditingAccount(acc);
@@ -874,6 +883,15 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                     <span>Full</span>
                                 </label>
                                 <button 
+                                    type="button"
+                                    onClick={() => setStatementModalOpen(true)}
+                                    className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold transition-colors shrink-0 cursor-pointer border border-indigo-200 shadow-2xs"
+                                    title="Interest Calculator"
+                                >
+                                    <Calculator className="w-4 h-4 text-indigo-600" />
+                                    <span className="hidden sm:inline">Interest Calc</span>
+                                </button>
+                                <button 
                                     onClick={exportToPDF}
                                     className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-sm font-bold transition-colors shrink-0"
                                     title="Export PDF"
@@ -1018,6 +1036,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     </div>
                 </div>
 
+<<<<<<< Updated upstream
                 {/* Edit Transaction Modal */}
                 <EditTransactionModal 
                     isOpen={Boolean(editingStatementTxn)} 
@@ -1026,6 +1045,18 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     currentUser={currentUser} 
                     onSaveSuccess={handleStatementTxnSaved} 
                 />
+=======
+                {statementModalOpen && selectedAccount && (
+                    <AccountStatementModal
+                        isOpen={statementModalOpen}
+                        onClose={() => setStatementModalOpen(false)}
+                        accountName={selectedAccount.name}
+                        account={selectedAccount}
+                        initialFY={detailFY}
+                        initialMode="interest"
+                    />
+                )}
+>>>>>>> Stashed changes
             </div>
         );
     }
@@ -1729,12 +1760,25 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 hideMarkCompleted={true}
             />
 
+<<<<<<< Updated upstream
             <FYBalanceComparisonModal
                 isOpen={fyCompareModalOpen}
                 onClose={() => setFyCompareModalOpen(false)}
                 allAccounts={allAccounts}
                 fyOptions={fyOptions}
             />
+=======
+            {statementModalOpen && selectedAccount && (
+                <AccountStatementModal
+                    isOpen={statementModalOpen}
+                    onClose={() => setStatementModalOpen(false)}
+                    accountName={selectedAccount.name}
+                    account={selectedAccount}
+                    initialFY={selectedFY}
+                    initialMode="statement"
+                />
+            )}
+>>>>>>> Stashed changes
         </div>
     );
 }

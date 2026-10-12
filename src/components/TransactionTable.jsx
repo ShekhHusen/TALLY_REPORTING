@@ -10,9 +10,13 @@ export default function TransactionTable({ transactions, showFullDetails = false
     const [sortConfig, setSortConfig] = useState(null);
 
     const sortedTransactions = useMemo(() => {
-        if (!sortConfig) return transactions;
+        // Separate OB rows (pinned at top) from regular transactions
+        const obRows = transactions.filter(t => t.isOpeningRow);
+        const regularTxns = transactions.filter(t => !t.isOpeningRow);
+
+        if (!sortConfig) return [...obRows, ...regularTxns];
         
-        const sorted = [...transactions].sort((a, b) => {
+        const sorted = [...regularTxns].sort((a, b) => {
             let valA, valB;
             
             if (sortConfig.key === 'date') {
@@ -30,7 +34,7 @@ export default function TransactionTable({ transactions, showFullDetails = false
             if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
             return 0;
         });
-        return sorted;
+        return [...obRows, ...sorted];
     }, [transactions, sortConfig]);
 
     const requestSort = (key) => {
@@ -71,6 +75,31 @@ export default function TransactionTable({ transactions, showFullDetails = false
                             <tr><td colSpan={6 + (showFullDetails ? 1 : 0) + ((onDeleteTransaction || onEditTransaction) ? 1 : 0)} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
                         ) : (
                             sortedTransactions.map((t, idx) => {
+                                // --- Opening Balance Row (pinned, special rendering) ---
+                                if (t.isOpeningRow) {
+                                    return (
+                                        <React.Fragment key={t.id || idx}>
+                                            <tr className="bg-indigo-50/70 border-l-4 border-l-indigo-400 hover:bg-indigo-100/60 transition-colors">
+                                                <td className="px-4 py-3 whitespace-nowrap text-indigo-900 font-semibold">{t.date}</td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-indigo-700">
+                                                    <div className="font-bold text-indigo-800">{t.type}</div>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-indigo-900 font-bold" title={t.particulars}>{t.particulars}</td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-right text-indigo-900 font-bold">{t.accountDebitAmt ? formatCurrency(t.accountDebitAmt) : ''}</td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-right text-indigo-900 font-bold">{t.accountCreditAmt ? formatCurrency(t.accountCreditAmt) : ''}</td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-right text-indigo-950 font-black">{formatCurrency(t.runningBalance)} <span className="text-xs font-bold text-indigo-600">{t.runningBalanceType}</span></td>
+                                                {showFullDetails && (
+                                                    <td className="px-4 py-3 whitespace-nowrap text-indigo-400">-</td>
+                                                )}
+                                                {onDeleteTransaction && (
+                                                    <td className="px-3 py-3 whitespace-nowrap text-center text-indigo-300">-</td>
+                                                )}
+                                            </tr>
+                                        </React.Fragment>
+                                    );
+                                }
+
+                                // --- Regular Transaction Row ---
                                 // Check if selected account is in debit side or credit side
                                 const hasCalculatedAmounts = t.accountDebitAmt !== undefined || t.accountCreditAmt !== undefined;
                                 let accountDebitAmt = hasCalculatedAmounts ? (t.accountDebitAmt || 0) : t.debitAmount;
