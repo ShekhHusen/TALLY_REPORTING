@@ -17,10 +17,21 @@
 
 export const calculateDaysDifference = (startDateStr, endDateStr) => {
     if (!startDateStr || !endDateStr) return 0;
-    const start = new Date(startDateStr);
-    const end = new Date(endDateStr);
-    const diffTime = end.getTime() - start.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    // Normalize date strings (YYYY-MM-DD) to UTC midnight to avoid local timezone / daylight savings distortions
+    const sParts = String(startDateStr).slice(0, 10).split('-').map(Number);
+    const eParts = String(endDateStr).slice(0, 10).split('-').map(Number);
+
+    let diffDays;
+    if (sParts.length === 3 && eParts.length === 3 && !sParts.some(isNaN) && !eParts.some(isNaN)) {
+        const utcStart = Date.UTC(sParts[0], sParts[1] - 1, sParts[2]);
+        const utcEnd = Date.UTC(eParts[0], eParts[1] - 1, eParts[2]);
+        diffDays = Math.round((utcEnd - utcStart) / (1000 * 60 * 60 * 24));
+    } else {
+        const start = new Date(startDateStr);
+        const end = new Date(endDateStr);
+        const diffTime = end.getTime() - start.getTime();
+        diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    }
     return diffDays > 0 ? diffDays : 0;
 };
 

@@ -11,13 +11,9 @@ import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import EditAccountModal from './EditAccountModal';
 import EditTransactionModal from './EditTransactionModal';
 import FollowUpModal from './FollowUpModal';
-<<<<<<< Updated upstream
 import FYBalanceComparisonModal from './FYBalanceComparisonModal';
-import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X, FileText, Trash2, Scale } from 'lucide-react';
-=======
 import AccountStatementModal from './AccountStatementModal';
-import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X, Calculator } from 'lucide-react';
->>>>>>> Stashed changes
+import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X, FileText, Trash2, Scale, Calculator } from 'lucide-react';
 import { deleteTransactionRecord } from '../utils/transactionOperations';
 
 const formatCurrency = (num) => {
@@ -66,10 +62,10 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [editingAccount, setEditingAccount] = useState(null);
     const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
     const [followUpAccount, setFollowUpAccount] = useState(null);
-<<<<<<< Updated upstream
     const [fyCompareModalOpen, setFyCompareModalOpen] = useState(false);
     const [openMenuAccountId, setOpenMenuAccountId] = useState(null);
     const [editingStatementTxn, setEditingStatementTxn] = useState(null);
+    const [statementModalOpen, setStatementModalOpen] = useState(false);
 
     useEffect(() => {
         const handleClickOutside = () => setOpenMenuAccountId(null);
@@ -78,9 +74,6 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
             return () => document.removeEventListener('click', handleClickOutside);
         }
     }, [openMenuAccountId]);
-=======
-    const [statementModalOpen, setStatementModalOpen] = useState(false);
->>>>>>> Stashed changes
 
     const handleOpenEdit = (acc) => {
         setEditingAccount(acc);
@@ -1036,7 +1029,6 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     </div>
                 </div>
 
-<<<<<<< Updated upstream
                 {/* Edit Transaction Modal */}
                 <EditTransactionModal 
                     isOpen={Boolean(editingStatementTxn)} 
@@ -1045,7 +1037,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     currentUser={currentUser} 
                     onSaveSuccess={handleStatementTxnSaved} 
                 />
-=======
+
                 {statementModalOpen && selectedAccount && (
                     <AccountStatementModal
                         isOpen={statementModalOpen}
@@ -1054,9 +1046,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                         account={selectedAccount}
                         initialFY={detailFY}
                         initialMode="interest"
+                        currentUser={currentUser}
                     />
                 )}
->>>>>>> Stashed changes
             </div>
         );
     }
@@ -1760,14 +1752,13 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                 hideMarkCompleted={true}
             />
 
-<<<<<<< Updated upstream
             <FYBalanceComparisonModal
                 isOpen={fyCompareModalOpen}
                 onClose={() => setFyCompareModalOpen(false)}
                 allAccounts={allAccounts}
                 fyOptions={fyOptions}
             />
-=======
+
             {statementModalOpen && selectedAccount && (
                 <AccountStatementModal
                     isOpen={statementModalOpen}
@@ -1776,9 +1767,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                     account={selectedAccount}
                     initialFY={selectedFY}
                     initialMode="statement"
+                    currentUser={currentUser}
                 />
             )}
->>>>>>> Stashed changes
         </div>
     );
 }

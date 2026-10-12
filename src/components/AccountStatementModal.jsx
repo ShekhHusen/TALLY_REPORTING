@@ -16,11 +16,7 @@ const formatCurrency = (num) => {
     return `Rs. ${num < 0 ? '-' : ''}${formatted}`;
 };
 
-<<<<<<< Updated upstream
-export default function AccountStatementModal({ isOpen, onClose, accountName, currentUser }) {
-=======
-export default function AccountStatementModal({ isOpen, onClose, accountName, account = null, initialMode = 'statement', initialFY = '' }) {
->>>>>>> Stashed changes
+export default function AccountStatementModal({ isOpen, onClose, accountName, account = null, initialMode = 'statement', initialFY = '', currentUser }) {
     const [fyOptions, setFyOptions] = useState([]);
     const [selectedFYs, setSelectedFYs] = useState(() => {
         if (initialFY && initialFY !== 'ALL') return [initialFY];
@@ -186,51 +182,52 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
     }, [isOpen, accountName, account]);
 
     // Fetch FY opening balance from earliest selected FY and closing from latest
-    useEffect(() => {
+    // Fetch FY opening balance from earliest selected FY and closing from latest
+    const fetchFYBalances = async () => {
         if (!accountData || !earliestSelectedFY) {
             setFyData(null);
             setLatestFyData(null);
             return;
         }
 
-        const fetchFYBalances = async () => {
-            try {
-                const ids = accountData.allDocIds && accountData.allDocIds.length > 0 
-                    ? accountData.allDocIds 
-                    : (accountData.id ? [accountData.id] : []);
+        try {
+            const ids = accountData.allDocIds && accountData.allDocIds.length > 0 
+                ? accountData.allDocIds 
+                : (accountData.id ? [accountData.id] : []);
 
-                // Fetch earliest FY data (for opening balance)
-                let foundEarliestData = null;
+            // Fetch earliest FY data (for opening balance)
+            let foundEarliestData = null;
+            for (const docId of ids) {
+                const fySnap = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', earliestSelectedFY.id));
+                if (fySnap.exists()) {
+                    foundEarliestData = fySnap.data();
+                    break;
+                }
+            }
+            setFyData(foundEarliestData);
+
+            // Fetch latest FY data (for closing balance display) - only if different from earliest
+            if (latestSelectedFY && latestSelectedFY.id !== earliestSelectedFY.id) {
+                let foundLatestData = null;
                 for (const docId of ids) {
-                    const fySnap = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', earliestSelectedFY.id));
+                    const fySnap = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', latestSelectedFY.id));
                     if (fySnap.exists()) {
-                        foundEarliestData = fySnap.data();
+                        foundLatestData = fySnap.data();
                         break;
                     }
                 }
-                setFyData(foundEarliestData);
-
-                // Fetch latest FY data (for closing balance display) - only if different from earliest
-                if (latestSelectedFY && latestSelectedFY.id !== earliestSelectedFY.id) {
-                    let foundLatestData = null;
-                    for (const docId of ids) {
-                        const fySnap = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', latestSelectedFY.id));
-                        if (fySnap.exists()) {
-                            foundLatestData = fySnap.data();
-                            break;
-                        }
-                    }
-                    setLatestFyData(foundLatestData);
-                } else {
-                    setLatestFyData(foundEarliestData);
-                }
-            } catch (err) {
-                console.error("Error fetching FY balances:", err);
-                setFyData(null);
-                setLatestFyData(null);
+                setLatestFyData(foundLatestData);
+            } else {
+                setLatestFyData(foundEarliestData);
             }
-        };
+        } catch (err) {
+            console.error("Error fetching FY balances:", err);
+            setFyData(null);
+            setLatestFyData(null);
+        }
+    };
 
+    useEffect(() => {
         fetchFYBalances();
     }, [accountData, earliestSelectedFY, latestSelectedFY]);
 
@@ -421,36 +418,17 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [processedTransactions]);
 
-    const refreshFYBalance = async () => {
-        if (selectedFY && accountData) {
-            const matchedDocIds = accountData.allDocIds || (accountData.id ? [accountData.id] : []);
-            for (const docId of matchedDocIds) {
-                const fySnap = await getDoc(doc(db, 'accounts', docId, 'fiscalYears', selectedFY));
-                if (fySnap.exists()) {
-                    setFyData(fySnap.data());
-                    break;
-                }
-            }
-        }
-    };
-
     const handleDelete = async (t) => {
         const ok = await deleteTransactionRecord(t);
         if (ok) {
-<<<<<<< Updated upstream
-            fetchTransactions(false);
-            await refreshFYBalance();
+            fetchTransactions();
+            await fetchFYBalances();
         }
     };
 
     const handleTransactionSaved = async () => {
-        fetchTransactions(false);
-        await refreshFYBalance();
-    };
-
-=======
-            fetchTransactions();
-        }
+        fetchTransactions();
+        await fetchFYBalances();
     };
 
     // Label helpers for multi-FY dropdown
@@ -523,7 +501,6 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
     };
 
     // --- PDF Export ---
->>>>>>> Stashed changes
     const exportToPDF = () => {
         if (!accountName) return;
         const docPDF = new jsPDF();
@@ -1162,32 +1139,6 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
 
                 {/* Content Table Area */}
                 <div className="flex-1 overflow-auto p-0 bg-white">
-<<<<<<< Updated upstream
-                    <TransactionTable 
-                        transactions={processedTransactions} 
-                        showFullDetails={showFullDetails} 
-                        isStatementView={true} 
-                        selectedAccountName={accountName}
-                        onDeleteTransaction={handleDelete}
-                        onEditTransaction={(t) => setEditingTxn(t)}
-                    />
-                    
-                    {loadingTxns && (
-                        <div className="flex items-center justify-center p-12 text-sm font-bold text-gray-400 gap-3">
-                            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                            Loading statement...
-                        </div>
-                    )}
-                    
-                    {!loadingTxns && hasMoreTxns && transactions.length > 0 && (
-                        <div className="text-center p-8 border-t border-gray-100">
-                            <button 
-                                onClick={() => fetchTransactions(true)}
-                                className="px-6 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-full text-sm font-bold border border-gray-200 shadow-sm transition-colors"
-                            >
-                                Load More Transactions
-                            </button>
-=======
                     {viewMode === 'statement' ? (
                         /* Standard Statement View */
                         <>
@@ -1197,6 +1148,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                 isStatementView={true} 
                                 selectedAccountName={accountName}
                                 onDeleteTransaction={handleDelete}
+                                onEditTransaction={(t) => setEditingTxn(t)}
                             />
                             
                             {loadingTxns && (
@@ -1405,7 +1357,6 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                     </tfoot>
                                 )}
                             </table>
->>>>>>> Stashed changes
                         </div>
                     )}
                 </div>
