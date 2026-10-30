@@ -9,6 +9,8 @@ import LoginScreen from './components/LoginScreen';
 import UserManagementTab from './components/UserManagementTab';
 import SettingsTab from './components/SettingsTab';
 import FollowUpsTab from './components/FollowUpsTab';
+import TallySyncTab from './components/TallySyncTab';
+import TallyEntryTab from './components/TallyEntryTab';
 
 import { 
     Users, 
@@ -19,7 +21,9 @@ import {
     Settings, 
     LogOut,
     Key,
-    User
+    User,
+    RefreshCw,
+    FilePlus2
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -28,6 +32,8 @@ const NAV_ITEMS = [
     { id: 'transactions', label: 'Transactions', icon: ArrowRightLeft },
     { id: 'followups', label: 'Follow-ups', icon: Clock },
     { id: 'import', label: 'Import', icon: UploadCloud },
+    { id: 'tallysync', label: 'Tally Sync', icon: RefreshCw, adminOnly: true },
+    { id: 'tallyentry', label: 'Tally Entry', icon: FilePlus2, adminOnly: true },
     { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
 
@@ -411,6 +417,12 @@ export default function App() {
                         </div>
                         <div style={{ display: (activeTab === 'followups' && hasTabAccess('followups')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'followups' && hasTabAccess('followups') && <FollowUpsTab currentUser={currentUser} />}
+                        </div>
+                        <div style={{ display: (activeTab === 'tallysync' && hasTabAccess('tallysync')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
+                            {activeTab === 'tallysync' && hasTabAccess('tallysync') && <TallySyncTab currentUser={currentUser} />}
+                        </div>
+                        <div style={{ display: (activeTab === 'tallyentry' && hasTabAccess('tallyentry')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
+                            {activeTab === 'tallyentry' && hasTabAccess('tallyentry') && <TallyEntryTab currentUser={currentUser} />}
                         </div>
                     </div>
                 </main>

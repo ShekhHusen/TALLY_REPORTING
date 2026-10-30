@@ -1,0 +1,14 @@
+{
+  "name": "tally-proxy",
+  "version": "1.0.0",
+  "description": "Local CORS proxy for TallyPrime API — bridges browser requests to Tally's XML-over-HTTP gateway",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}

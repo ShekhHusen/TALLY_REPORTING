@@ -39,6 +39,14 @@ export const isSuperAdminUser = (u) => Boolean(u && u.role === 'admin' && u.admi
 export const isSecondaryAdminUser = (u) => Boolean(u && (u.role === 'secondary_admin' || (u.role === 'admin' && u.adminType === 'secondary')));
 export const isAnyAdminUser = (u) => isSuperAdminUser(u) || isSecondaryAdminUser(u);
 export const isStandardUser = (u) => !isSuperAdminUser(u) && !isSecondaryAdminUser(u);
+export const isRestrictedAccountUser = (u, allowedAccount) => {
+    if (!u) return false;
+    const isSup = Boolean(u.role === 'admin' && u.adminType !== 'secondary');
+    const isSec = Boolean(u.role === 'secondary_admin' || (u.role === 'admin' && u.adminType === 'secondary'));
+    if (isSup || isSec) return false;
+    const targetAcc = u.allowedAccount || allowedAccount;
+    return Boolean(targetAcc && typeof targetAcc === 'string' && targetAcc.trim() !== '');
+};
 
 export default function UserManagementTab({ updateTrigger, currentUser }) {
     const [users, setUsers] = useState([]);

@@ -6,8 +6,19 @@ const formatCurrency = (num) => {
     return `Rs. ${num < 0 ? '-' : ''}${formatted}`;
 };
 
-export default function TransactionTable({ transactions, showFullDetails = false, isStatementView = false, selectedAccountName = '', onDeleteTransaction = null, onEditTransaction = null }) {
+export default function TransactionTable({ 
+    transactions, 
+    showFullDetails = false, 
+    isStatementView = false, 
+    selectedAccountName = '', 
+    onDeleteTransaction = null, 
+    onEditTransaction = null,
+    hideAction = false,
+    hideEnteredBy = false
+}) {
     const [sortConfig, setSortConfig] = useState(null);
+    const canShowAction = !hideAction && Boolean(onDeleteTransaction || onEditTransaction);
+    const canShowEnteredBy = showFullDetails && !hideEnteredBy;
 
     const sortedTransactions = useMemo(() => {
         // Separate OB rows (pinned at top) from regular transactions
@@ -56,23 +67,24 @@ export default function TransactionTable({ transactions, showFullDetails = false
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-slate-50/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-200">
                         <tr>
-                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('date')}>Date{getSortIndicator('date')}</th>
-                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('type')}>Voucher{getSortIndicator('type')}</th>
-                            <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('debitAccount')}>Particulars{getSortIndicator('debitAccount')}</th>
-                            <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('debitAmount')}>Debit Amt{getSortIndicator('debitAmount')}</th>
-                            <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('creditAmount')}>Credit Amt{getSortIndicator('creditAmount')}</th>
-                            <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('runningBalance')}>Balance{getSortIndicator('runningBalance')}</th>
-                            {showFullDetails && (
-                                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('enteredBy')}>Entered By{getSortIndicator('enteredBy')}</th>
+                            <th className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('date')}>Date{getSortIndicator('date')}</th>
+                            <th className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('type')}>Voucher{getSortIndicator('type')}</th>
+                            <th className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('debitAccount')}>Particulars{getSortIndicator('debitAccount')}</th>
+                            <th className="hidden sm:table-cell px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('debitAmount')}>Debit Amt{getSortIndicator('debitAmount')}</th>
+                            <th className="hidden sm:table-cell px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('creditAmount')}>Credit Amt{getSortIndicator('creditAmount')}</th>
+                            <th className="sm:hidden px-2.5 py-2.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Debit / Credit</th>
+                            <th className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('runningBalance')}>Balance{getSortIndicator('runningBalance')}</th>
+                            {canShowEnteredBy && (
+                                <th className="hidden sm:table-cell px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('enteredBy')}>Entered By{getSortIndicator('enteredBy')}</th>
                             )}
-                            {(onDeleteTransaction || onEditTransaction) && (
-                                <th className="px-3 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Action</th>
+                            {canShowAction && (
+                                <th className="hidden sm:table-cell px-3 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Action</th>
                             )}
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {sortedTransactions.length === 0 ? (
-                            <tr><td colSpan={6 + (showFullDetails ? 1 : 0) + ((onDeleteTransaction || onEditTransaction) ? 1 : 0)} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
+                            <tr><td colSpan={10} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
                         ) : (
                             sortedTransactions.map((t, idx) => {
                                 // --- Opening Balance Row (pinned, special rendering) ---
@@ -80,19 +92,32 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                     return (
                                         <React.Fragment key={t.id || idx}>
                                             <tr className="bg-indigo-50/70 border-l-4 border-l-indigo-400 hover:bg-indigo-100/60 transition-colors">
-                                                <td className="px-4 py-3 whitespace-nowrap text-indigo-900 font-semibold">{t.date}</td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-indigo-700">
+                                                <td className="px-2.5 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-indigo-900 font-semibold text-xs sm:text-sm">{t.date}</td>
+                                                <td className="px-2.5 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-indigo-700 text-xs sm:text-sm">
                                                     <div className="font-bold text-indigo-800">{t.type}</div>
                                                 </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-indigo-900 font-bold" title={t.particulars}>{t.particulars}</td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-right text-indigo-900 font-bold">{t.accountDebitAmt ? formatCurrency(t.accountDebitAmt) : ''}</td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-right text-indigo-900 font-bold">{t.accountCreditAmt ? formatCurrency(t.accountCreditAmt) : ''}</td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-right text-indigo-950 font-black">{formatCurrency(t.runningBalance)} <span className="text-xs font-bold text-indigo-600">{t.runningBalanceType}</span></td>
-                                                {showFullDetails && (
-                                                    <td className="px-4 py-3 whitespace-nowrap text-indigo-400">-</td>
+                                                <td className="px-2.5 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-indigo-900 font-bold text-xs sm:text-sm" title={t.particulars}>{t.particulars}</td>
+                                                <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap text-right text-indigo-900 font-bold">{t.accountDebitAmt ? formatCurrency(t.accountDebitAmt) : ''}</td>
+                                                <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap text-right text-indigo-900 font-bold">{t.accountCreditAmt ? formatCurrency(t.accountCreditAmt) : ''}</td>
+                                                <td className="sm:hidden px-2.5 py-2 text-right whitespace-nowrap text-xs font-bold">
+                                                    {t.accountDebitAmt > 0 ? (
+                                                        <span className="text-rose-600 font-bold">{formatCurrency(t.accountDebitAmt)}</span>
+                                                    ) : t.accountCreditAmt > 0 ? (
+                                                        <span className="text-emerald-600 font-bold">{formatCurrency(t.accountCreditAmt)}</span>
+                                                    ) : t.runningBalanceType === 'Dr' ? (
+                                                        <span className="text-rose-600 font-bold">{formatCurrency(t.runningBalance)}</span>
+                                                    ) : t.runningBalanceType === 'Cr' ? (
+                                                        <span className="text-emerald-600 font-bold">{formatCurrency(t.runningBalance)}</span>
+                                                    ) : (
+                                                        <span className="text-slate-400">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-2.5 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-right text-indigo-950 font-black text-xs sm:text-sm">{formatCurrency(t.runningBalance)} <span className="text-[10px] sm:text-xs font-bold text-indigo-600">{t.runningBalanceType}</span></td>
+                                                {canShowEnteredBy && (
+                                                    <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap text-indigo-400">-</td>
                                                 )}
-                                                {onDeleteTransaction && (
-                                                    <td className="px-3 py-3 whitespace-nowrap text-center text-indigo-300">-</td>
+                                                {canShowAction && (
+                                                    <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap text-center text-indigo-300">-</td>
                                                 )}
                                             </tr>
                                         </React.Fragment>
@@ -128,20 +153,34 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                 return (
                                     <React.Fragment key={t.id || idx}>
                                         <tr className="hover:bg-slate-50/80 transition-colors">
-                                            <td className="px-4 py-3 whitespace-nowrap text-gray-900">{t.date}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-gray-500">
+                                            <td className="px-2.5 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-gray-900 text-xs sm:text-sm">{t.date}</td>
+                                            <td className="px-2.5 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-gray-500 text-xs sm:text-sm">
                                                 <div className="font-medium text-gray-900">{t.type}</div>
-                                                <div className="text-xs">No: {t.voucherNo}</div>
+                                                <div className="text-[10px] sm:text-xs text-gray-400">No: {t.voucherNo}</div>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-gray-900" title={particulars}>{particulars}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{accountDebitAmt ? formatCurrency(accountDebitAmt) : ''}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{accountCreditAmt ? formatCurrency(accountCreditAmt) : ''}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-bold">{formatCurrency(t.runningBalance)} <span className="text-xs font-normal text-gray-500">{t.runningBalanceType}</span></td>
-                                            {showFullDetails && (
-                                                <td className="px-4 py-3 whitespace-nowrap text-gray-500">{t.enteredBy}</td>
+                                            <td className="px-2.5 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-900 max-w-[130px] sm:max-w-none truncate" title={particulars}>{particulars}</td>
+                                            <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{accountDebitAmt ? formatCurrency(accountDebitAmt) : ''}</td>
+                                            <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{accountCreditAmt ? formatCurrency(accountCreditAmt) : ''}</td>
+                                            <td className="sm:hidden px-2.5 py-2 text-right whitespace-nowrap text-xs font-bold">
+                                                {accountDebitAmt > 0 && accountCreditAmt > 0 ? (
+                                                    <div className="flex flex-col items-end gap-0.5">
+                                                        <span className="text-rose-600 font-bold">{formatCurrency(accountDebitAmt)}</span>
+                                                        <span className="text-emerald-600 font-bold">{formatCurrency(accountCreditAmt)}</span>
+                                                    </div>
+                                                ) : accountDebitAmt > 0 ? (
+                                                    <span className="text-rose-600 font-bold">{formatCurrency(accountDebitAmt)}</span>
+                                                ) : accountCreditAmt > 0 ? (
+                                                    <span className="text-emerald-600 font-bold">{formatCurrency(accountCreditAmt)}</span>
+                                                ) : (
+                                                    <span className="text-slate-400">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-2.5 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-right text-gray-900 font-bold text-xs sm:text-sm">{formatCurrency(t.runningBalance)} <span className="text-[10px] sm:text-xs font-normal text-gray-500">{t.runningBalanceType}</span></td>
+                                            {canShowEnteredBy && (
+                                                <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap text-gray-500 text-xs sm:text-sm">{t.enteredBy}</td>
                                             )}
-                                            {(onDeleteTransaction || onEditTransaction) && (
-                                                <td className="px-3 py-3 whitespace-nowrap text-center">
+                                            {canShowAction && (
+                                                <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap text-center">
                                                     <div className="flex items-center justify-center gap-1.5">
                                                         {onEditTransaction && (
                                                             <button
@@ -169,7 +208,7 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                         </tr>
                                         {showFullDetails && (t.inventory?.length > 0 || t.narration || (t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1)) && (
                                             <tr className="bg-gray-50/50">
-                                                <td colSpan={6 + (showFullDetails ? 1 : 0) + ((onDeleteTransaction || onEditTransaction) ? 1 : 0)} className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
+                                                <td colSpan={10} className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
                                                     {t.narration && <div className="mb-1"><span className="font-semibold text-gray-800">Narration:</span> {t.narration}</div>}
                                                     {(t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1) && (
                                                         <div className="mb-1">
@@ -234,17 +273,17 @@ export default function TransactionTable({ transactions, showFullDetails = false
                         <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('debitAmount')}>Debit Amt{getSortIndicator('debitAmount')}</th>
                         <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('creditAccount')}>Credit Account{getSortIndicator('creditAccount')}</th>
                         <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('creditAmount')}>Credit Amt{getSortIndicator('creditAmount')}</th>
-                        {showFullDetails && (
+                        {canShowEnteredBy && (
                             <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('enteredBy')}>Entered By{getSortIndicator('enteredBy')}</th>
                         )}
-                        {(onDeleteTransaction || onEditTransaction) && (
+                        {canShowAction && (
                             <th className="px-3 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Action</th>
                         )}
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {sortedTransactions.length === 0 ? (
-                        <tr><td colSpan={6 + (showFullDetails ? 1 : 0) + ((onDeleteTransaction || onEditTransaction) ? 1 : 0)} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
+                        <tr><td colSpan={10} className="px-4 py-4 text-center text-gray-500">No transactions found.</td></tr>
                     ) : (
                         sortedTransactions.map((t, idx) => (
                             <React.Fragment key={t.id || idx}>
@@ -258,10 +297,10 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                     <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{formatCurrency(t.debitAmount)}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-gray-900 max-w-[300px] truncate" title={t.creditAccount}>{t.creditAccount}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-right text-gray-900 font-medium">{formatCurrency(t.creditAmount)}</td>
-                                    {showFullDetails && (
+                                    {canShowEnteredBy && (
                                         <td className="px-4 py-3 whitespace-nowrap text-gray-500">{t.enteredBy}</td>
                                     )}
-                                    {(onDeleteTransaction || onEditTransaction) && (
+                                    {canShowAction && (
                                         <td className="px-3 py-3 whitespace-nowrap text-center">
                                             <div className="flex items-center justify-center gap-1.5">
                                                 {onEditTransaction && (
@@ -290,7 +329,7 @@ export default function TransactionTable({ transactions, showFullDetails = false
                                 </tr>
                                 {showFullDetails && (t.inventory?.length > 0 || t.narration || (t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1)) && (
                                     <tr className="bg-gray-50/50">
-                                        <td colSpan={6 + (showFullDetails ? 1 : 0) + ((onDeleteTransaction || onEditTransaction) ? 1 : 0)} className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
+                                        <td colSpan={10} className="px-4 py-2 text-xs text-gray-600 border-t border-dashed border-gray-200">
                                             {t.narration && <div className="mb-1"><span className="font-semibold text-gray-800">Narration:</span> {t.narration}</div>}
                                             {(t.allDebitEntries?.length > 1 || t.allCreditEntries?.length > 1) && (
                                                 <div className="mb-1">

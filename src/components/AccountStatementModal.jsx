@@ -10,6 +10,7 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from 'xlsx';
 import { X, FileText, Download, ChevronUp, ChevronDown, Calculator, Calendar, CheckSquare, Square, Percent, AlertCircle } from 'lucide-react';
 import { calculateAccountInterestStatement } from '../utils/interestCalculation';
+import { isRestrictedAccountUser } from './UserManagementTab';
 
 const formatCurrency = (num) => {
     const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num) || 0);
@@ -17,6 +18,7 @@ const formatCurrency = (num) => {
 };
 
 export default function AccountStatementModal({ isOpen, onClose, accountName, account = null, initialMode = 'statement', initialFY = '', currentUser }) {
+    const isRestrictedUser = isRestrictedAccountUser(currentUser, accountName || account?.name);
     const [fyOptions, setFyOptions] = useState([]);
     const [selectedFYs, setSelectedFYs] = useState(() => {
         if (initialFY && initialFY !== 'ALL') return [initialFY];
@@ -37,7 +39,13 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
     const [editingTxn, setEditingTxn] = useState(null);
 
     // --- Interest Calculation State ---
-    const [viewMode, setViewMode] = useState(initialMode || 'statement');
+    const [viewMode, setViewMode] = useState(() => (isRestrictedUser ? 'statement' : (initialMode || 'statement')));
+
+    useEffect(() => {
+        if (isRestrictedUser && viewMode !== 'statement') {
+            setViewMode('statement');
+        }
+    }, [isRestrictedUser, viewMode]);
     const [interestStartDate, setInterestStartDate] = useState('');
     const [interestEndDate, setInterestEndDate] = useState(new Date().toISOString().slice(0, 10));
     const [interestRate, setInterestRate] = useState(36);
@@ -725,31 +733,37 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                             </button>
 
                             {/* Mode Switcher Tabs */}
-                            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('statement')}
-                                    className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                                        viewMode === 'statement'
-                                            ? 'bg-white text-indigo-700 shadow-xs'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
+                            {!isRestrictedUser ? (
+                                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('statement')}
+                                        className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                                            viewMode === 'statement'
+                                                ? 'bg-white text-indigo-700 shadow-xs'
+                                                : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        Statement
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('interest')}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                                            viewMode === 'interest'
+                                                ? 'bg-indigo-600 text-white shadow-xs'
+                                                : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        <Calculator className="w-3.5 h-3.5" />
+                                        <span>Interest Calc</span>
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs sm:text-sm font-bold border border-indigo-200/60 shadow-2xs">
                                     Statement
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('interest')}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                                        viewMode === 'interest'
-                                            ? 'bg-indigo-600 text-white shadow-xs'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    <Calculator className="w-3.5 h-3.5" />
-                                    <span>Interest Calc</span>
-                                </button>
-                            </div>
+                                </div>
+                            )}
 
                             {/* Multi-FY Selector Dropdown */}
                             <div className="relative" ref={fyDropdownRef}>
@@ -1147,8 +1161,10 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                 showFullDetails={showFullDetails} 
                                 isStatementView={true} 
                                 selectedAccountName={accountName}
-                                onDeleteTransaction={handleDelete}
-                                onEditTransaction={(t) => setEditingTxn(t)}
+                                onDeleteTransaction={isRestrictedUser ? null : handleDelete}
+                                onEditTransaction={isRestrictedUser ? null : ((t) => setEditingTxn(t))}
+                                hideAction={isRestrictedUser}
+                                hideEnteredBy={isRestrictedUser}
                             />
                             
                             {loadingTxns && (

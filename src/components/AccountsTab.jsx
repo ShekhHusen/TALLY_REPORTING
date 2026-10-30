@@ -13,6 +13,7 @@ import EditTransactionModal from './EditTransactionModal';
 import FollowUpModal from './FollowUpModal';
 import FYBalanceComparisonModal from './FYBalanceComparisonModal';
 import AccountStatementModal from './AccountStatementModal';
+import { isRestrictedAccountUser } from './UserManagementTab';
 import { Pencil, ClipboardList, Filter, ChevronDown, ChevronUp, Eye, EyeOff, Check, CheckCircle2, MoreVertical, X, FileText, Trash2, Scale, Calculator } from 'lucide-react';
 import { deleteTransactionRecord } from '../utils/transactionOperations';
 
@@ -22,6 +23,7 @@ const formatCurrency = (num) => {
 };
 
 export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAccount, currentUser, setCurrentUser }) {
+    const isRestrictedUser = isRestrictedAccountUser(currentUser, allowedAccount);
     // Top level views: 'directory' | 'details'
     const [view, setView] = useState('directory');
     const [showIgnored, setShowIgnored] = useState(false);
@@ -875,15 +877,17 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                     />
                                     <span>Full</span>
                                 </label>
-                                <button 
-                                    type="button"
-                                    onClick={() => setStatementModalOpen(true)}
-                                    className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold transition-colors shrink-0 cursor-pointer border border-indigo-200 shadow-2xs"
-                                    title="Interest Calculator"
-                                >
-                                    <Calculator className="w-4 h-4 text-indigo-600" />
-                                    <span className="hidden sm:inline">Interest Calc</span>
-                                </button>
+                                {!isRestrictedUser && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => setStatementModalOpen(true)}
+                                        className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold transition-colors shrink-0 cursor-pointer border border-indigo-200 shadow-2xs"
+                                        title="Interest Calculator"
+                                    >
+                                        <Calculator className="w-4 h-4 text-indigo-600" />
+                                        <span className="hidden sm:inline">Interest Calc</span>
+                                    </button>
+                                )}
                                 <button 
                                     onClick={exportToPDF}
                                     className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-sm font-bold transition-colors shrink-0"
@@ -1005,8 +1009,10 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             showFullDetails={showFullDetails} 
                             isStatementView={true} 
                             selectedAccountName={selectedAccount.name} 
-                            onDeleteTransaction={handleDeleteStatementTransaction}
-                            onEditTransaction={(t) => setEditingStatementTxn(t)}
+                            onDeleteTransaction={isRestrictedUser ? null : handleDeleteStatementTransaction}
+                            onEditTransaction={isRestrictedUser ? null : ((t) => setEditingStatementTxn(t))}
+                            hideAction={isRestrictedUser}
+                            hideEnteredBy={isRestrictedUser}
                         />
                         
                         {loadingTxns && <div className="text-center p-4 text-gray-500">Loading more transactions...</div>}
@@ -1073,101 +1079,109 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             </div>
 
                             {/* Mobile FY Compare Button */}
-                            <div className="shrink-0 sm:hidden">
-                                <button
-                                    type="button"
-                                    onClick={() => setFyCompareModalOpen(true)}
-                                    className="flex justify-center items-center gap-1 px-2.5 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-sm cursor-pointer"
-                                    title="FY Compare"
-                                >
-                                    <Scale className="w-3.5 h-3.5 text-indigo-600" />
-                                    <span>Compare</span>
-                                </button>
-                            </div>
+                            {!isRestrictedUser && (
+                                <div className="shrink-0 sm:hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFyCompareModalOpen(true)}
+                                        className="flex justify-center items-center gap-1 px-2.5 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-sm cursor-pointer"
+                                        title="FY Compare"
+                                    >
+                                        <Scale className="w-3.5 h-3.5 text-indigo-600" />
+                                        <span>Compare</span>
+                                    </button>
+                                </div>
+                            )}
 
                             {/* Right: Filter Toggle Button (Mobile) */}
-                            <div className="shrink-0 sm:hidden">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowMobileFilters(prev => !prev)}
-                                    className="flex justify-center items-center gap-1.5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
-                                >
-                                    <Filter className="w-3.5 h-3.5 text-blue-600" />
-                                    <span>Filters</span>
-                                    {activeFilterCount > 0 && (
-                                        <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                                            {activeFilterCount}
-                                        </span>
-                                    )}
-                                </button>
-                            </div>
+                            {!isRestrictedUser && (
+                                <div className="shrink-0 sm:hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowMobileFilters(prev => !prev)}
+                                        className="flex justify-center items-center gap-1.5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
+                                    >
+                                        <Filter className="w-3.5 h-3.5 text-blue-600" />
+                                        <span>Filters</span>
+                                        {activeFilterCount > 0 && (
+                                            <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                                {activeFilterCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Center: Search Box */}
-                        <div className="flex-1 w-full min-w-0">
-                            <AccountSearchDropdown
-                                value={searchTerm}
-                                onChange={(val) => setSearchTerm(val)}
-                                placeholder="Search account name..."
-                            />
-                        </div>
+                        {!isRestrictedUser && (
+                            <div className="flex-1 w-full min-w-0">
+                                <AccountSearchDropdown
+                                    value={searchTerm}
+                                    onChange={(val) => setSearchTerm(val)}
+                                    placeholder="Search account name..."
+                                />
+                            </div>
+                        )}
 
                         {/* Right: FY Compare + Ignored Accounts Toggle + Filter Toggle Button (Desktop) */}
-                        <div className="shrink-0 hidden sm:flex items-center gap-2">
-                            {/* FY Balance Comparison Button */}
-                            <button
-                                type="button"
-                                onClick={() => setFyCompareModalOpen(true)}
-                                className="flex justify-center items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold transition shadow-sm border bg-indigo-50 border-indigo-300 text-indigo-800 hover:bg-indigo-100 cursor-pointer"
-                                title="FY Balance Comparison"
-                            >
-                                <Scale className="w-4 h-4 text-indigo-600" />
-                                <span>FY Compare</span>
-                            </button>
+                        {!isRestrictedUser && (
+                            <div className="shrink-0 hidden sm:flex items-center gap-2">
+                                {/* FY Balance Comparison Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => setFyCompareModalOpen(true)}
+                                    className="flex justify-center items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold transition shadow-sm border bg-indigo-50 border-indigo-300 text-indigo-800 hover:bg-indigo-100 cursor-pointer"
+                                    title="FY Balance Comparison"
+                                >
+                                    <Scale className="w-4 h-4 text-indigo-600" />
+                                    <span>FY Compare</span>
+                                </button>
 
-                            {/* Ignored Accounts Toggle - Desktop Only */}
-                            <button
-                                type="button"
-                                onClick={() => setShowIgnored(prev => !prev)}
-                                className={`flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm border ${
-                                    showIgnored 
-                                        ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100' 
-                                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                                }`}
-                            >
-                                <EyeOff className="w-4 h-4" />
-                                <span>Ignored</span>
-                                {(() => {
-                                    const ignoredCount = allAccounts.filter(a => isAccountIgnored(a) && (!selectedFY || !!fyBalances[a.id])).length;
-                                    return ignoredCount > 0 ? (
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5 ${
-                                            showIgnored ? 'bg-amber-200 text-amber-900' : 'bg-gray-200 text-gray-700'
-                                        }`}>
-                                            {ignoredCount}
+                                {/* Ignored Accounts Toggle - Desktop Only */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowIgnored(prev => !prev)}
+                                    className={`flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm border ${
+                                        showIgnored 
+                                            ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100' 
+                                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <EyeOff className="w-4 h-4" />
+                                    <span>Ignored</span>
+                                    {(() => {
+                                        const ignoredCount = allAccounts.filter(a => isAccountIgnored(a) && (!selectedFY || !!fyBalances[a.id])).length;
+                                        return ignoredCount > 0 ? (
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5 ${
+                                                showIgnored ? 'bg-amber-200 text-amber-900' : 'bg-gray-200 text-gray-700'
+                                            }`}>
+                                                {ignoredCount}
+                                            </span>
+                                        ) : null;
+                                    })()}
+                                </button>
+                                {/* Filter Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowMobileFilters(prev => !prev)}
+                                    className="flex justify-center items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
+                                >
+                                    <Filter className="w-4 h-4 text-blue-600" />
+                                    <span>Filters</span>
+                                    {activeFilterCount > 0 && (
+                                        <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">
+                                            {activeFilterCount}
                                         </span>
-                                    ) : null;
-                                })()}
-                            </button>
-                            {/* Filter Button */}
-                            <button
-                                type="button"
-                                onClick={() => setShowMobileFilters(prev => !prev)}
-                                className="flex justify-center items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 hover:bg-gray-100 transition shadow-sm"
-                            >
-                                <Filter className="w-4 h-4 text-blue-600" />
-                                <span>Filters</span>
-                                {activeFilterCount > 0 && (
-                                    <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">
-                                        {activeFilterCount}
-                                    </span>
-                                )}
-                                {showMobileFilters ? <ChevronUp className="w-4 h-4 text-gray-400 ml-1" /> : <ChevronDown className="w-4 h-4 text-gray-400 ml-1" />}
-                            </button>
-                        </div>
+                                    )}
+                                    {showMobileFilters ? <ChevronUp className="w-4 h-4 text-gray-400 ml-1" /> : <ChevronDown className="w-4 h-4 text-gray-400 ml-1" />}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Filter Popup / Modal */}
-                    {showMobileFilters && createPortal(
+                    {showMobileFilters && !isRestrictedUser && createPortal(
                         <div className="fixed inset-0 z-[100] flex items-center justify-center sm:p-4">
                             {/* Backdrop */}
                             <div 
@@ -1409,7 +1423,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                             <table className="hidden md:table min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
                                 <thead className="bg-white sticky top-0 shadow-sm z-10">
                                     <tr>
-                                        <th className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Menu</th>
+                                        {!isRestrictedUser && (
+                                            <th className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Menu</th>
+                                        )}
                                         <th className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('name')}>Account Name{getSortIndicator('name')}</th>
                                         <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('openingBalance')}>Opening Bal{getSortIndicator('openingBalance')}</th>
                                         <th className="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200" onClick={() => requestSort('totalDebit')}>Total Dr{getSortIndicator('totalDebit')}</th>
@@ -1422,7 +1438,7 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                 <tbody className="bg-white divide-y divide-gray-100">
                                     {paginatedAccounts.length === 0 ? (
                                         <tr>
-                                            <td colSpan="8" className="px-4 py-6 text-center text-gray-500">
+                                            <td colSpan={isRestrictedUser ? "7" : "8"} className="px-4 py-6 text-center text-gray-500">
                                                 No accounts found{selectedFY ? ' for the selected fiscal year' : ''}. {allAccounts.length > 0 && Object.keys(fyBalances).length === 0 && (
                                                     <span className="block mt-2 text-red-500 font-bold">Please ensure Master or Transactions have been imported and Balances synced for this Fiscal Year in the Import Center.</span>
                                                 )}
@@ -1438,61 +1454,63 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                 onClick={() => openAccountDetails(acc)}
                                                 className="cursor-pointer hover:bg-blue-50 transition"
                                             >
-                                                <td className="px-3 py-2 text-center whitespace-nowrap relative" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="flex items-center justify-center gap-1.5">
-                                                        <button 
-                                                            type="button"
-                                                            onClick={() => handleOpenFollowUp(acc)}
-                                                            className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition border border-purple-200"
-                                                            title="Follow-ups"
-                                                        >
-                                                            <ClipboardList size={14} />
-                                                        </button>
-                                                        <button 
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setOpenMenuAccountId(openMenuAccountId === acc.id ? null : acc.id);
-                                                            }}
-                                                            className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition border border-gray-200"
-                                                            title="More Options"
-                                                        >
-                                                            <MoreVertical size={14} />
-                                                        </button>
-                                                    </div>
-
-                                                    {openMenuAccountId === acc.id && (
-                                                        <div 
-                                                            className="absolute left-10 top-1 mt-1 w-32 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 flex flex-col text-left"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
+                                                {!isRestrictedUser && (
+                                                    <td className="px-3 py-2 text-center whitespace-nowrap relative" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="flex items-center justify-center gap-1.5">
                                                             <button 
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    setOpenMenuAccountId(null);
-                                                                    handleOpenEdit(acc);
-                                                                }}
-                                                                className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition"
+                                                                onClick={() => handleOpenFollowUp(acc)}
+                                                                className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition border border-purple-200"
+                                                                title="Follow-ups"
                                                             >
-                                                                <Pencil size={13} className="text-blue-600" />
-                                                                <span>Edit</span>
+                                                                <ClipboardList size={14} />
                                                             </button>
-                                                            {currentUser?.role === 'admin' && (
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setOpenMenuAccountId(openMenuAccountId === acc.id ? null : acc.id);
+                                                                }}
+                                                                className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition border border-gray-200"
+                                                                title="More Options"
+                                                            >
+                                                                <MoreVertical size={14} />
+                                                            </button>
+                                                        </div>
+
+                                                        {openMenuAccountId === acc.id && (
+                                                            <div 
+                                                                className="absolute left-10 top-1 mt-1 w-32 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 flex flex-col text-left"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
                                                                 <button 
                                                                     type="button"
                                                                     onClick={() => {
                                                                         setOpenMenuAccountId(null);
-                                                                        handleDeleteAccount(acc);
+                                                                        handleOpenEdit(acc);
                                                                     }}
-                                                                    className="w-full px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-100 transition"
+                                                                    className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition"
                                                                 >
-                                                                    <Trash2 size={13} className="text-red-600" />
-                                                                    <span>Delete</span>
+                                                                    <Pencil size={13} className="text-blue-600" />
+                                                                    <span>Edit</span>
                                                                 </button>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </td>
+                                                                {currentUser?.role === 'admin' && (
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setOpenMenuAccountId(null);
+                                                                            handleDeleteAccount(acc);
+                                                                        }}
+                                                                        className="w-full px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-100 transition"
+                                                                    >
+                                                                        <Trash2 size={13} className="text-red-600" />
+                                                                        <span>Delete</span>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                )}
                                                 <td className="px-4 py-2 text-gray-900 font-medium whitespace-nowrap">
                                                     {acc.name}
                                                     <div className="text-xs text-gray-400 font-normal">{acc.group}</div>
@@ -1529,19 +1547,21 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                             Verify
                                                         </button>
                                                     )}
-                                                    <button
-                                                        onClick={(e) => { 
-                                                            e.stopPropagation(); 
-                                                            handleIgnoreToggle(acc, isIgnored); 
-                                                        }}
-                                                        className={`text-xs font-medium px-2 py-1 border rounded transition ${
-                                                            isIgnored 
-                                                                ? 'text-green-700 border-green-300 hover:bg-green-50' 
-                                                                : 'text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-800'
-                                                        }`}
-                                                    >
-                                                        {isIgnored ? 'Unignore' : 'Ignore'}
-                                                    </button>
+                                                    {!isRestrictedUser && (
+                                                        <button
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                handleIgnoreToggle(acc, isIgnored); 
+                                                            }}
+                                                            className={`text-xs font-medium px-2 py-1 border rounded transition ${
+                                                                isIgnored 
+                                                                    ? 'text-green-700 border-green-300 hover:bg-green-50' 
+                                                                    : 'text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-800'
+                                                            }`}
+                                                        >
+                                                            {isIgnored ? 'Unignore' : 'Ignore'}
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                             );
@@ -1570,9 +1590,10 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                         return (
                                             <div 
                                                 key={acc.id} 
+                                                onClick={() => isRestrictedUser && openAccountDetails(acc)}
                                                 className={`p-4 border-b border-gray-100 last:border-b-0 ${
-                                                    isIgnored ? 'bg-gray-50 opacity-75' : 'bg-white'
-                                                }`}
+                                                    isRestrictedUser ? 'cursor-pointer hover:bg-indigo-50/30' : ''
+                                                } ${isIgnored ? 'bg-gray-50 opacity-75' : 'bg-white'}`}
                                             >
                                                 {/* Header: Name and Status */}
                                                 <div className="flex justify-between items-start mb-3 gap-2">
@@ -1623,58 +1644,81 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                                 </div>
 
                                                 {/* Actions in 1 Row */}
-                                                <div className={`grid ${!bal.verifiedBy ? 'grid-cols-5' : 'grid-cols-4'} gap-1.5 mt-3`}>
-                                                    <button
-                                                        onClick={() => openAccountDetails(acc)}
-                                                        className="flex flex-col items-center justify-center py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition border border-blue-100 shadow-sm"
-                                                        title="View Statement"
-                                                    >
-                                                        <Eye size={16} className="mb-1" />
-                                                        <span className="text-[9px] font-bold">Stmt</span>
-                                                    </button>
-                                                    
-                                                    <button
-                                                        onClick={() => handleOpenEdit(acc)}
-                                                        className="flex flex-col items-center justify-center py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg transition border border-gray-200 shadow-sm"
-                                                        title="Edit Account"
-                                                    >
-                                                        <Pencil size={16} className="mb-1" />
-                                                        <span className="text-[9px] font-bold">Edit</span>
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => handleOpenFollowUp(acc)}
-                                                        className="flex flex-col items-center justify-center py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition border border-purple-100 shadow-sm"
-                                                        title="Follow Up"
-                                                    >
-                                                        <ClipboardList size={16} className="mb-1" />
-                                                        <span className="text-[9px] font-bold">Follow</span>
-                                                    </button>
-
-                                                    {!bal.verifiedBy && (
+                                                {isRestrictedUser ? (
+                                                    <div className="flex items-center gap-2 mt-3">
                                                         <button
-                                                            onClick={() => handleVerify(acc)}
-                                                            className="flex flex-col items-center justify-center py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition border border-green-200 shadow-sm"
-                                                            title="Mark as Verified"
+                                                            onClick={(e) => { e.stopPropagation(); openAccountDetails(acc); }}
+                                                            className="flex-1 flex items-center justify-center py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition shadow-xs font-bold text-xs gap-2 cursor-pointer"
+                                                            title="View Statement"
                                                         >
-                                                            <Check size={16} className="mb-1" />
-                                                            <span className="text-[9px] font-bold">Verify</span>
+                                                            <Eye size={16} />
+                                                            <span>Statement</span>
                                                         </button>
-                                                    )}
+                                                        {!bal.verifiedBy && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleVerify(acc); }}
+                                                                className="flex items-center justify-center py-2.5 px-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition border border-green-200 shadow-xs font-bold text-xs gap-1.5 cursor-pointer"
+                                                                title="Mark as Verified"
+                                                            >
+                                                                <Check size={16} />
+                                                                <span>Verify</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className={`grid ${!bal.verifiedBy ? 'grid-cols-5' : 'grid-cols-4'} gap-1.5 mt-3`}>
+                                                        <button
+                                                            onClick={() => openAccountDetails(acc)}
+                                                            className="flex flex-col items-center justify-center py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition border border-blue-100 shadow-sm"
+                                                            title="View Statement"
+                                                        >
+                                                            <Eye size={16} className="mb-1" />
+                                                            <span className="text-[9px] font-bold">Stmt</span>
+                                                        </button>
+                                                        
+                                                        <button
+                                                            onClick={() => handleOpenEdit(acc)}
+                                                            className="flex flex-col items-center justify-center py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg transition border border-gray-200 shadow-sm"
+                                                            title="Edit Account"
+                                                        >
+                                                            <Pencil size={16} className="mb-1" />
+                                                            <span className="text-[9px] font-bold">Edit</span>
+                                                        </button>
 
-                                                    <button
-                                                        onClick={() => handleIgnoreToggle(acc, isIgnored)}
-                                                        className={`flex flex-col items-center justify-center py-2 rounded-lg transition border shadow-sm ${
-                                                            isIgnored 
-                                                                ? 'bg-amber-50 text-amber-800 border-amber-200' 
-                                                                : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-200'
-                                                        }`}
-                                                        title={isIgnored ? 'Unignore Account' : 'Ignore Account'}
-                                                    >
-                                                        <X size={16} className="mb-1" />
-                                                        <span className="text-[9px] font-bold">{isIgnored ? 'Unignore' : 'Ignore'}</span>
-                                                    </button>
-                                                </div>
+                                                        <button
+                                                            onClick={() => handleOpenFollowUp(acc)}
+                                                            className="flex flex-col items-center justify-center py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition border border-purple-100 shadow-sm"
+                                                            title="Follow Up"
+                                                        >
+                                                            <ClipboardList size={16} className="mb-1" />
+                                                            <span className="text-[9px] font-bold">Follow</span>
+                                                        </button>
+
+                                                        {!bal.verifiedBy && (
+                                                            <button
+                                                                onClick={() => handleVerify(acc)}
+                                                                className="flex flex-col items-center justify-center py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition border border-green-200 shadow-sm"
+                                                                title="Mark as Verified"
+                                                            >
+                                                                <Check size={16} className="mb-1" />
+                                                                <span className="text-[9px] font-bold">Verify</span>
+                                                            </button>
+                                                        )}
+
+                                                        <button
+                                                            onClick={() => handleIgnoreToggle(acc, isIgnored)}
+                                                            className={`flex flex-col items-center justify-center py-2 rounded-lg transition border shadow-sm ${
+                                                                isIgnored 
+                                                                    ? 'bg-amber-50 text-amber-800 border-amber-200' 
+                                                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-200'
+                                                            }`}
+                                                            title={isIgnored ? 'Unignore Account' : 'Ignore Account'}
+                                                        >
+                                                            <X size={16} className="mb-1" />
+                                                            <span className="text-[9px] font-bold">{isIgnored ? 'Unignore' : 'Ignore'}</span>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })
