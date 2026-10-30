@@ -760,15 +760,7 @@ export default function TallyEntryTab() {
                                 <span className="hidden sm:inline">{refreshingMasters ? 'Refreshing...' : 'Refresh Masters'}</span>
                             </button>
 
-                            <button
-                                type="button"
-                                onClick={handleOpenXmlPreview}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                                title="View raw XML envelope that will be sent to Tally"
-                            >
-                                <Code className="w-3.5 h-3.5 text-slate-500" />
-                                <span className="hidden sm:inline">Inspect XML</span>
-                            </button>
+                            
                         </div>
                     </div>
 
@@ -957,7 +949,7 @@ export default function TallyEntryTab() {
                                         placeholder="e.g. INV-2024-8891"
                                         className="w-full px-3 py-2 bg-purple-50/40 border border-purple-200 rounded-xl text-xs font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-purple-500 transition-colors"
                                     />
-                                    <p className="text-[10px] text-slate-400 font-medium mt-1">Vendor's original bill/invoice number</p>
+                                   
                                 </div>
 
                                 {/* 2. Supplier Invoice Date */}
@@ -973,13 +965,7 @@ export default function TallyEntryTab() {
                                         className="w-full px-3 py-2 bg-purple-50/40 border border-purple-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500 transition-colors"
                                     />
                                     <div className="flex items-center gap-1.5 mt-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => setReferenceDate(txnDate)}
-                                            className="text-[10px] font-bold text-purple-600 hover:text-purple-800 transition-colors cursor-pointer"
-                                        >
-                                            Same as Voucher Date
-                                        </button>
+                                        
                                     </div>
                                 </div>
 
@@ -995,32 +981,7 @@ export default function TallyEntryTab() {
                                         onChange={(e) => setTxnDate(e.target.value)}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <div className="flex items-center gap-1.5 mt-1.5">
-                                        <span className="text-[10px] text-slate-400 font-bold">Edu:</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDateToDay(1)}
-                                            className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
-                                            title="1st of month"
-                                        >
-                                            1st
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDateToDay(2)}
-                                            className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
-                                            title="2nd of month"
-                                        >
-                                            2nd
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setTxnDate(new Date().toISOString().slice(0, 10))}
-                                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                                        >
-                                            Today
-                                        </button>
-                                    </div>
+                                    
                                 </div>
 
                                 {/* 4. Purchase Voucher Number */}
@@ -1035,7 +996,7 @@ export default function TallyEntryTab() {
                                         placeholder="Leave empty for Auto-No"
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <p className="text-[10px] text-slate-400 font-medium mt-1">Internal purchase voucher number</p>
+                                   
                                 </div>
                             </div>
                         ) : voucherType === 'Sales' ? (
@@ -1052,30 +1013,7 @@ export default function TallyEntryTab() {
                                         onChange={(e) => setTxnDate(e.target.value)}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <div className="flex items-center gap-1.5 mt-1.5">
-                                        <span className="text-[10px] text-slate-400 font-bold">Edu:</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDateToDay(1)}
-                                            className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
-                                        >
-                                            1st
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDateToDay(2)}
-                                            className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
-                                        >
-                                            2nd
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setTxnDate(new Date().toISOString().slice(0, 10))}
-                                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                                        >
-                                            Today
-                                        </button>
-                                    </div>
+                                    
                                 </div>
 
                                 {/* 2. Invoice / Voucher No */}
@@ -1090,7 +1028,7 @@ export default function TallyEntryTab() {
                                         placeholder="Leave empty for Auto-No"
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <p className="text-[10px] text-slate-400 font-medium mt-1">Leave empty for Tally Auto-No</p>
+                                    
                                 </div>
 
                                 {/* 3. Buyer's Order / Ref No */}
@@ -1105,7 +1043,7 @@ export default function TallyEntryTab() {
                                         placeholder="e.g. PO-8901 / REF-12"
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <p className="text-[10px] text-slate-400 font-medium mt-1">Customer purchase order number</p>
+                                    
                                 </div>
 
                                 {/* 4. Order / Ref Date */}
@@ -1120,13 +1058,7 @@ export default function TallyEntryTab() {
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                     />
                                     <div className="flex items-center gap-1.5 mt-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => setReferenceDate(txnDate)}
-                                            className="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                                        >
-                                            Same as Voucher Date
-                                        </button>
+                                        
                                     </div>
                                 </div>
                             </div>
@@ -1144,32 +1076,7 @@ export default function TallyEntryTab() {
                                         onChange={(e) => setTxnDate(e.target.value)}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <div className="flex items-center gap-1.5 mt-1.5">
-                                        <span className="text-[10px] text-slate-400 font-bold">Edu Mode:</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDateToDay(1)}
-                                            className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
-                                            title="Set date to 1st of selected month (Required for Tally Educational Mode)"
-                                        >
-                                            1st
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDateToDay(2)}
-                                            className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
-                                            title="Set date to 2nd of selected month (Allowed in Tally Educational Mode)"
-                                        >
-                                            2nd
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setTxnDate(new Date().toISOString().slice(0, 10))}
-                                            className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                                        >
-                                            Today
-                                        </button>
-                                    </div>
+                                    
                                 </div>
 
                                 {/* Voucher Number */}
@@ -1184,7 +1091,7 @@ export default function TallyEntryTab() {
                                         placeholder="Leave empty for Tally Auto-No"
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <p className="text-[10px] text-slate-400 font-medium mt-1">Leave empty for auto numbering</p>
+                                    
                                 </div>
 
                                 {/* Reference */}
@@ -1199,7 +1106,7 @@ export default function TallyEntryTab() {
                                         placeholder="e.g. CHQ-9901 / PO-88"
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <p className="text-[10px] text-slate-400 font-medium mt-1">Bank cheque no or transaction ID</p>
+                                    
                                 </div>
                             </div>
                         )}
@@ -1216,9 +1123,7 @@ export default function TallyEntryTab() {
                                         <ArrowRightLeft className="w-4 h-4 text-blue-600" />
                                         <span>Debit &amp; Credit Ledger Allocations</span>
                                     </h3>
-                                    <p className="text-xs text-slate-500 font-medium">
-                                        Select from existing Tally accounts. Total Debits must match Total Credits.
-                                    </p>
+                                    
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
@@ -1404,9 +1309,6 @@ export default function TallyEntryTab() {
                                             <Package className="w-4 h-4 text-indigo-600" />
                                             <span>Stock Items (from Tally Inventory)</span>
                                         </h3>
-                                        <p className="text-xs text-slate-500 font-medium">
-                                            Select existing stock items. Units and rates will auto-populate from Tally.
-                                        </p>
                                     </div>
                                     <button
                                         type="button"
@@ -1601,9 +1503,7 @@ export default function TallyEntryTab() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-                            <div className="text-xs text-slate-500 font-medium">
-                                💡 Data will be posted directly to <span className="font-bold text-slate-800">{selectedCompany || 'TallyPrime'}</span> via XML-over-HTTP.
-                            </div>
+                            
 
                             <div className="flex items-center gap-2">
                                 <button
