@@ -26,7 +26,11 @@ import {
     getCacheSize,
     formatBytes,
     fetchTdlSyncStatus,
+    DEFAULT_TALLY_URL,
+    DEFAULT_TALLY_HOST,
 } from '../utils/tallyService';
+import { db } from '../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import TallyFirestorePushModal from './TallyFirestorePushModal';
 import {
@@ -203,6 +207,37 @@ export default function TallySyncTab({ currentUser, setUpdateTrigger }) {
         initialCheck();
         return () => { isMounted = false; };
     }, [tallyUrl]);
+
+    // ── Firestore Shared Endpoint Sync (Keep all devices in sync without typing) ──
+    useEffect(() => {
+        let isMounted = true;
+        const loadSharedEndpoint = async () => {
+            try {
+                const snap = await getDoc(doc(db, 'system', 'metadata'));
+                if (!isMounted) return;
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (data.tallyEndpointUrl) {
+                        const localRaw = localStorage.getItem('tallysync_url');
+                        // If user hasn't set an explicit custom URL (or has default/localhost), adopt cloud URL
+                        if (!localRaw || localRaw === DEFAULT_TALLY_URL || localRaw.includes('localhost')) {
+                            setTallyUrl(prev => {
+                                if (prev !== data.tallyEndpointUrl) {
+                                    saveTallyUrl(data.tallyEndpointUrl);
+                                    return data.tallyEndpointUrl;
+                                }
+                                return prev;
+                            });
+                        }
+                    }
+                }
+            } catch {
+                // Silently ignore if offline or Firestore rule denies
+            }
+        };
+        loadSharedEndpoint();
+        return () => { isMounted = false; };
+    }, []);
 
     // ── Load Fiscal Years for Firestore Push ──
     useEffect(() => {
@@ -1094,7 +1129,7 @@ export default function TallySyncTab({ currentUser, setUpdateTrigger }) {
                                     <div className="flex-1 text-xs">
                                         <p className="font-bold text-rose-800">{connectionError}</p>
                                         <p className="text-rose-600 mt-1">
-                                            💡 Browser CORS policy may block direct Tally calls. Start the proxy: <code className="bg-rose-100 px-1.5 py-0.5 rounded font-mono">cd tally-proxy &amp;&amp; npm start</code>, then use URL: <code className="bg-rose-100 px-1.5 py-0.5 rounded font-mono">http://localhost:3001</code>.
+                                            💡 Browser CORS policy may block direct Tally calls. Start the proxy on Tally PC (192.168.1.80): <code className="bg-rose-100 px-1.5 py-0.5 rounded font-mono">cd tally-proxy &amp;&amp; npm start</code>, then use URL: <code className="bg-rose-100 px-1.5 py-0.5 rounded font-mono">{DEFAULT_TALLY_URL}</code>.
                                         </p>
                                     </div>
                                     <button
@@ -2226,16 +2261,58 @@ export default function TallySyncTab({ currentUser, setUpdateTrigger }) {
 
                         <div className="p-5 space-y-4">
                             <div>
-                                <label className="block text-xs font-extrabold text-slate-700 mb-1.5">Tally Endpoint URL</label>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs font-extrabold text-slate-700">Tally Endpoint URL</label>
+                                    <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                                        Main Tally PC: {DEFAULT_TALLY_HOST}
+                                    </span>
+                                </div>
                                 <input
                                     type="text"
-                                    value="http://192.168.1.80:3001"
+                                    value={tallyUrl}
                                     onChange={(e) => setTallyUrl(e.target.value)}
-                                    placeholder="http://localhost:3001"
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                                    placeholder={DEFAULT_TALLY_URL}
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 font-mono"
                                 />
-                                <p className="text-[11px] text-slate-400 mt-1.5">
-                                    Default proxy: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-700">http://localhost:3001</code> · Direct: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-700">http://localhost:9000</code>
+                                {/* Quick Presets */}
+                                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                    <span className="text-[11px] text-slate-400 font-medium mr-1">Quick Select:</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTallyUrl(`http://${DEFAULT_TALLY_HOST}:3001`)}
+                                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+                                            tallyUrl === `http://${DEFAULT_TALLY_HOST}:3001`
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        🏢 Tally PC ({DEFAULT_TALLY_HOST}:3001)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTallyUrl('http://localhost:3001')}
+                                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+                                            tallyUrl === 'http://localhost:3001'
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        💻 Localhost:3001
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTallyUrl(`http://${DEFAULT_TALLY_HOST}:9000`)}
+                                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+                                            tallyUrl === `http://${DEFAULT_TALLY_HOST}:9000`
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        ⚡ Direct Tally (9000)
+                                    </button>
+                                </div>
+                                <p className="text-[11px] text-slate-400 mt-2">
+                                    Default proxy: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-700">{DEFAULT_TALLY_URL}</code> · Direct: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-700">http://{DEFAULT_TALLY_HOST}:9000</code>
                                 </p>
                             </div>
 
@@ -2338,6 +2415,15 @@ export default function TallySyncTab({ currentUser, setUpdateTrigger }) {
                                 type="button"
                                 onClick={async () => {
                                     saveTallyUrl(tallyUrl);
+                                    try {
+                                        await setDoc(doc(db, 'system', 'metadata'), {
+                                            tallyEndpointUrl: tallyUrl,
+                                            updatedAt: new Date().toISOString(),
+                                            updatedBy: currentUser?.name || 'Tally Sync'
+                                        }, { merge: true });
+                                    } catch {
+                                        // Ignore if offline
+                                    }
                                     await handleTestConnection();
                                     setShowConfigModal(false);
                                 }}

@@ -11,6 +11,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import os from 'os';
 
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || '3001', 10);
 const PROXY_HOST = process.env.PROXY_HOST || '0.0.0.0';
@@ -153,16 +154,30 @@ app.get('/', (_req, res) => {
 });
 
 app.listen(PROXY_PORT, PROXY_HOST, () => {
+    const interfaces = os.networkInterfaces();
+    const networkIps = [];
+    for (const devName of Object.keys(interfaces)) {
+        for (const iface of interfaces[devName]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                networkIps.push(iface.address);
+            }
+        }
+    }
+
     console.log('');
     console.log('  ╔══════════════════════════════════════════════════╗');
     console.log('  ║         🔌 Tally CORS Proxy Server (Safe Queue)  ║');
     console.log('  ╠══════════════════════════════════════════════════╣');
-    console.log(`  ║  Proxy:  http://${PROXY_HOST === '0.0.0.0' ? 'localhost' : PROXY_HOST}:${PROXY_PORT}                  ║`);
-    console.log(`  ║  Tally:  ${TALLY_URL}                     ║`);
-    console.log('  ║  Mode:   Single-Flight Sequential Queue          ║');
-    console.log('  ║                                                  ║');
-    console.log('  ║  Set Tally URL in portal to:                     ║');
-    console.log(`  ║  → http://localhost:${PROXY_PORT}                        ║`);
+    console.log(`  ║  Local:   http://localhost:${PROXY_PORT}                        ║`);
+    networkIps.forEach(ip => {
+        const line = `  ║  Wi-Fi:   http://${ip}:${PROXY_PORT}`;
+        console.log(line.padEnd(53, ' ') + '║');
+    });
+    console.log(`  ║  Tally:   ${TALLY_URL.padEnd(39, ' ')}║`);
+    console.log('  ║  Mode:    Single-Flight Sequential Queue         ║');
+    console.log('  ╠══════════════════════════════════════════════════╣');
+    console.log('  ║  Default Portal Endpoint:                        ║');
+    console.log(`  ║  → http://192.168.1.80:${PROXY_PORT}                     ║`);
     console.log('  ╚══════════════════════════════════════════════════╝');
     console.log('');
 });

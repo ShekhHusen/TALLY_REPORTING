@@ -8,7 +8,9 @@
  * All data fetched stays LOCAL — no Firestore writes from this module.
  */
 
-const DEFAULT_TALLY_URL = 'http://localhost:3001';
+export const DEFAULT_TALLY_HOST = '192.168.1.80';
+export const DEFAULT_TALLY_PORT = '3001';
+export const DEFAULT_TALLY_URL = `http://${DEFAULT_TALLY_HOST}:${DEFAULT_TALLY_PORT}`;
 const REQUEST_TIMEOUT_MS = 60000; // 60 seconds for large datasets
 
 // ─────────────────────────────────────────────────────────
@@ -809,8 +811,18 @@ const LS_KEYS = {
 };
 
 export function getSavedTallyUrl() {
-    try { return localStorage.getItem(LS_KEYS.URL) || DEFAULT_TALLY_URL; }
-    catch { return DEFAULT_TALLY_URL; }
+    try {
+        const saved = localStorage.getItem(LS_KEYS.URL);
+        // Automatically upgrade to default Tally Host (192.168.1.80:3001) if unset
+        // or if still set to the legacy localhost default that fails across devices
+        if (!saved || saved === 'http://localhost:3001' || saved === 'http://localhost:9000' || saved === 'http://127.0.0.1:3001') {
+            localStorage.setItem(LS_KEYS.URL, DEFAULT_TALLY_URL);
+            return DEFAULT_TALLY_URL;
+        }
+        return saved;
+    } catch {
+        return DEFAULT_TALLY_URL;
+    }
 }
 
 export function saveTallyUrl(url) {
