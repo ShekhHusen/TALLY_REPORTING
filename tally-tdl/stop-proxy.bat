@@ -2,7 +2,7 @@
 setlocal
 
 :: ============================================================================
-::  Stop Tally Proxy Server (Port 3001)
+::  Stop Tally Proxy Server (Port 3001)  — Portable Edition
 :: ============================================================================
 
 echo Stopping Tally Proxy on port 3001...

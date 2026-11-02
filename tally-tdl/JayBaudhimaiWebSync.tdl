@@ -1,6 +1,6 @@
 ;; ============================================================================
-;;  JAY BAUDHIMAI TRADERS — WEB REPORTING & LIVE SYNC CONNECTOR
-;;  TallyPrime TDL Module
+;;  JAY BAUDHIMAI TRADERS - WEB REPORTING & LIVE SYNC CONNECTOR
+;;  TallyPrime TDL Module v2.2.0 (Portable Edition - Dual Path Support)
 ;;
 ;;  Features:
 ;;  1. Auto-Start Proxy & Auto-Connect when Tally starts up.
@@ -8,21 +8,36 @@
 ;;  3. Persistent configuration saved across Tally sessions.
 ;;  4. One-click F4 button to launch Web Portal directly in default browser.
 ;;  5. TDL Collection JBTWebSyncInfo for Web App bi-directional status sync.
+;;  6. PORTABLE: Configure BOTH TDL Folder Path and Proxy Folder Path
+;;     directly inside Tally settings. They can be anywhere on any drive!
+;;
+;;  SETUP: After loading TDL, press W on Gateway of Tally, enter the
+;;         "TDL Folder Path" and "Proxy Folder Path", and press Ctrl+A to save.
 ;; ============================================================================
 
 [#System: Formulae]
     JBTAddonName         : "Jay Baudhimai Web Sync"
-    JBTAddonVersion      : "1.0.0"
+    JBTAddonVersion      : "2.2.0"
     JBTDefaultProxyPort  : 3001
     JBTDefaultTallyPort  : 9000
     JBTDefaultPortalURL  : "http://localhost:3000"
-    JBTLauncherScript    : "C:\\Users\\dell\\Documents\\GitHub\\TALLY_REPORTING\\tally-tdl\\start-proxy-silent.vbs"
-    JBTStopScript        : "C:\\Users\\dell\\Documents\\GitHub\\TALLY_REPORTING\\tally-tdl\\stop-proxy.bat"
-    JBTMenuTitle         : If ##JBTWebSyncActive Then "Web Reporting Connector [ON]" Else "Web Reporting Connector [OFF]"
 
-;; ────────────────────────────────────────────────────────────────────────────
+    ;; Script paths built dynamically from user-configured ##JBTTDLFolderPath
+    JBTLauncherScript    : ##JBTTDLFolderPath + "\\start-proxy-silent.vbs"
+    JBTStopScript        : ##JBTTDLFolderPath + "\\stop-proxy.bat"
+
+    ;; Launch command passes proxy folder path as argument to VBScript
+    JBTLaunchCommand     : '"' + @@JBTLauncherScript + '" "' + ##JBTProxyFolderPath + '"'
+
+    ;; Menu & Status display strings
+    JBTMenuTitle         : If ##JBTWebSyncActive Then "Web Sync Connector [ON]" Else "Web Sync Connector [OFF]"
+    JBTButtonTitle       : If ##JBTWebSyncActive Then "Web Sync: ON" Else "Web Sync: OFF"
+    JBTSyncStatusText    : If ##JBTWebSyncActive Then "ENABLED (Active)" Else "DISABLED (Paused)"
+    JBTCompanyText       : If $$IsEmpty:$$CurrentCompany Then "No Company Open" Else $$CurrentCompany
+
+;; ============================================================================
 ;;  SYSTEM VARIABLES & PERSISTENT STORAGE
-;; ────────────────────────────────────────────────────────────────────────────
+;; ============================================================================
 
 [System: Variables]
     JBTWebSyncActive     : Yes
@@ -30,6 +45,8 @@
     JBTProxyPort         : 3001
     JBTTallyPort         : 9000
     JBTWebPortalURL      : "http://localhost:3000"
+    JBTTDLFolderPath     : ""
+    JBTProxyFolderPath   : ""
 
 [Variable: JBTWebSyncActive]
     Type       : Logical
@@ -56,248 +73,453 @@
     Persistent : Yes
     Default    : "http://localhost:3000"
 
-;; ────────────────────────────────────────────────────────────────────────────
-;;  GATEWAY OF TALLY MENU & BUTTON INTEGRATION
-;; ────────────────────────────────────────────────────────────────────────────
+[Variable: JBTTDLFolderPath]
+    Type       : String
+    Persistent : Yes
+    Default    : "C:\\Users\\dell\\Documents\\GitHub\\TALLY_REPORTING\\tally-tdl"
+
+[Variable: JBTProxyFolderPath]
+    Type       : String
+    Persistent : Yes
+    Default    : "C:\\Users\\dell\\Documents\\GitHub\\TALLY_REPORTING\\tally-proxy"
+
+;; ============================================================================
+;;  GATEWAY OF TALLY - MENU & BUTTON INTEGRATION
+;; ============================================================================
 
 [#Menu: Gateway of Tally]
-    ;; Add dedicated menu option under Utilities / Custom
-    Add : Key Item : @@JBTMenuTitle : W : Display : JBTWebSyncReport
-    ;; Add quick toggle button to the right button bar
+    Add : Key Item : @@JBTMenuTitle : W : Alter : JBTWebSyncReport
     Add : Button   : JBTQuickSyncToggleBtn
 
 [Button: JBTQuickSyncToggleBtn]
-    Title  : If ##JBTWebSyncActive Then "● Web Sync: ON" Else "○ Web Sync: OFF"
+    Title  : @@JBTButtonTitle
     Key    : Alt + W
     Action : Call : JBTToggleSyncFunction
 
-;; ────────────────────────────────────────────────────────────────────────────
-;;  SYSTEM EVENTS (Auto-Connect on Tally Launch & Company Load)
-;; ────────────────────────────────────────────────────────────────────────────
+;; ============================================================================
+;;  SYSTEM EVENTS (Auto-Connect on Launch & Company Load)
+;; ============================================================================
 
 [System: Events]
     JBTAppStartEvent   : System Start : TRUE : CALL : JBTAutoStartOnLaunchFunction
     JBTCompanyLoadEvent: Load Company  : TRUE : CALL : JBTOnCompanyLoadFunction
 
 [Function: JBTAutoStartOnLaunchFunction]
-    001 : If : ##JBTWebSyncActive AND ##JBTAutoStartProxy
-    002 :     Exec Command : "wscript.exe" : '"' + @@JBTLauncherScript + '"'
+    001 : If : ##JBTWebSyncActive AND ##JBTAutoStartProxy AND NOT $$IsEmpty:##JBTTDLFolderPath
+    002 :     Exec Command : "wscript.exe" : @@JBTLaunchCommand
     003 : End If
     004 : Return
 
 [Function: JBTOnCompanyLoadFunction]
-    001 : If : ##JBTWebSyncActive AND ##JBTAutoStartProxy
-    002 :     Exec Command : "wscript.exe" : '"' + @@JBTLauncherScript + '"'
+    001 : If : ##JBTWebSyncActive AND ##JBTAutoStartProxy AND NOT $$IsEmpty:##JBTTDLFolderPath
+    002 :     Exec Command : "wscript.exe" : @@JBTLaunchCommand
     003 : End If
     004 : Return
 
-;; ────────────────────────────────────────────────────────────────────────────
-;;  INTERACTIVE FUNCTIONS (Toggle ON/OFF, Launch Proxy, Open Web)
-;; ────────────────────────────────────────────────────────────────────────────
+;; ============================================================================
+;;  INTERACTIVE FUNCTIONS (Toggle, Start Proxy, Stop Proxy)
+;; ============================================================================
 
 [Function: JBTToggleSyncFunction]
     001 : Set : JBTWebSyncActive : NOT ##JBTWebSyncActive
     002 : If : ##JBTWebSyncActive
-    003 :     MsgBox : "Web Reporting Connector" : "Web Reporting Sync has been ENABLED."
-    004 :     If : ##JBTAutoStartProxy
-    005 :         Exec Command : "wscript.exe" : '"' + @@JBTLauncherScript + '"'
+    003 :     MsgBox : "Web Reporting Connector" : "Web Reporting Sync is now ENABLED."
+    004 :     If : ##JBTAutoStartProxy AND NOT $$IsEmpty:##JBTTDLFolderPath
+    005 :         Exec Command : "wscript.exe" : @@JBTLaunchCommand
     006 :     End If
     007 : Else
-    008 :     MsgBox : "Web Reporting Connector" : "Web Reporting Sync has been DISABLED."
+    008 :     MsgBox : "Web Reporting Connector" : "Web Reporting Sync is now DISABLED."
     009 : End If
     010 : Return
 
 [Function: JBTManualStartProxyFunction]
-    001 : Exec Command : "wscript.exe" : '"' + @@JBTLauncherScript + '"'
-    002 : MsgBox : "Web Reporting Connector" : "Starting Tally Proxy Server on port 3001..."
-    003 : Return
+    001 : If : $$IsEmpty:##JBTTDLFolderPath
+    002 :     MsgBox : "Configuration Required" : "TDL Folder Path is not set! Please press W on Gateway of Tally and enter your folder path."
+    003 :     Return
+    004 : End If
+    005 : Exec Command : "wscript.exe" : @@JBTLaunchCommand
+    006 : MsgBox : "Web Reporting Connector" : "Tally Proxy Server starting on port 3001..."
+    007 : Return
 
 [Function: JBTManualStopProxyFunction]
-    001 : Exec Command : "cmd.exe" : '"/c ' + @@JBTStopScript + '"'
-    002 : MsgBox : "Web Reporting Connector" : "Tally Proxy Server has been stopped."
-    003 : Return
+    001 : If : $$IsEmpty:##JBTTDLFolderPath
+    002 :     MsgBox : "Configuration Required" : "TDL Folder Path is not set! Please press W on Gateway of Tally and enter your folder path."
+    003 :     Return
+    004 : End If
+    005 : Exec Command : "cmd.exe" : '"/c ' + @@JBTStopScript + '"'
+    006 : MsgBox : "Web Reporting Connector" : "Tally Proxy Server has been stopped."
+    007 : Return
 
-;; ────────────────────────────────────────────────────────────────────────────
-;;  REPORT & FORM: Web Reporting Connector Configuration
-;; ────────────────────────────────────────────────────────────────────────────
+;; ============================================================================
+;;  REPORT & FORM: Configuration Screen
+;; ============================================================================
 
 [Report: JBTWebSyncReport]
-    Title       : "Jay Baudhimai - Web Reporting Connector"
-    Form        : JBTWebSyncForm
+    Title    : "Jay Baudhimai - Web Reporting Connector Configuration"
+    Form     : JBTWebSyncForm
+    Variable : JBTTDLFolderPath, JBTProxyFolderPath, JBTWebSyncActive, JBTAutoStartProxy, JBTWebPortalURL
+    Auto     : Yes
 
 [Form: JBTWebSyncForm]
-    Parts       : JBTHeaderPart, JBTStatusPart, JBTConfigPart, JBTActionHelpPart
-    Button      : JBTOpenWebPortalBtn, JBTStartProxyBtn, JBTStopProxyBtn, JBTToggleSyncBtn
-    Width       : 75% Page
-    Height      : 70% Page
-    Background  : White
+    Part       : JBTWebSyncMainPart
+    Button     : JBTOpenWebPortalBtn, JBTStartProxyBtn, JBTStopProxyBtn, JBTToggleSyncBtn
+    Width      : 80% Screen
+    Height     : 80% Screen
 
-;; --- 1. Header Part ---
-[Part: JBTHeaderPart]
-    Lines       : JBTHeaderLine
-    Space Top   : 1
-    Space Bottom: 1
-    Border      : Thin Bottom
+[Part: JBTWebSyncMainPart]
+    Border: Thin Box
+    Lines : JBTHeaderLine, JBTDivider1Line, +
+            JBTPathSecTitleLine, JBTPathInputLine, JBTProxyPathLine, JBTPathHintLine, JBTDivider2Line, +
+            JBTConnSecTitleLine, JBTCompanyLine, JBTSyncStatusLine, JBTPortsLine, JBTDivider3Line, +
+            JBTConfigSecTitleLine, JBTToggleSyncLine, JBTAutoStartLine, JBTUrlLine, JBTDivider4Line, +
+            JBTHelpKeysLine, JBTHelpSaveLine
+    Scroll : Vertical
+
+;; ----------------------------------------------------------------------------
+;; 1. HEADER
+;; ----------------------------------------------------------------------------
 
 [Line: JBTHeaderLine]
-    Fields      : JBTHeaderTitleField, JBTHeaderVerField
+    Fields       : JBTHeaderTitleFld, JBTHeaderVerFld
+    Space Top    : 1
+    Space Bottom : 1
 
-[Field: JBTHeaderTitleField]
-    Use         : Simple Field
-    Set As      : "JAY BAUDHIMAI TRADERS — WEB REPORTING CONNECTOR"
-    Style       : Large Bold
-    Color       : Royal Blue
-    Width       : 80%
+[Field: JBTHeaderTitleFld]
+    Use    : Simple Field
+    Set As : "JAY BAUDHIMAI TRADERS - WEB REPORTING CONNECTOR"
+    Style  : Large Bold
+    Width  : 65
+    Skip   : Yes
 
-[Field: JBTHeaderVerField]
-    Use         : Simple Field
-    Set As      : "v1.0.0"
-    Style       : Normal Bold
-    Color       : Dim Grey
-    Width       : 20%
-    Align       : Right
+[Field: JBTHeaderVerFld]
+    Use    : Simple Field
+    Set As : "v2.2 Portable"
+    Style  : Normal Bold
+    Width  : 15
+    Align  : Right
+    Skip   : Yes
 
-;; --- 2. Live Status Part ---
-[Part: JBTStatusPart]
-    Lines       : JBTStatusHeadingLine, JBTStatusCompanyLine, JBTStatusStateLine, JBTStatusPortsLine
-    Space Top   : 1
-    Space Bottom: 1
+;; ----------------------------------------------------------------------------
+;; DIVIDER LINES
+;; ----------------------------------------------------------------------------
 
-[Line: JBTStatusHeadingLine]
-    Fields      : JBTSectionHeadingField
-    Local : Field : JBTSectionHeadingField : Set As : "Current Connectivity Status"
+[Line: JBTDivider1Line]
+    Fields : JBTDivider1Fld
 
-[Line: JBTStatusCompanyLine]
-    Fields      : JBTLabelField, JBTValueField
-    Local : Field : JBTLabelField : Set As : "Active Company :"
-    Local : Field : JBTValueField : Set As : If $$IsEmpty:$$CurrentCompany Then "No Company Open" Else $$CurrentCompany
-    Local : Field : JBTValueField : Style  : Normal Bold
+[Field: JBTDivider1Fld]
+    Use    : Simple Field
+    Set As : "----------------------------------------------------------------------------------"
+    Style  : Normal
+    Width  : 82
+    Skip   : Yes
 
-[Line: JBTStatusStateLine]
-    Fields      : JBTLabelField, JBTStatusValField
-    Local : Field : JBTLabelField : Set As : "Web Sync Status :"
+[Line: JBTDivider2Line]
+    Fields : JBTDivider2Fld
 
-[Field: JBTStatusValField]
-    Use         : Simple Field
-    Set As      : If ##JBTWebSyncActive Then "● ENABLED & ACTIVE" Else "○ DISABLED / PAUSED"
-    Style       : Large Bold
-    Color       : If ##JBTWebSyncActive Then "Dark Green" Else "Deep Pink"
-    Width       : 40%
+[Field: JBTDivider2Fld]
+    Use    : Simple Field
+    Set As : "----------------------------------------------------------------------------------"
+    Style  : Normal
+    Width  : 82
+    Skip   : Yes
 
-[Line: JBTStatusPortsLine]
-    Fields      : JBTLabelField, JBTValueField
-    Local : Field : JBTLabelField : Set As : "Ports Configured :"
-    Local : Field : JBTValueField : Set As : "Tally HTTP: " + $$String:##JBTTallyPort + "  |  Proxy: " + $$String:##JBTProxyPort
+[Line: JBTDivider3Line]
+    Fields : JBTDivider3Fld
 
-;; --- 3. Configuration & Toggle Part ---
-[Part: JBTConfigPart]
-    Lines       : JBTConfigHeadingLine, JBTConfigToggleLine, JBTConfigAutoStartLine, JBTConfigUrlLine
-    Border      : Thin Top
-    Space Top   : 1
-    Space Bottom: 1
+[Field: JBTDivider3Fld]
+    Use    : Simple Field
+    Set As : "----------------------------------------------------------------------------------"
+    Style  : Normal
+    Width  : 82
+    Skip   : Yes
 
-[Line: JBTConfigHeadingLine]
-    Fields      : JBTSectionHeadingField
-    Local : Field : JBTSectionHeadingField : Set As : "Connector Settings (Press Space to Change)"
+[Line: JBTDivider4Line]
+    Fields : JBTDivider4Fld
 
-[Line: JBTConfigToggleLine]
-    Fields      : JBTLabelField, JBTConfigToggleField
-    Local : Field : JBTLabelField : Set As : "Enable Web Sync :"
+[Field: JBTDivider4Fld]
+    Use    : Simple Field
+    Set As : "----------------------------------------------------------------------------------"
+    Style  : Normal
+    Width  : 82
+    Skip   : Yes
 
-[Field: JBTConfigToggleField]
-    Use         : Logical Field
-    Modifies    : JBTWebSyncActive
-    Width       : 15%
+;; ----------------------------------------------------------------------------
+;; 2. FOLDER PATH CONFIGURATION (TDL Path + Proxy Path)
+;; ----------------------------------------------------------------------------
 
-[Line: JBTConfigAutoStartLine]
-    Fields      : JBTLabelField, JBTConfigAutoStartField
-    Local : Field : JBTLabelField : Set As : "Auto-Start Proxy on Tally Open :"
+[Line: JBTPathSecTitleLine]
+    Fields    : JBTPathSecTitleFld
+    Space Top : 1
 
-[Field: JBTConfigAutoStartField]
-    Use         : Logical Field
-    Modifies    : JBTAutoStartProxy
-    Width       : 15%
+[Field: JBTPathSecTitleFld]
+    Use    : Simple Field
+    Set As : "[ 1. FOLDER PATH CONFIGURATION ]"
+    Style  : Normal Bold
+    Width  : 80
+    Skip   : Yes
 
-[Line: JBTConfigUrlLine]
-    Fields      : JBTLabelField, JBTConfigUrlField
-    Local : Field : JBTLabelField : Set As : "Web Portal URL :"
+[Line: JBTPathInputLine]
+    Fields    : JBTPathInputPrompt, JBTPathInputField
+    Space Top : 1
 
-[Field: JBTConfigUrlField]
-    Use         : Name Field
-    Modifies    : JBTWebPortalURL
-    Width       : 45%
+[Field: JBTPathInputPrompt]
+    Use    : Simple Field
+    Set As : "TDL Folder Path :"
+    Style  : Normal Bold
+    Width  : 24
+    Align  : Right
+    Skip   : Yes
 
-;; --- 4. Action Help Part ---
-[Part: JBTActionHelpPart]
-    Lines       : JBTHelpLine1, JBTHelpLine2
-    Border      : Thin Top
-    Space Top   : 1
+[Field: JBTPathInputField]
+    Use        : Short Name Field
+    Set As     : If $$IsEmpty:##JBTTDLFolderPath Then "C:\\Users\\dell\\Documents\\GitHub\\TALLY_REPORTING\\tally-tdl" Else ##JBTTDLFolderPath
+    Modifies   : JBTTDLFolderPath : Yes
+    Border     : Thin Box
+    Style      : Normal Bold
+    Width      : 56
+    Space Left : 2
 
-[Line: JBTHelpLine1]
-    Fields      : JBTHelpField
-    Local : Field : JBTHelpField : Set As : "Quick Actions:  [F4] Open Web Portal  |  [F5] Start Proxy  |  [F6] Stop Proxy  |  [Alt+W] Toggle ON/OFF"
-    Local : Field : JBTHelpField : Style  : Normal Bold
-    Local : Field : JBTHelpField : Color  : Blue
+[Line: JBTProxyPathLine]
+    Fields    : JBTProxyPathPrompt, JBTProxyPathField
+    Space Top : 1
 
-[Line: JBTHelpLine2]
-    Fields      : JBTHelpField
-    Local : Field : JBTHelpField : Set As : "Press Enter to save preferences. Preferences are remembered automatically across Tally restarts."
-    Local : Field : JBTHelpField : Style  : Italic
-    Local : Field : JBTHelpField : Color  : Grey
+[Field: JBTProxyPathPrompt]
+    Use    : Simple Field
+    Set As : "Proxy Folder Path :"
+    Style  : Normal Bold
+    Width  : 24
+    Align  : Right
+    Skip   : Yes
 
-;; --- Reusable Styles and Base Fields ---
-[Field: JBTSectionHeadingField]
-    Use         : Simple Field
-    Style       : Normal Bold
-    Color       : Royal Blue
-    Width       : 100%
+[Field: JBTProxyPathField]
+    Use        : Short Name Field
+    Set As     : If $$IsEmpty:##JBTProxyFolderPath Then "C:\\Users\\dell\\Documents\\GitHub\\TALLY_REPORTING\\tally-proxy" Else ##JBTProxyFolderPath
+    Modifies   : JBTProxyFolderPath : Yes
+    Border     : Thin Box
+    Style      : Normal Bold
+    Width      : 56
+    Space Left : 2
 
-[Field: JBTLabelField]
-    Use         : Simple Field
-    Width       : 30%
-    Color       : Dim Grey
+[Line: JBTPathHintLine]
+    Fields       : JBTPathHintFld
+    Space Bottom : 1
 
-[Field: JBTValueField]
-    Use         : Simple Field
-    Width       : 70%
+[Field: JBTPathHintFld]
+    Use    : Simple Field
+    Set As : "  --> TDL folder me scripts hoti hain aur Proxy folder me server.js hota hai"
+    Style  : Normal Italic
+    Width  : 80
+    Skip   : Yes
 
-[Field: JBTHelpField]
-    Use         : Simple Field
-    Width       : 100%
+;; ----------------------------------------------------------------------------
+;; 3. CURRENT CONNECTION STATUS
+;; ----------------------------------------------------------------------------
 
-;; ────────────────────────────────────────────────────────────────────────────
-;;  ACTION BUTTONS
-;; ────────────────────────────────────────────────────────────────────────────
+[Line: JBTConnSecTitleLine]
+    Fields    : JBTConnSecTitleFld
+    Space Top : 1
+
+[Field: JBTConnSecTitleFld]
+    Use    : Simple Field
+    Set As : "[ 2. CURRENT STATUS ]"
+    Style  : Normal Bold
+    Width  : 80
+    Skip   : Yes
+
+[Line: JBTCompanyLine]
+    Fields    : JBTCompanyPrompt, JBTCompanyVal
+    Space Top : 1
+
+[Field: JBTCompanyPrompt]
+    Use    : Simple Field
+    Set As : "Active Company :"
+    Style  : Normal
+    Width  : 24
+    Align  : Right
+    Skip   : Yes
+
+[Field: JBTCompanyVal]
+    Use        : Simple Field
+    Set As     : @@JBTCompanyText
+    Style      : Normal Bold
+    Width      : 56
+    Space Left : 2
+    Skip   : Yes
+
+[Line: JBTSyncStatusLine]
+    Fields : JBTSyncStatusPrompt, JBTSyncStatusVal
+
+[Field: JBTSyncStatusPrompt]
+    Use    : Simple Field
+    Set As : "Sync Service :"
+    Style  : Normal
+    Width  : 24
+    Align  : Right
+    Skip   : Yes
+
+[Field: JBTSyncStatusVal]
+    Use        : Simple Field
+    Set As     : @@JBTSyncStatusText
+    Style      : Normal Bold
+    Width      : 56
+    Space Left : 2
+    Skip   : Yes
+
+[Line: JBTPortsLine]
+    Fields       : JBTPortsPrompt, JBTPortsVal
+    Space Bottom : 1
+
+[Field: JBTPortsPrompt]
+    Use    : Simple Field
+    Set As : "Configured Ports :"
+    Style  : Normal
+    Width  : 24
+    Align  : Right
+    Skip   : Yes
+
+[Field: JBTPortsVal]
+    Use        : Simple Field
+    Set As     : "Tally HTTP Port: 9000   |   Proxy Port: 3001"
+    Style      : Normal
+    Width      : 56
+    Space Left : 2
+    Skip   : Yes
+
+;; ----------------------------------------------------------------------------
+;; 4. CONNECTOR PREFERENCES
+;; ----------------------------------------------------------------------------
+
+[Line: JBTConfigSecTitleLine]
+    Fields    : JBTConfigSecTitleFld
+    Space Top : 1
+
+[Field: JBTConfigSecTitleFld]
+    Use    : Simple Field
+    Set As : "[ 3. CONNECTOR PREFERENCES ]"
+    Style  : Normal Bold
+    Width  : 80
+    Skip   : Yes
+
+[Line: JBTToggleSyncLine]
+    Fields    : JBTToggleSyncPrompt, JBTToggleSyncField
+    Space Top : 1
+
+[Field: JBTToggleSyncPrompt]
+    Use    : Simple Field
+    Set As : "Enable Web Sync :"
+    Style  : Normal
+    Width  : 24
+    Align  : Right
+    Skip   : Yes
+
+[Field: JBTToggleSyncField]
+    Use        : Logical Field
+    Set As     : ##JBTWebSyncActive
+    Modifies   : JBTWebSyncActive : Yes
+    Border     : Thin Box
+    Width      : 10
+    Space Left : 2
+
+[Line: JBTAutoStartLine]
+    Fields : JBTAutoStartPrompt, JBTAutoStartField
+
+[Field: JBTAutoStartPrompt]
+    Use    : Simple Field
+    Set As : "Auto-Start Proxy :"
+    Style  : Normal
+    Width  : 24
+    Align  : Right
+    Skip   : Yes
+
+[Field: JBTAutoStartField]
+    Use        : Logical Field
+    Set As     : ##JBTAutoStartProxy
+    Modifies   : JBTAutoStartProxy : Yes
+    Border     : Thin Box
+    Width      : 10
+    Space Left : 2
+
+[Line: JBTUrlLine]
+    Fields       : JBTUrlPrompt, JBTUrlField
+    Space Bottom : 1
+
+[Field: JBTUrlPrompt]
+    Use    : Simple Field
+    Set As : "Web Portal URL :"
+    Style  : Normal
+    Width  : 24
+    Align  : Right
+    Skip   : Yes
+
+[Field: JBTUrlField]
+    Use        : Short Name Field
+    Set As     : ##JBTWebPortalURL
+    Modifies   : JBTWebPortalURL : Yes
+    Border     : Thin Box
+    Width      : 56
+    Space Left : 2
+
+;; ----------------------------------------------------------------------------
+;; 5. HELP & ACTIONS
+;; ----------------------------------------------------------------------------
+
+[Line: JBTHelpKeysLine]
+    Fields    : JBTHelpKeysFld
+    Space Top : 1
+
+[Field: JBTHelpKeysFld]
+    Use    : Simple Field
+    Set As : "Quick Buttons: [F4] Open Portal  [F5] Start Proxy  [F6] Stop Proxy  [Alt+W] Toggle"
+    Style  : Normal Bold
+    Width  : 80
+    Skip   : Yes
+
+[Line: JBTHelpSaveLine]
+    Fields       : JBTHelpSaveFld
+    Space Bottom : 1
+
+[Field: JBTHelpSaveFld]
+    Use    : Simple Field
+    Set As : "Press Enter through fields to save, or press Ctrl+A to save immediately."
+    Style  : Normal Italic
+    Width  : 80
+    Skip   : Yes
+
+;; ============================================================================
+;;  ACTION BUTTONS (Right-side button bar)
+;; ============================================================================
 
 [Button: JBTOpenWebPortalBtn]
-    Title       : "F4: Open Web Portal"
-    Key         : F4
-    Action      : Browse URL : ##JBTWebPortalURL
+    Title  : "F4: Open Web Portal"
+    Key    : F4
+    Action : Browse URL : ##JBTWebPortalURL
 
 [Button: JBTStartProxyBtn]
-    Title       : "F5: Start Proxy"
-    Key         : F5
-    Action      : Call : JBTManualStartProxyFunction
+    Title  : "F5: Start Proxy"
+    Key    : F5
+    Action : Call : JBTManualStartProxyFunction
 
 [Button: JBTStopProxyBtn]
-    Title       : "F6: Stop Proxy"
-    Key         : F6
-    Action      : Call : JBTManualStopProxyFunction
+    Title  : "F6: Stop Proxy"
+    Key    : F6
+    Action : Call : JBTManualStopProxyFunction
 
 [Button: JBTToggleSyncBtn]
-    Title       : "Alt+T: Toggle Sync"
-    Key         : Alt + T
-    Action      : Call : JBTToggleSyncFunction
+    Title  : "Alt+T: Toggle Sync"
+    Key    : Alt + T
+    Action : Call : JBTToggleSyncFunction
 
-;; ────────────────────────────────────────────────────────────────────────────
+;; ============================================================================
 ;;  TDL COLLECTION FOR WEB APP STATUS QUERY
-;; ────────────────────────────────────────────────────────────────────────────
+;; ============================================================================
 
 [Collection: JBTWebSyncInfo]
-    Type        : Company
-    Fetch       : Name
-    Computed    : IsWebSyncEnabled : If ##JBTWebSyncActive Then "Yes" Else "No"
-    Computed    : AutoStartProxy   : If ##JBTAutoStartProxy Then "Yes" Else "No"
-    Computed    : ProxyPort        : $$String:##JBTProxyPort
-    Computed    : TallyPort        : $$String:##JBTTallyPort
-    Computed    : PortalURL        : ##JBTWebPortalURL
+    Type     : Company
+    Fetch    : Name
+    Computed : IsWebSyncEnabled : If ##JBTWebSyncActive Then "Yes" Else "No"
+    Computed : AutoStartProxy   : If ##JBTAutoStartProxy Then "Yes" Else "No"
+    Computed : ProxyPort        : $$String:##JBTProxyPort
+    Computed : TallyPort        : $$String:##JBTTallyPort
+    Computed : PortalURL        : ##JBTWebPortalURL
+    Computed : TDLFolderPath    : ##JBTTDLFolderPath
+    Computed : ProxyFolderPath  : ##JBTProxyFolderPath

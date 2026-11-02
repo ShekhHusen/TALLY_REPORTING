@@ -1,69 +1,85 @@
-# 🔌 Jay Baudhimai Tally Web Sync — Installation & Setup Guide
+# 🔌 Jay Baudhimai Tally Web Sync — Setup & Usage Guide (v2.2.0 Portable)
 
-Yeh guide TallyPrime me **Auto-Connect TDL Add-on** load karne aur use use karne ke liye hai.
-
----
-
-## 📁 Files Ka Vivran (Files in this folder)
-
-1. **`JayBaudhimaiWebSync.tdl`**: TallyPrime ka main TDL add-on code file.
-2. **`start-proxy-silent.vbs`**: Tally open hone par background me proxy ko silently (bina black screen ke) chalane wala launcher.
-3. **`start-proxy.bat`**: Proxy ko manual start karne ke liye script.
-4. **`stop-proxy.bat`**: Proxy ko band karne ke liye script.
+Yeh guide TallyPrime me **Web Reporting Connector (TDL)** ko kisi bhi computer aur kisi bhi alag-alag folders me setup karne ke liye hai.
 
 ---
 
-## 🚀 Step-by-Step Installation (TallyPrime me TDL kaise load karein)
+## 🌟 Dual Path Configuration (TDL & Proxy Kahi Bhi Ho Sakte Hain)
+
+Ab aap Tally ke andar hi **dono paths** alag-alag specify kar sakte hain:
+1. **TDL Folder Path**: Jahan `JayBaudhimaiWebSync.tdl`, `start-proxy-silent.vbs`, aur `stop-proxy.bat` rakhe hain.
+2. **Proxy Folder Path**: Jahan `tally-proxy` (yani `server.js` aur `node_modules`) rakha hai.
+
+> Dono folders chahe alag-alag drive me hon (jaise `C:\Tally\tally-tdl` aur `D:\Servers\tally-proxy`), yeh bilkul smooth kaam karega!
+
+---
+
+## ⚡ Quick 1-Minute Setup
 
 ### Step 1: TallyPrime Kholein
-- TallyPrime open karein aur apni Company load karein.
+- TallyPrime open karein (Company open karein).
+- Keyboard par **`F1`** (Help) → **`TDLs & Add-Ons`** → **`F4` (Manage Local TDLs)**.
+- `JayBaudhimaiWebSync.tdl` load karein (agar pehle se loaded hai toh Tally restart karein).
 
-### Step 2: TDL & Add-On Menu me Jayein
-- Keyboard par **`F1`** (Help) dabayein.
-- Menu me se **`TDLs & Add-Ons`** select karein (ya keyboard par **`T`** dabayein).
-
-### Step 3: Local TDL Load Karein
-- Screen ke right side me **`F4: Manage Local TDLs`** par click karein (ya **`F4`** dabayein).
-- Screen par aayega:
-  - **Load selected TDL files on startup?** → Isse **`Yes`** karein.
-  - **File to Load**: Yahan par `JayBaudhimaiWebSync.tdl` ka poora path paste karein:
-    ```
-    C:\Users\dell\Documents\GitHub\TALLY_REPORTING\tally-tdl\JayBaudhimaiWebSync.tdl
-    ```
-- **`Enter`** dabakar save (Accept) karein.
-
-### Step 4: Verification
-- Ab screen ke bottom-right me aapko dikhega:
-  **`TDLs Loaded: 1`** (Agar 1 loaded dikh raha hai toh TDL 100% successfully install ho chuka hai).
+### Step 2: Gateway of Tally par 'W' Dabayein
+1. Gateway of Tally par **`W`** dabayein (Web Sync Connector).
+2. Configuration screen khulegi jisme 2 boxes milenge:
+   - **`TDL Folder Path :`** `[ C:\Users\dell\Documents\GitHub\TALLY_REPORTING\tally-tdl ]`
+   - **`Proxy Folder Path :`** `[ C:\Users\dell\Documents\GitHub\TALLY_REPORTING\tally-proxy ]`
+3. Agar kisi aur computer me hain, toh apne folders ka sahi path type ya paste (**Ctrl+V**) karein.
+4. **`Ctrl + A`** dabakar **Save** kar dein!
+5. **Bas!** Settings permanently save ho gayi hain.
 
 ---
 
-## 🎮 Tally Ke Andar Kaise Use Karein (Features & Controls)
+## 🖥️ Screen Layout (Tally Ke Andar)
 
-### 1. Gateway of Tally Par Menu & Status
-- **Gateway of Tally** par aapko ek naya menu item dikhega:
-  👉 **`Web Reporting Connector [ON]`** (Hot-key: **`W`**)
-- Right-side button bar me live status button dikhega:
-  👉 **`● Web Sync: ON (Alt+W)`**
-
-### 2. Tally Ke Andar Se Sync ON / OFF Karna:
-- **Shortcut:** Kisi bhi samay **`Alt + W`** dabayein → Sync instant **ON** ya **OFF** toggle ho jayega!
-- **Settings Screen:** Gateway of Tally par **`W`** dabayein:
-  - **Enable Web Sync:** `[Yes / No]` (Spacebar se change karein)
-  - **Auto-Start Proxy on Tally Open:** `[Yes / No]`
-  - **Web Portal URL:** `http://localhost:3000`
-  - Enter dabakar save karein — Tally aapki preference ko permanently save rakhega.
-
-### 3. Tally Se Direct One-Click Actions:
-- **`F4` (Open Web Portal):** Tally ke andar se hi direct aapka web browser khulega aur web reporting dashboard open ho jayega!
-- **`F5` (Start Proxy):** Agar proxy band ho gayi ho toh Tally ke andar se hi 1 second me restart ho jayegi.
-- **`F6` (Stop Proxy):** Proxy ko band karne ke liye.
+```
++----------------------------------------------------------------------------------+
+| JAY BAUDHIMAI TRADERS - WEB REPORTING CONNECTOR                    v2.2 Portable |
+| -------------------------------------------------------------------------------- |
+|                                                                                  |
+| [ 1. FOLDER PATH CONFIGURATION ]                                                 |
+|           TDL Folder Path :  [C:\Users\dell\Documents\GitHub\TALLY_REPORTING\...]|
+|         Proxy Folder Path :  [C:\Users\dell\Documents\GitHub\TALLY_REPORTING\...]|
+|   --> TDL folder me scripts hoti hain aur Proxy folder me server.js hota hai    |
+| -------------------------------------------------------------------------------- |
+|                                                                                  |
+| [ 2. CURRENT STATUS ]                                                            |
+|          Active Company :  JBMT                                                  |
+|            Sync Service :  ENABLED (Active)                                      |
+|        Configured Ports :  Tally HTTP Port: 9000   |   Proxy Port: 3001          |
+| -------------------------------------------------------------------------------- |
+|                                                                                  |
+| [ 3. CONNECTOR PREFERENCES ]                                                     |
+|        Enable Web Sync :  [ Yes ]                                                |
+|       Auto-Start Proxy :  [ Yes ]                                                |
+|         Web Portal URL :  [ http://localhost:3000 ]                              |
+| -------------------------------------------------------------------------------- |
+| Quick Buttons: [F4] Open Portal  [F5] Start Proxy  [F6] Stop Proxy  [Alt+W] Toggle|
+| Press Enter through fields to save, or press Ctrl+A to save immediately.        |
++----------------------------------------------------------------------------------+
+```
 
 ---
 
-## 🔄 Auto-Connect Kaise Kaam Karta Hai?
+## 🎮 Shortcut Keys & Quick Buttons
 
-Jab aapka TallyPrime start hota hai:
-1. TDL check karta hai ki kya `Enable Web Sync` **Yes** hai.
-2. Agar **Yes** hai, toh TDL turant `start-proxy-silent.vbs` ko call karke proxy ko background me start kar deta hai.
-3. Web App bina kisi error ke seedhe Tally se connect ho jata hai!
+| Shortcut / Button | Function |
+| :--- | :--- |
+| **`W`** (Gateway of Tally) | Settings screen open karein jahan TDL aur Proxy dono paths set hote hain |
+| **`Alt + W`** | Quick Sync ON / OFF Toggle |
+| **`F4`** | Web Portal direct default browser me kholein |
+| **`F5`** | Proxy Server manual start karein |
+| **`F6`** | Proxy Server stop karein |
+| **`Ctrl + A`** | Preferences ko permanently save karein |
+
+---
+
+## 💻 Kisi Naye Computer Par Setup Kaise Karein?
+
+1. `tally-tdl` folder jahan marzi wahan rakhein (e.g. `C:\MyTDL`).
+2. `tally-proxy` folder jahan marzi wahan rakhein (e.g. `D:\Apps\tally-proxy`).
+3. `tally-proxy` folder me ek baar command prompt kholein aur `npm install` run karein.
+4. TallyPrime me `JayBaudhimaiWebSync.tdl` load karein.
+5. Gateway of Tally par **`W`** dabayein aur dono paths enter karke **`Ctrl + A`** se save kar dein!
