@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
-
+/*
 const firebaseConfig = {
   apiKey: "AIzaSyCrqNgwRJ0RqZqZRJlETX7nTgwEltCO33g",
   authDomain: "tally-reporting.firebaseapp.com",
@@ -12,8 +12,8 @@ const firebaseConfig = {
   appId: "1:896448159679:web:cbf9ccaa50fb73708a0b0a",
   measurementId: "G-PXGY6S82Q2"
 };
+*/
 
-/*
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDxUdNuacE9J08BoebrY4Ax63CD4phZXj4",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "jbmt-reporting.firebaseapp.com",
@@ -23,7 +23,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:554546722753:web:c6be832b4d00fbe6bfe140",
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-JGCWKJPQTG"
 };
-*/
+
 
 let app;
 let db;
