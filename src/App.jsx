@@ -419,7 +419,7 @@ export default function App() {
                             {activeTab === 'followups' && hasTabAccess('followups') && <FollowUpsTab currentUser={currentUser} />}
                         </div>
                         <div style={{ display: (activeTab === 'tallysync' && hasTabAccess('tallysync')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
-                            {activeTab === 'tallysync' && hasTabAccess('tallysync') && <TallySyncTab currentUser={currentUser} />}
+                            {activeTab === 'tallysync' && hasTabAccess('tallysync') && <TallySyncTab currentUser={currentUser} setUpdateTrigger={setUpdateTrigger} />}
                         </div>
                         <div style={{ display: (activeTab === 'tallyentry' && hasTabAccess('tallyentry')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'tallyentry' && hasTabAccess('tallyentry') && <TallyEntryTab currentUser={currentUser} />}

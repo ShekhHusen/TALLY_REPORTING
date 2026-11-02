@@ -231,6 +231,26 @@ export function buildMaxAlterIdQueryXML(companyName) {
 </ENVELOPE>`;
 }
 
+/** Build XML to query Jay Baudhimai Web Sync TDL Add-on status from Tally */
+export function buildTdlSyncStatusXML(companyName) {
+    return `<ENVELOPE>
+    <HEADER>
+        <VERSION>1</VERSION>
+        <TALLYREQUEST>Export</TALLYREQUEST>
+        <TYPE>Collection</TYPE>
+        <ID>JBTWebSyncInfo</ID>
+    </HEADER>
+    <BODY>
+        <DESC>
+            <STATICVARIABLES>
+                ${companyName ? `<SVCURRENTCOMPANY>${escapeXml(companyName)}</SVCURRENTCOMPANY>` : ''}
+                <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+            </STATICVARIABLES>
+        </DESC>
+    </BODY>
+</ENVELOPE>`;
+}
+
 
 // ─────────────────────────────────────────────────────────
 // High-Level Fetch Functions
@@ -253,6 +273,52 @@ export async function testConnection(tallyUrl = DEFAULT_TALLY_URL) {
         return { connected: true, companies };
     } catch (error) {
         return { connected: false, companies: [], error: error.message };
+    }
+}
+
+/**
+ * Query the status of the Jay Baudhimai Web Sync TDL Add-on in Tally.
+ * Checks if TDL is loaded and if sync is enabled or disabled inside Tally.
+ * @returns {Promise<{ tdlInstalled: boolean, isSyncEnabled: boolean, autoStartProxy: boolean, proxyPort: string, portalUrl: string }>}
+ */
+export async function fetchTdlSyncStatus(companyName, tallyUrl = DEFAULT_TALLY_URL) {
+    if (!companyName) {
+        return { tdlInstalled: false, isSyncEnabled: true, autoStartProxy: false };
+    }
+
+    try {
+        const xml = buildTdlSyncStatusXML(companyName);
+        const resText = await sendRawRequest(xml, tallyUrl);
+
+        if (!resText || resText.includes('<LINEERROR>') || !resText.includes('ISWEBSYNCENABLED')) {
+            return {
+                tdlInstalled: false,
+                isSyncEnabled: true, // Default to enabled if TDL is not installed
+                autoStartProxy: false,
+            };
+        }
+
+        const isEnabledMatch = resText.match(/<ISWEBSYNCENABLED[^>]*>([^<]+)<\/ISWEBSYNCENABLED>/i);
+        const autoStartMatch = resText.match(/<AUTOSTARTPROXY[^>]*>([^<]+)<\/AUTOSTARTPROXY>/i);
+        const proxyPortMatch = resText.match(/<PROXYPORT[^>]*>([^<]+)<\/PROXYPORT>/i);
+        const portalUrlMatch = resText.match(/<PORTALURL[^>]*>([^<]+)<\/PORTALURL>/i);
+
+        const isEnabledStr = (isEnabledMatch?.[1] || '').trim().toLowerCase();
+        const isSyncEnabled = isEnabledStr === 'yes' || isEnabledStr === 'true';
+
+        return {
+            tdlInstalled: true,
+            isSyncEnabled,
+            autoStartProxy: (autoStartMatch?.[1] || '').trim().toLowerCase() === 'yes',
+            proxyPort: proxyPortMatch?.[1] || '3001',
+            portalUrl: portalUrlMatch?.[1] || 'http://localhost:3000',
+        };
+    } catch {
+        return {
+            tdlInstalled: false,
+            isSyncEnabled: true,
+            autoStartProxy: false,
+        };
     }
 }
 

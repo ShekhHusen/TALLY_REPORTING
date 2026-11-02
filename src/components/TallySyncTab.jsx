@@ -25,14 +25,18 @@ import {
     clearTallySyncCache,
     getCacheSize,
     formatBytes,
+    fetchTdlSyncStatus,
 } from '../utils/tallyService';
+import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
+import TallyFirestorePushModal from './TallyFirestorePushModal';
 import {
     RefreshCw, Wifi, WifiOff, Loader2, Building2, Search,
     ChevronDown, ChevronUp, Trash2, HardDrive, Download,
     BookOpen, Package, ArrowRightLeft, AlertTriangle,
     ChevronLeft, ChevronRight, Zap, Filter, RotateCcw,
     BarChart3, Radio, Activity, Clock, Sparkles,
-    Settings, LayoutDashboard, ShieldCheck, X
+    Settings, LayoutDashboard, ShieldCheck, X,
+    FileCode, Copy, Check, Power, UploadCloud
 } from 'lucide-react';
 
 const PREVIEW_PAGE_SIZE = 50;
@@ -53,7 +57,7 @@ const fmtCur = (n) => new Intl.NumberFormat('en-IN', {
     maximumFractionDigits: 2
 }).format(Math.abs(parseFloat(n || 0)));
 
-export default function TallySyncTab() {
+export default function TallySyncTab({ currentUser, setUpdateTrigger }) {
     // ── Active Sub-Tab Navigation ──
     // 'dashboard' | 'transactions' | 'inventory' | 'masters' | 'analytics'
     const [activeSubTab, setActiveSubTab] = useState('dashboard');
@@ -65,6 +69,15 @@ export default function TallySyncTab() {
     const [companies, setCompanies] = useState([]);
     const [selectedCompany, setSelectedCompany] = useState(() => getSavedCompany());
     const [showConfigModal, setShowConfigModal] = useState(false);
+    const [tdlStatus, setTdlStatus] = useState({ tdlInstalled: false, isSyncEnabled: true });
+    const [copiedTdlPath, setCopiedTdlPath] = useState(false);
+
+    // ── Fiscal Year (for Firestore Push) ──
+    const [fyOptions, setFyOptions] = useState([]);
+    const [selectedFYId, setSelectedFYId] = useState('');
+
+    // ── Push Modal ──
+    const [showPushModal, setShowPushModal] = useState(false);
 
     // ── Transaction Date Range ──
     const [txnDateFrom, setTxnDateFrom] = useState('2024-04-01');
@@ -191,6 +204,25 @@ export default function TallySyncTab() {
         return () => { isMounted = false; };
     }, [tallyUrl]);
 
+    // ── Load Fiscal Years for Firestore Push ──
+    useEffect(() => {
+        const loadFYs = async () => {
+            try {
+                const fys = await fetchFiscalYears();
+                setFyOptions(fys);
+                const current = getCurrentFYObject(fys);
+                if (current) setSelectedFYId(current.id);
+                else if (fys.length > 0) setSelectedFYId(fys[0].id);
+            } catch (e) {
+                console.warn('Could not load fiscal years for push:', e);
+            }
+        };
+        loadFYs();
+    }, []);
+
+    // Derived: active FY object
+    const activeFY = useMemo(() => fyOptions.find(f => f.id === selectedFYId) || null, [fyOptions, selectedFYId]);
+
     // ── Live Company Monitor & Incremental Auto-Push Engine ──
     useEffect(() => {
         saveAutoSyncSettings(autoSyncEnabled, autoSyncInterval);
@@ -234,6 +266,21 @@ export default function TallySyncTab() {
                     console.log(`[Tally Monitor] Active company auto-selected: "${activeCo}"`);
                     setSelectedCompany(activeCo);
                     saveCompany(activeCo);
+                }
+
+                // Check TDL Add-on status in TallyPrime
+                if (activeCo) {
+                    try {
+                        const tdlInfo = await fetchTdlSyncStatus(activeCo, tallyUrl);
+                        setTdlStatus(tdlInfo);
+                        // If TDL add-on is installed and user turned OFF sync in Tally, pause polling
+                        if (tdlInfo.tdlInstalled && !tdlInfo.isSyncEnabled) {
+                            setIsAutoSyncing(false);
+                            return;
+                        }
+                    } catch {
+                        // fallback
+                    }
                 }
 
                 // 2. Incremental Voucher Sync (only if autoSync is enabled)
@@ -382,6 +429,27 @@ export default function TallySyncTab() {
         } catch (error) {
             setItemSyncResult(`❌ Error: ${error.message}`);
         } finally { setSyncingItems(false); }
+    };
+
+    const todayDateStr = useMemo(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }, []);
+
+    const yesterdayDateStr = useMemo(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }, []);
+
+    const setRangeToToday = () => {
+        setTxnDateFrom(todayDateStr);
+        setTxnDateTo(todayDateStr);
+    };
+
+    const setRangeToYesterday = () => {
+        setTxnDateFrom(yesterdayDateStr);
+        setTxnDateTo(yesterdayDateStr);
     };
 
     const handleSyncTransactions = async () => {
@@ -856,7 +924,7 @@ export default function TallySyncTab() {
                                 <span className="hidden sm:inline">Test Connection</span>
                             </button>
 
-                            {/* Configure Server URL & Settings Button */}
+                            {/* Configure Server URL & Settings Button 
                             <button
                                 type="button"
                                 onClick={() => setShowConfigModal(true)}
@@ -866,6 +934,9 @@ export default function TallySyncTab() {
                                 <Settings className="w-3.5 h-3.5 text-slate-500" />
                                 <span className="hidden sm:inline">Settings</span>
                             </button>
+                            */}
+
+
                         </div>
                     </div>
 
@@ -1067,6 +1138,138 @@ export default function TallySyncTab() {
                                 </div>
                             )}
 
+                            {/* Banner: TDL Add-on installed but Sync turned OFF inside Tally */}
+                            {tdlStatus.tdlInstalled && !tdlStatus.isSyncEnabled && (
+                                <div className="bg-gradient-to-r from-rose-50 via-pink-50 to-rose-50 border-2 border-rose-300 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3.5">
+                                        <div className="p-2.5 bg-rose-100 text-rose-800 rounded-xl shrink-0">
+                                            <Power className="w-5 h-5 stroke-[2.2]" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-sm font-black text-rose-950">Web Sync is Paused Inside TallyPrime</h3>
+                                                <span className="text-[10px] bg-rose-200 text-rose-900 font-extrabold px-2 py-0.5 rounded-full uppercase">Sync OFF</span>
+                                            </div>
+                                            <p className="text-xs text-rose-800 mt-0.5">
+                                                You turned off web sync from inside Tally. Press <kbd className="bg-white border border-rose-300 px-1 py-0.5 rounded text-[10px] font-bold">Alt + W</kbd> in TallyPrime or open the <strong>Web Reporting Connector</strong> to turn it back ON.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfigModal(true)}
+                                        className="px-3.5 py-1.5 bg-white border border-rose-200 hover:bg-rose-100 text-rose-800 font-bold rounded-xl text-xs shrink-0 cursor-pointer"
+                                    >
+                                        TDL Info
+                                    </button>
+                                </div>
+                            )}
+
+
+                            {/* Transaction Range & Sync Console */}
+                            <div className="bg-white rounded-2xl border border-slate-200/70 p-5 shadow-xs">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                    <div>
+                                        <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                                            <Clock className="w-4 h-4 text-blue-600" />
+                                            <span>Transaction Fetch Range &amp; Presets</span>
+                                        </h4>
+                                       
+                                    </div>
+
+                                    {/* Quick Presets */}
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-[10px] font-extrabold text-slate-400 mr-1">Presets:</span>
+
+                                        <button
+                                            type="button"
+                                            onClick={setRangeToToday}
+                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                                                txnDateFrom === todayDateStr && txnDateTo === todayDateStr
+                                                    ? 'bg-blue-600 text-white shadow-xs'
+                                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                            }`}
+                                            title={`Set range to Today (${todayDateStr})`}
+                                        >
+                                            Today
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={setRangeToYesterday}
+                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                                                txnDateFrom === yesterdayDateStr && txnDateTo === yesterdayDateStr
+                                                    ? 'bg-blue-600 text-white shadow-xs'
+                                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                            }`}
+                                            title={`Set range to Yesterday (${yesterdayDateStr})`}
+                                        >
+                                            Yesterday
+                                        </button>
+                                        
+                                        {/*  other preset for optional
+                                        <button
+                                            type="button"
+                                            onClick={() => { setTxnDateFrom('2026-04-01'); setTxnDateTo('2027-03-31'); }}
+                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                                                txnDateFrom === '2026-04-01' && txnDateTo === '2027-03-31'
+                                                    ? 'bg-blue-600 text-white shadow-xs'
+                                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                            }`}
+                                        >
+                                            FY 2026-27
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setTxnDateFrom('2025-04-01'); setTxnDateTo('2026-03-31'); }}
+                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                                                txnDateFrom === '2025-04-01' && txnDateTo === '2026-03-31'
+                                                    ? 'bg-blue-600 text-white shadow-xs'
+                                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                            }`}
+                                        >
+                                            FY 2025-26
+                                        </button>
+                                        
+                                        */}
+
+
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                                    <div className="sm:col-span-4">
+                                        <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">From Date</label>
+                                        <input
+                                            type="date"
+                                            value={txnDateFrom}
+                                            onChange={(e) => setTxnDateFrom(e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-4">
+                                        <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">To Date</label>
+                                        <input
+                                            type="date"
+                                            value={txnDateTo}
+                                            onChange={(e) => setTxnDateTo(e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-4 flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleSyncTransactions}
+                                            disabled={syncingTxns || connectionStatus !== 'connected' || companies.length === 0 || !selectedCompany}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer disabled:cursor-not-allowed"
+                                        >
+                                            {syncingTxns ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                            <span>{companies.length === 0 ? 'No Company Open' : syncingTxns ? 'Fetching...' : 'Fetch Range Data'}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+
                             {/* 3 Unified Metric & Sync Cards */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 
@@ -1080,7 +1283,6 @@ export default function TallySyncTab() {
                                                 </div>
                                                 <div>
                                                     <h4 className="text-sm font-extrabold text-slate-900">Master Accounts</h4>
-                                                    <p className="text-[11px] text-slate-500 font-medium">Ledgers &amp; Groups</p>
                                                 </div>
                                             </div>
                                             <button
@@ -1099,9 +1301,6 @@ export default function TallySyncTab() {
                                                 </span>
                                                 <span className="text-xs font-bold text-slate-400 uppercase">Accounts</span>
                                             </div>
-                                            <p className="text-[11px] text-slate-500 font-medium mt-1">
-                                                Last Synced: <span className="font-bold text-slate-700">{fmtTs(cachedMasterTs)}</span>
-                                            </p>
                                         </div>
 
                                         {masterSyncResult && (
@@ -1143,7 +1342,6 @@ export default function TallySyncTab() {
                                                 </div>
                                                 <div>
                                                     <h4 className="text-sm font-extrabold text-slate-900">Inventory Items</h4>
-                                                    <p className="text-[11px] text-slate-500 font-medium">Stock &amp; Balances</p>
                                                 </div>
                                             </div>
                                             <button
@@ -1162,9 +1360,7 @@ export default function TallySyncTab() {
                                                 </span>
                                                 <span className="text-xs font-bold text-slate-400 uppercase">Items</span>
                                             </div>
-                                            <p className="text-[11px] text-slate-500 font-medium mt-1">
-                                                Last Synced: <span className="font-bold text-slate-700">{fmtTs(cachedItemTs)}</span>
-                                            </p>
+                                           
                                         </div>
 
                                         {itemSyncResult && (
@@ -1206,7 +1402,6 @@ export default function TallySyncTab() {
                                                 </div>
                                                 <div>
                                                     <h4 className="text-sm font-extrabold text-slate-900">Vouchers &amp; Txns</h4>
-                                                    <p className="text-[11px] text-slate-500 font-medium">Journal &amp; Invoices</p>
                                                 </div>
                                             </div>
                                             <button
@@ -1225,10 +1420,7 @@ export default function TallySyncTab() {
                                                 </span>
                                                 <span className="text-xs font-bold text-slate-400 uppercase">Vouchers</span>
                                             </div>
-                                            <p className="text-[11px] text-slate-500 font-medium mt-1">
-                                                Last Synced: <span className="font-bold text-slate-700">{fmtTs(cachedTxnTs)}</span>
-                                                {cachedTxnFy && <span className="text-slate-400"> ({cachedTxnFy.name})</span>}
-                                            </p>
+                                            
                                         </div>
 
                                         {txnSyncResult && (
@@ -1261,105 +1453,23 @@ export default function TallySyncTab() {
                                 </div>
                             </div>
 
-                            {/* Transaction Range & Sync Console */}
-                            <div className="bg-white rounded-2xl border border-slate-200/70 p-5 shadow-xs">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                                    <div>
-                                        <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                                            <Clock className="w-4 h-4 text-blue-600" />
-                                            <span>Transaction Fetch Range &amp; Presets</span>
-                                        </h4>
-                                        <p className="text-xs text-slate-500 font-medium">
-                                            Choose date range to fetch vouchers from <span className="font-bold text-slate-700">{selectedCompany || (companies.length === 0 ? 'Tally (No Company Open)' : 'Tally')}</span>.
-                                        </p>
-                                    </div>
-
-                                    {/* Quick Presets */}
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                        <span className="text-[10px] font-extrabold text-slate-400 mr-1">Presets:</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setTxnDateFrom('2020-04-01'); setTxnDateTo('2030-03-31'); }}
-                                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                                        >
-                                            🌟 All Time
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setTxnDateFrom('2026-04-01'); setTxnDateTo('2027-03-31'); }}
-                                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                                        >
-                                            FY 2026-27
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setTxnDateFrom('2025-04-01'); setTxnDateTo('2026-03-31'); }}
-                                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                                        >
-                                            FY 2025-26
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setTxnDateFrom('2024-04-01'); setTxnDateTo('2025-03-31'); }}
-                                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                                        >
-                                            FY 2024-25
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                                    <div className="sm:col-span-4">
-                                        <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">From Date</label>
-                                        <input
-                                            type="date"
-                                            value={txnDateFrom}
-                                            onChange={(e) => setTxnDateFrom(e.target.value)}
-                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
-                                        />
-                                    </div>
-                                    <div className="sm:col-span-4">
-                                        <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">To Date</label>
-                                        <input
-                                            type="date"
-                                            value={txnDateTo}
-                                            onChange={(e) => setTxnDateTo(e.target.value)}
-                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
-                                        />
-                                    </div>
-                                    <div className="sm:col-span-4 flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={handleSyncTransactions}
-                                            disabled={syncingTxns || connectionStatus !== 'connected' || companies.length === 0 || !selectedCompany}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer disabled:cursor-not-allowed"
-                                        >
-                                            {syncingTxns ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                                            <span>{companies.length === 0 ? 'No Company Open' : syncingTxns ? 'Fetching...' : 'Fetch Range Data'}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* System Status & Local Storage Manager */}
-                            <div className="bg-white rounded-2xl border border-slate-200/70 p-5 shadow-xs">
+                            <div className="bg-white rounded-2xl border border-slate-200/70 p-3 shadow-xs">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2.5 bg-slate-100 text-slate-600 rounded-xl">
-                                            <HardDrive className="w-5 h-5 stroke-[2.5]" />
+                                            <HardDrive className="w-3 h-3 stroke-[2.5]" />
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-extrabold text-slate-900">Local Browser Cache</h4>
-                                            <p className="text-xs text-slate-500 font-medium">
-                                                All synced records stay locally in your browser session for maximum privacy and instant speed.
-                                            </p>
+                                            
                                         </div>
                                     </div>
 
                                     <div className="flex items-center gap-3">
                                         <div className="text-right hidden sm:block">
                                             <p className="text-xs font-extrabold text-slate-800">{formatBytes(cacheBytes)}</p>
-                                            <p className="text-[10px] text-slate-400 font-medium">Storage Used</p>
+                                            
                                         </div>
                                         <button
                                             type="button"
@@ -1438,6 +1548,19 @@ export default function TallySyncTab() {
                                         <Download className="w-3.5 h-3.5" />
                                         <span>Export JSON</span>
                                     </button>
+
+                                    {/* Push to Firebase (Transactions only) */}
+                                    {activeSubTab === 'transactions' && transactionsData.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPushModal(true)}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-sm"
+                                            title="Push cached transactions to Firebase Firestore"
+                                        >
+                                            <UploadCloud className="w-3.5 h-3.5" />
+                                            <span>Push to Firebase</span>
+                                        </button>
+                                    )}
 
                                     {/* Record Counter */}
                                     <span className="text-xs text-slate-400 font-medium hidden sm:inline ml-1">
@@ -2151,6 +2274,56 @@ export default function TallySyncTab() {
                                     </select>
                                 </div>
                             )}
+
+                            {/* TDL Add-on Status & Setup Section */}
+                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                                        <FileCode className="w-4 h-4 text-purple-600" />
+                                        <span>TallyPrime TDL Add-on</span>
+                                    </span>
+                                    {tdlStatus.tdlInstalled ? (
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                            tdlStatus.isSyncEnabled 
+                                                ? 'bg-emerald-100 text-emerald-800' 
+                                                : 'bg-amber-100 text-amber-800'
+                                        }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${tdlStatus.isSyncEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                                            {tdlStatus.isSyncEnabled ? 'Active (Sync ON)' : 'Paused (Sync OFF in Tally)'}
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">
+                                            Not Loaded
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-slate-500 leading-relaxed">
+                                    Load this TDL inside TallyPrime to enable <strong>Auto-Connect on Tally start</strong> and <strong>In-Tally ON/OFF Switch (Alt+W)</strong>.
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        value="C:\Users\dell\Documents\GitHub\TALLY_REPORTING\tally-tdl\JayBaudhimaiWebSync.tdl"
+                                        className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-mono text-slate-700 select-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText('C:\\Users\\dell\\Documents\\GitHub\\TALLY_REPORTING\\tally-tdl\\JayBaudhimaiWebSync.tdl');
+                                            setCopiedTdlPath(true);
+                                            setTimeout(() => setCopiedTdlPath(false), 2000);
+                                        }}
+                                        className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+                                    >
+                                        {copiedTdlPath ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                        <span>{copiedTdlPath ? 'Copied!' : 'Copy Path'}</span>
+                                    </button>
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-medium">
+                                    In Tally: Press <kbd className="bg-white border px-1 py-0.5 rounded text-slate-700">F1 &gt; TDL &amp; Add-on &gt; F4</kbd> and paste path above.
+                                </div>
+                            </div>
                         </div>
 
                         <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -2220,6 +2393,21 @@ export default function TallySyncTab() {
                     </div>
                 </div>
             )}
+
+            {/* ── Tally Firestore Push Modal ── */}
+            <TallyFirestorePushModal
+                isOpen={showPushModal}
+                onClose={() => setShowPushModal(false)}
+                transactions={transactionsData}
+                activeFY={activeFY}
+                fyOptions={fyOptions}
+                selectedFYId={selectedFYId}
+                onSelectFY={setSelectedFYId}
+                currentUser={currentUser}
+                onComplete={() => {
+                    if (setUpdateTrigger) setUpdateTrigger(prev => prev + 1);
+                }}
+            />
         </div>
     );
 }

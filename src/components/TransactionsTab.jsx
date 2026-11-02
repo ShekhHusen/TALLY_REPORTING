@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Filter, X, ChevronUp, ChevronDown, Search } from 'lucide-react';
+import { Filter, X, ChevronUp, ChevronDown, Search, Zap } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, getDocs, query, where, orderBy, limit, startAfter } from 'firebase/firestore';
 import TransactionTable from './TransactionTable';
 import EditTransactionModal from './EditTransactionModal';
 import AccountSearchDropdown from './AccountSearchDropdown';
+import TodayInterferenceModal from './TodayInterferenceModal';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
 import { deleteTransactionRecord } from '../utils/transactionOperations';
 
@@ -15,6 +16,7 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
     const [loadingData, setLoadingData] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [editingTxn, setEditingTxn] = useState(null);
+    const [isInterferenceModalOpen, setIsInterferenceModalOpen] = useState(false);
 
     const handleDeleteTransaction = async (t) => {
         const ok = await deleteTransactionRecord(t);
@@ -231,7 +233,8 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
                         </div>
 
                         {/* Right: Actions */}
-                        <div className="shrink-0 w-full sm:w-auto flex gap-2">
+                        <div className="shrink-0 w-full sm:w-auto flex flex-wrap sm:flex-nowrap gap-2">
+                            
                             <button
                                 type="button"
                                 onClick={handleSearch}
@@ -239,6 +242,15 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
                             >
                                 <Search className="w-4 h-4" />
                                 <span className="hidden sm:inline">Search</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsInterferenceModalOpen(true)}
+                                className="flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg text-xs sm:text-sm font-bold shadow-sm transition hover:shadow cursor-pointer"
+                                title="Today Interference"
+                            >
+                                <Zap className="w-4 h-4 fill-white" />
+                                <span>Interference</span>
                             </button>
                             <button
                                 type="button"
@@ -410,7 +422,17 @@ export default function TransactionsTab({ updateTrigger, allowedAccount, current
                     onClose={() => setEditingTxn(null)} 
                     transaction={editingTxn} 
                     currentUser={currentUser} 
-                    onSaveSuccess={handleTransactionSaved} 
+                    onSaveSuccess={handleTransactionSaved}
+                />
+
+                {/* Today Interference Modal */}
+                <TodayInterferenceModal 
+                    isOpen={isInterferenceModalOpen}
+                    onClose={() => setIsInterferenceModalOpen(false)}
+                    defaultStartDate={inputStartDate}
+                    defaultEndDate={inputEndDate}
+                    fyOptions={fyOptions}
+                    currentUser={currentUser}
                 />
             </div>
         </div>

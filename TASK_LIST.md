@@ -224,16 +224,20 @@ localStorage keys:
 
 ---
 
-## Task 7: Future — Firestore Push (NOT NOW) ⬜ 🟢
+## Task 7: Firestore Push for Transactions ✅ 🟢
 
-> ⛔ **DO NOT IMPLEMENT YET.** This is documented for future reference only.
-> User will explicitly request this after testing the local sync.
+**File(s) Created / Modified:**
+- `src/utils/tallyFirestorePush.js` (Core push engine with affected accounts auto-creation, deduplication, incremental balance delta sync, metadata update)
+- `src/components/TallyFirestorePushModal.jsx` (Push confirmation, voucher type analysis, new accounts warning, progress tracking)
+- `src/components/TallySyncTab.jsx` (Position 1 "Push to Firebase" toolbar button, FY selector integration, update triggers)
+- `src/App.jsx` (Passed `setUpdateTrigger` to `TallySyncTab` for global live refresh)
 
-### Future sub-tasks (placeholder):
-- [ ] **7.1** "Push to Firestore" button for masters
-- [ ] **7.2** "Push to Firestore" button for transactions
-- [ ] **7.3** Reuse ImportCenter's `processAffectedAccounts()` and `syncBalancesForImportedAccounts()` logic
-- [ ] **7.4** Delta sync (only push changed records)
+### Sub-tasks Completed:
+- [x] **7.1** Analyzed ImportCenter's `handleSavePreviewToFirebase`, `processAffectedAccounts`, and balance sync flow
+- [x] **7.2** Created `src/utils/tallyFirestorePush.js` implementing exact ImportCenter logic with Option A (incremental balance delta for new vouchers) and smart deduplication
+- [x] **7.3** Created `src/components/TallyFirestorePushModal.jsx` for pre-push analysis, voucher breakdown, new accounts alert, and step-by-step progress
+- [x] **7.4** Added "Push to Firebase" button in Transactions sub-tab toolbar (Position 1)
+- [x] **7.5** Connected `setUpdateTrigger` so all tabs refresh immediately upon push
 
 ---
 

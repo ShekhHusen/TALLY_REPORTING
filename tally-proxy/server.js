@@ -13,6 +13,7 @@ import express from 'express';
 import cors from 'cors';
 
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || '3001', 10);
+const PROXY_HOST = process.env.PROXY_HOST || '0.0.0.0';
 const TALLY_HOST = process.env.TALLY_HOST || 'localhost';
 const TALLY_PORT = parseInt(process.env.TALLY_PORT || '9000', 10);
 const TALLY_URL = `http://${TALLY_HOST}:${TALLY_PORT}`;
@@ -47,12 +48,33 @@ function runSequentially(task) {
     return result;
 }
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
+// Health check endpoint with real-time Tally reachability test
+app.get('/health', async (_req, res) => {
+    let tallyReachable = false;
+    let latencyMs = null;
+
+    try {
+        const start = Date.now();
+        const testRes = await fetch(TALLY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/xml', 'Connection': 'close' },
+            body: '<ENVELOPE><HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Data</TYPE><ID>List of Companies</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES></DESC></BODY></ENVELOPE>',
+            signal: AbortSignal.timeout(2500),
+        });
+        if (testRes.ok) {
+            tallyReachable = true;
+            latencyMs = Date.now() - start;
+        }
+    } catch {
+        tallyReachable = false;
+    }
+
     res.json({
         status: 'ok',
         proxy: `http://localhost:${PROXY_PORT}`,
         tallyTarget: TALLY_URL,
+        tallyReachable,
+        latencyMs,
         timestamp: new Date().toISOString(),
     });
 });
@@ -130,12 +152,12 @@ app.get('/', (_req, res) => {
     });
 });
 
-app.listen(PROXY_PORT, '0.0.0.0', () => {
+app.listen(PROXY_PORT, PROXY_HOST, () => {
     console.log('');
     console.log('  ╔══════════════════════════════════════════════════╗');
     console.log('  ║         🔌 Tally CORS Proxy Server (Safe Queue)  ║');
     console.log('  ╠══════════════════════════════════════════════════╣');
-    console.log(`  ║  Proxy:  http://localhost:${PROXY_PORT}                  ║`);
+    console.log(`  ║  Proxy:  http://${PROXY_HOST === '0.0.0.0' ? 'localhost' : PROXY_HOST}:${PROXY_PORT}                  ║`);
     console.log(`  ║  Tally:  ${TALLY_URL}                     ║`);
     console.log('  ║  Mode:   Single-Flight Sequential Queue          ║');
     console.log('  ║                                                  ║');
