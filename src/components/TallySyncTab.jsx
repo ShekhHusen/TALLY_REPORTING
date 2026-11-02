@@ -2229,9 +2229,9 @@ export default function TallySyncTab({ currentUser, setUpdateTrigger }) {
                                 <label className="block text-xs font-extrabold text-slate-700 mb-1.5">Tally Endpoint URL</label>
                                 <input
                                     type="text"
-                                    value={tallyUrl}
+                                    value="http://192.168.1.80:3001"
                                     onChange={(e) => setTallyUrl(e.target.value)}
-                                    placeholder="http://192.168.1.80:3001"
+                                    placeholder="http://localhost:3001"
                                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500"
                                 />
                                 <p className="text-[11px] text-slate-400 mt-1.5">
