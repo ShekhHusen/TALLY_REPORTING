@@ -8,8 +8,12 @@ import { deleteTransactionRecord } from '../utils/transactionOperations';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from 'xlsx';
-import { X, FileText, Download, ChevronUp, ChevronDown, Calculator, Calendar, CheckSquare, Square, Percent, AlertCircle } from 'lucide-react';
+import { X, FileText, Download, ChevronUp, ChevronDown, Calculator, Calendar, CheckSquare, Square, Percent, AlertCircle, Clock, TrendingUp, Maximize2, Minimize2 } from 'lucide-react';
 import { calculateAccountInterestStatement } from '../utils/interestCalculation';
+import { calculateAccountAging } from '../utils/agingCalculation';
+import { calculateAccountCashFlow } from '../utils/cashFlowCalculation';
+import AccountAgingView from './AccountAgingView';
+import AccountCashFlowView from './AccountCashFlowView';
 import { isRestrictedAccountUser } from './UserManagementTab';
 
 const formatCurrency = (num) => {
@@ -37,6 +41,24 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
     const [showFullDetails, setShowFullDetails] = useState(false);
     const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
     const [editingTxn, setEditingTxn] = useState(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Reset fullscreen when modal closes and listen for Escape key to exit fullscreen
+    useEffect(() => {
+        if (!isOpen) {
+            setIsFullscreen(false);
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && isFullscreen) {
+                setIsFullscreen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isFullscreen]);
 
     // --- Interest Calculation State ---
     const [viewMode, setViewMode] = useState(() => (isRestrictedUser ? 'statement' : (initialMode || 'statement')));
@@ -53,6 +75,9 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
     const [daysBasis, setDaysBasis] = useState(365); // 365 | 360
     const [includeOpeningBalance, setIncludeOpeningBalance] = useState(true);
     const [selectedTxnIds, setSelectedTxnIds] = useState(new Set());
+
+    const [agingAsOfDate, setAgingAsOfDate] = useState(new Date().toISOString().slice(0, 10));
+
 
     // Click-outside listener for FY Dropdown
     useEffect(() => {
@@ -490,6 +515,36 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
         accountName
     ]);
 
+    // --- Aging Calculation Memo ---
+    const agingResult = useMemo(() => {
+        if (viewMode !== 'aging') {
+            return { summary: { totalOutstanding: 0, weightedAvgDays: 0, unpaidBillsCount: 0 }, buckets: [], unpaidVouchers: [] };
+        }
+        return calculateAccountAging({
+            transactions: processedTransactions,
+            openingBalance: parseFloat(fyData?.openingBalance || 0),
+            openingBalanceType: fyData?.openingBalanceType || 'Dr',
+            openingDate: earliestSelectedFY?.startDate || '',
+            asOfDate: agingAsOfDate,
+            accountGroup: accountData?.group || '',
+            closingBalance: computedClosingBalance,
+        });
+    }, [viewMode, processedTransactions, fyData, earliestSelectedFY, agingAsOfDate, accountData, computedClosingBalance]);
+
+    // --- Cash Flow Calculation Memo ---
+    const cashFlowResult = useMemo(() => {
+        if (viewMode !== 'cashflow') {
+            return { summary: {}, monthlyBreakdown: [], channelSummary: [] };
+        }
+        return calculateAccountCashFlow({
+            transactions: processedTransactions,
+            openingBalance: parseFloat(fyData?.openingBalance || 0),
+            openingBalanceType: fyData?.openingBalanceType || 'Dr',
+            openingDate: earliestSelectedFY?.startDate || '',
+            closingBalance: computedClosingBalance,
+        });
+    }, [viewMode, processedTransactions, fyData, earliestSelectedFY, computedClosingBalance]);
+
     // Transaction selection toggles
     const toggleSelectTxn = (id) => {
         setSelectedTxnIds(prev => {
@@ -550,6 +605,87 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
             });
 
             docPDF.save(`${accountName}_Interest_Statement_${interestEndDate}.pdf`);
+            return;
+        }
+
+        if (viewMode === 'aging') {
+            docPDF.setFontSize(14);
+            docPDF.text(`Aging Analysis Report - ${accountName}`, 14, 15);
+            docPDF.setFontSize(10);
+            docPDF.text(`Account Group: ${accountData?.group || 'N/A'}`, 14, 22);
+            docPDF.text(`As of Date: ${agingAsOfDate}`, 14, 28);
+            docPDF.text(`Total Outstanding: ${formatCurrency(agingResult.summary.totalOutstanding)}`, 130, 22);
+            docPDF.text(`Average Age: ${agingResult.summary.weightedAvgDays} Days`, 130, 28);
+            docPDF.text(`Unpaid Vouchers: ${agingResult.summary.unpaidBillsCount}`, 130, 34);
+
+            const tableColumn = ["Date", "Vch No", "Type", "Particulars", "Original", "Settled", "Pending Due", "Age", "Slab"];
+            const tableRows = agingResult.unpaidVouchers.map(v => [
+                v.date,
+                v.voucherNo,
+                v.type,
+                v.particulars,
+                formatCurrency(v.originalAmount),
+                v.settledAmount > 0 ? formatCurrency(v.settledAmount) : '-',
+                formatCurrency(v.pendingAmount),
+                `${v.ageDays} d`,
+                v.slabLabel
+            ]);
+
+            autoTable(docPDF, {
+                head: [tableColumn],
+                body: tableRows,
+                startY: 40,
+                styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+                headStyles: { fillColor: [79, 70, 229] },
+                margin: { left: 14, right: 14 }
+            });
+
+            docPDF.save(`${accountName}_Aging_Report_${agingAsOfDate}.pdf`);
+            return;
+        }
+
+        if (viewMode === 'cashflow') {
+            docPDF.setFontSize(14);
+            docPDF.text(`Monthly Cash Flow Statement - ${accountName}`, 14, 15);
+            docPDF.setFontSize(10);
+            docPDF.text(`Fiscal Years: ${selectedFYNames}`, 14, 22);
+            docPDF.text(`Total Inflow: ${formatCurrency(cashFlowResult.summary.totalInflow)}`, 14, 28);
+            docPDF.text(`Total Outflow: ${formatCurrency(cashFlowResult.summary.totalOutflow)}`, 130, 28);
+            docPDF.text(`Net Cash Flow: ${formatCurrency(cashFlowResult.summary.netFlow)}`, 14, 34);
+
+            const tableColumn = ["Month", "Vouchers", "Inflow (Cr)", "Outflow (Dr)", "Net Flow", "Running Balance"];
+            const tableRows = [];
+            if (cashFlowResult.summary?.openingBalance > 0) {
+                tableRows.push([
+                    "Opening Balance",
+                    "-",
+                    cashFlowResult.summary.openingBalanceType === 'Cr' ? formatCurrency(cashFlowResult.summary.openingBalance) : '-',
+                    cashFlowResult.summary.openingBalanceType !== 'Cr' ? formatCurrency(cashFlowResult.summary.openingBalance) : '-',
+                    "-",
+                    `${formatCurrency(cashFlowResult.summary.openingBalance)} ${cashFlowResult.summary.openingBalanceType}`
+                ]);
+            }
+            cashFlowResult.monthlyBreakdown.forEach(m => {
+                tableRows.push([
+                    m.label,
+                    m.txnCount,
+                    formatCurrency(m.inflow),
+                    formatCurrency(m.outflow),
+                    `${m.netFlow >= 0 ? '+' : ''}${formatCurrency(m.netFlow)}`,
+                    `${formatCurrency(m.runningBalance)} ${m.runningBalanceType}`
+                ]);
+            });
+
+            autoTable(docPDF, {
+                head: [tableColumn],
+                body: tableRows,
+                startY: 40,
+                styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+                headStyles: { fillColor: [79, 70, 229] },
+                margin: { left: 14, right: 14 }
+            });
+
+            docPDF.save(`${accountName}_Cash_Flow_${safeFYFile}.pdf`);
             return;
         }
 
@@ -625,6 +761,59 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Interest_Calculation");
             XLSX.writeFile(workbook, `${accountName}_Interest_Calculation_${interestEndDate}.xlsx`);
+            return;
+        }
+
+        if (viewMode === 'aging') {
+            const formattedData = agingResult.unpaidVouchers.map(v => ({
+                Date: v.date,
+                VoucherNo: v.voucherNo,
+                Type: v.type,
+                Particulars: v.particulars,
+                OriginalAmount: v.originalAmount,
+                SettledAmount: v.settledAmount,
+                PendingDue: v.pendingAmount,
+                AgeDays: v.ageDays,
+                AgingSlab: v.slabLabel,
+                Narration: v.narration || ''
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(formattedData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Aging_Analysis");
+            XLSX.writeFile(workbook, `${accountName}_Aging_Report_${agingAsOfDate}.xlsx`);
+            return;
+        }
+
+        if (viewMode === 'cashflow') {
+            const formattedData = [];
+            if (cashFlowResult.summary?.openingBalance > 0) {
+                formattedData.push({
+                    Month: "Opening Balance",
+                    VoucherCount: "-",
+                    InflowAmount: cashFlowResult.summary.openingBalanceType === 'Cr' ? cashFlowResult.summary.openingBalance : null,
+                    OutflowAmount: cashFlowResult.summary.openingBalanceType !== 'Cr' ? cashFlowResult.summary.openingBalance : null,
+                    NetCashFlow: null,
+                    RunningBalance: cashFlowResult.summary.openingBalance,
+                    BalanceType: cashFlowResult.summary.openingBalanceType
+                });
+            }
+            cashFlowResult.monthlyBreakdown.forEach(m => {
+                formattedData.push({
+                    Month: m.label,
+                    VoucherCount: m.txnCount,
+                    InflowAmount: m.inflow,
+                    OutflowAmount: m.outflow,
+                    NetCashFlow: m.netFlow,
+                    RunningBalance: m.runningBalance,
+                    BalanceType: m.runningBalanceType
+                });
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(formattedData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Monthly_Cash_Flow");
+            XLSX.writeFile(workbook, `${accountName}_Cash_Flow_${safeFYFile}.xlsx`);
             return;
         }
 
@@ -717,20 +906,19 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
     };
 
     return (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] flex flex-col overflow-hidden ring-1 ring-black/5">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-150 ${
+            isFullscreen ? 'p-0 bg-black/70' : 'p-4 sm:p-6 bg-black/40 backdrop-blur-sm'
+        }`}>
+            <div className={`bg-white flex flex-col overflow-hidden transition-all duration-200 ${
+                isFullscreen 
+                    ? 'w-full h-full rounded-none shadow-none ring-0' 
+                    : 'rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] ring-1 ring-black/5'
+            }`}>
                 {/* Header Top Bar */}
                 <div className="p-4 sm:px-6 sm:py-4 border-b border-slate-100 flex flex-col gap-3 sm:gap-4 shrink-0 bg-white z-20">
                     {/* Row 1: Back, View Mode Switcher, FY, and Actions */}
                     <div className="flex flex-wrap justify-between items-center w-full gap-2 sm:gap-4">
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                            <button
-                                onClick={onClose}
-                                className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0 cursor-pointer"
-                                title="Close"
-                            >
-                                <X className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-                            </button>
 
                             {/* Mode Switcher Tabs */}
                             {!isRestrictedUser ? (
@@ -748,6 +936,30 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                     </button>
                                     <button
                                         type="button"
+                                        onClick={() => setViewMode('aging')}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                                            viewMode === 'aging'
+                                                ? 'bg-indigo-600 text-white shadow-xs'
+                                                : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        <Clock className="w-3.5 h-3.5" />
+                                        <span>Aging Report</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('cashflow')}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                                            viewMode === 'cashflow'
+                                                ? 'bg-indigo-600 text-white shadow-xs'
+                                                : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        <TrendingUp className="w-3.5 h-3.5" />
+                                        <span>Cash Flow Report</span>
+                                    </button>
+                                    <button
+                                        type="button"
                                         onClick={() => setViewMode('interest')}
                                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                                             viewMode === 'interest'
@@ -756,7 +968,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                         }`}
                                     >
                                         <Calculator className="w-3.5 h-3.5" />
-                                        <span>Interest Calc</span>
+                                        <span>Interest Calculation</span>
                                     </button>
                                 </div>
                             ) : (
@@ -843,7 +1055,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                         onChange={(e) => setShowFullDetails(e.target.checked)}
                                         className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
                                     />
-                                    <span>Full</span>
+                                    <span>Detailed</span>
                                 </label>
                             )}
                             <button
@@ -862,6 +1074,30 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                 <span className="hidden sm:inline">Excel</span>
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsFullscreen(prev => !prev)}
+                                className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors shrink-0 cursor-pointer border border-slate-200/80"
+                                title={isFullscreen ? "Exit Full Screen (Esc)" : "Full Screen View"}
+                            >
+                                {isFullscreen ? (
+                                    <>
+                                        <Minimize2 className="w-4 h-4 text-slate-700" strokeWidth={2.5} />
+                                    </>
+                                ) : (
+                                    <>
+                                        <Maximize2 className="w-4 h-4 text-slate-700" strokeWidth={2.5} />
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0 cursor-pointer"
+                                title="Close"
+                            >
+                                <X className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                            </button>
+
                         </div>
                     </div>
 
@@ -877,6 +1113,16 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                             {viewMode === 'interest' && (
                                 <span className="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-bold shrink-0">
                                     Interest Calculation
+                                </span>
+                            )}
+                            {viewMode === 'aging' && (
+                                <span className="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-bold shrink-0">
+                                    Aging Analysis
+                                </span>
+                            )}
+                            {viewMode === 'cashflow' && (
+                                <span className="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-bold shrink-0">
+                                    Cash Flow Analysis
                                 </span>
                             )}
                         </div>
@@ -952,63 +1198,63 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                 </div>
                             </div>
                         </div>
-                    ) : (
-                        /* Interest Calculation Bento Grid */
-                        <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0 transition-all duration-300 ease-in-out">
+                    ) : viewMode === 'interest' ? (
+                        /* Interest Calculation Shortcut Stats */
+                        <div className="p-2 sm:px-5 sm:py-2.5 border-b border-slate-200/80 bg-slate-50 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 shrink-0">
                             {/* Card 1: Principal & Payments */}
-                            <div className="bg-white border border-slate-200/60 rounded-xl p-3 sm:p-4 shadow-xs">
-                                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Principal Flow</div>
-                                <div className="flex justify-between items-center text-xs sm:text-sm mb-1.5">
-                                    <span className="text-slate-500">Debits (Principal):</span>
-                                    <span className="font-bold text-slate-800">{formatCurrency(interestResult.summary.initialPrincipal)}</span>
+                            <div className="bg-white border border-slate-200/70 rounded-lg p-2.5 shadow-2xs flex flex-col justify-between">
+                                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Principal Flow</div>
+                                <div className="flex justify-between items-center text-xs mb-1">
+                                    <span className="text-slate-500">Debits:</span>
+                                    <span className="font-semibold text-slate-800">{formatCurrency(interestResult.summary.initialPrincipal)}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-xs sm:text-sm">
-                                    <span className="text-slate-500">Credits (Payments):</span>
-                                    <span className="font-bold text-emerald-600">{formatCurrency(interestResult.summary.totalPaid)}</span>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-500">Payments:</span>
+                                    <span className="font-semibold text-emerald-600">{formatCurrency(interestResult.summary.totalPaid)}</span>
                                 </div>
                             </div>
 
                             {/* Card 2: Total Interest */}
-                            <div className="bg-rose-50/70 border border-rose-200/80 rounded-xl p-3 sm:p-4 shadow-xs">
-                                <div className="text-[11px] font-bold text-rose-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                    <Percent className="w-3.5 h-3.5 text-rose-600" />
+                            <div className="bg-rose-50/50 border border-rose-200/70 rounded-lg p-2.5 shadow-2xs flex flex-col justify-between">
+                                <div className="text-[10px] font-bold text-rose-700 uppercase tracking-wide flex items-center gap-1">
+                                    <Percent className="w-3 h-3 text-rose-600" />
                                     <span>Total Interest</span>
                                 </div>
-                                <div className="text-lg sm:text-2xl font-black text-rose-600 tracking-tight mt-1">
+                                <div className="text-base font-bold text-rose-700 tracking-tight my-1">
                                     {formatCurrency(interestResult.summary.totalInterest)}
                                 </div>
-                                <div className="text-[10px] text-rose-700 font-medium mt-1">
+                                <div className="text-[10px] text-rose-600 font-medium">
                                     {interestResult.summary.totalDays} Days @ {interestRate}% {rateType === 'monthly' ? 'p.m.' : 'p.a.'}
                                 </div>
                             </div>
 
                             {/* Card 3: Net Balance Due */}
-                            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/60 border border-indigo-200/80 rounded-xl p-3 sm:p-4 shadow-xs">
-                                <div className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider mb-1">
+                            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-200/70 rounded-lg p-2.5 shadow-2xs flex flex-col justify-between">
+                                <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide">
                                     Net Balance Due
                                 </div>
-                                <div className="text-lg sm:text-2xl font-black text-indigo-950 tracking-tight mt-1">
-                                    {formatCurrency(interestResult.summary.finalBalance)} <span className="text-sm font-bold text-indigo-700">{interestResult.summary.finalBalanceType}</span>
+                                <div className="text-base font-bold text-indigo-950 tracking-tight my-1">
+                                    {formatCurrency(interestResult.summary.finalBalance)} <span className="text-xs font-semibold text-indigo-700">{interestResult.summary.finalBalanceType}</span>
                                 </div>
-                                <div className="text-[10px] text-slate-500 font-medium mt-1">
+                                <div className="text-[10px] text-slate-500 font-medium">
                                     Principal + Interest - Paid
                                 </div>
                             </div>
 
                             {/* Card 4: Rate & Selection Status */}
-                            <div className="bg-white border border-slate-200/60 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between">
-                                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                    Calculation Parameters
+                            <div className="bg-white border border-slate-200/70 rounded-lg p-2.5 shadow-2xs flex flex-col justify-between">
+                                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                                    Parameters
                                 </div>
-                                <div className="text-xs sm:text-sm font-semibold text-slate-700 mt-1">
-                                    Rate: <span className="text-indigo-600 font-bold">{interestRate}% {rateType === 'monthly' ? 'Per Month' : 'Per Year'}</span>
+                                <div className="text-xs font-semibold text-slate-700">
+                                    Rate: <span className="text-indigo-600 font-bold">{interestRate}% {rateType === 'monthly' ? 'p.m.' : 'p.a.'}</span>
                                 </div>
-                                <div className="text-[11px] text-slate-500 mt-1">
-                                    FYs: <span className="font-bold text-indigo-700">{selectedFYNames}</span> ({transactions.length} txns)
+                                <div className="text-[10px] text-slate-500 mt-1 truncate">
+                                    FYs: <span className="font-semibold text-indigo-700">{selectedFYNames}</span> ({transactions.length} txns)
                                 </div>
                             </div>
                         </div>
-                    )
+                    ) : null
                 )}
 
                 {/* Interest Calculation Parameter Control Bar (when viewMode === 'interest') */}
@@ -1185,7 +1431,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                 </div>
                             )}
                         </>
-                    ) : (
+                    ) : viewMode === 'interest' ? (
                         /* Interest Calculation View (Matching User Reference Sheet Exactly) */
                         <div className="overflow-x-auto min-w-full">
                             <table className="min-w-full divide-y divide-gray-200 text-sm border-collapse">
@@ -1249,7 +1495,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                                         className="bg-rose-50/70 hover:bg-rose-100/60 transition-colors border-l-4 border-l-rose-500"
                                                     >
                                                         <td className="px-3 py-2.5 text-center">
-                                                            <span className="text-[10px] font-extrabold text-rose-600 bg-rose-200/80 px-1.5 py-0.5 rounded">
+                                                            <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded">
                                                                 INT
                                                             </span>
                                                         </td>
@@ -1257,7 +1503,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                                             {r.date}
                                                         </td>
                                                         <td className="px-4 py-2.5 whitespace-nowrap text-center">
-                                                            <span className="font-extrabold text-rose-600 bg-rose-100 px-2 py-0.5 rounded text-xs tracking-wider">
+                                                            <span className="font-bold text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded text-xs tracking-wide">
                                                                 {r.dueDays} DAYS
                                                             </span>
                                                         </td>
@@ -1265,7 +1511,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                                             {r.perDayInterest ? r.perDayInterest.toFixed(2) : '-'}
                                                         </td>
                                                         <td className="px-4 py-2.5 whitespace-nowrap">
-                                                            <span className="font-black text-rose-600 tracking-wide text-xs sm:text-sm">
+                                                            <span className="font-bold text-rose-600 tracking-wide text-xs sm:text-sm">
                                                                 {r.particulars}
                                                             </span>
                                                             {r.isFinalInterestRow && (
@@ -1274,13 +1520,13 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                                                 </span>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-2.5 whitespace-nowrap text-right font-mono font-extrabold text-rose-600 text-xs sm:text-sm">
+                                                        <td className="px-4 py-2.5 whitespace-nowrap text-right font-mono font-bold text-rose-600 text-xs sm:text-sm">
                                                             {r.debitAmount ? formatCurrency(r.debitAmount) : '-'}
                                                         </td>
                                                         <td className="px-4 py-2.5 whitespace-nowrap text-right text-gray-400">
                                                             -
                                                         </td>
-                                                        <td className="px-4 py-2.5 whitespace-nowrap text-right font-mono font-black text-slate-900 text-xs sm:text-sm">
+                                                        <td className="px-4 py-2.5 whitespace-nowrap text-right font-mono font-bold text-slate-900 text-xs sm:text-sm">
                                                             {formatCurrency(r.balance)} <span className="text-xs font-semibold text-slate-500">{r.balanceType}</span>
                                                         </td>
                                                     </tr>
@@ -1351,7 +1597,7 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                             <td colSpan={2} className="px-4 py-3 text-left text-slate-700 uppercase tracking-wider text-xs">
                                                 Total Summary
                                             </td>
-                                            <td className="px-4 py-3 text-center text-xs text-rose-700 font-extrabold">
+                                            <td className="px-4 py-3 text-center text-xs text-rose-700 font-bold">
                                                 {interestResult.summary.totalDays} Days
                                             </td>
                                             <td className="px-4 py-3 text-right text-xs text-slate-400">
@@ -1360,13 +1606,13 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                             <td className="px-4 py-3 text-left text-xs text-slate-600">
                                                 Interest Charged: {formatCurrency(interestResult.summary.totalInterest)}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-mono text-xs sm:text-sm text-slate-900 font-extrabold">
+                                            <td className="px-4 py-3 text-right font-mono text-xs text-slate-900 font-bold">
                                                 {formatCurrency(interestResult.summary.initialPrincipal + interestResult.summary.totalInterest)}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-mono text-xs sm:text-sm text-emerald-600 font-extrabold">
+                                            <td className="px-4 py-3 text-right font-mono text-xs text-emerald-600 font-bold">
                                                 {formatCurrency(interestResult.summary.totalPaid)}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-mono text-sm sm:text-base text-indigo-950 font-black">
+                                            <td className="px-4 py-3 text-right font-mono text-xs sm:text-sm text-indigo-950 font-bold">
                                                 {formatCurrency(interestResult.summary.finalBalance)} <span className="text-xs font-bold text-indigo-700">{interestResult.summary.finalBalanceType}</span>
                                             </td>
                                         </tr>
@@ -1374,7 +1620,19 @@ export default function AccountStatementModal({ isOpen, onClose, accountName, ac
                                 )}
                             </table>
                         </div>
-                    )}
+                    ) : viewMode === 'aging' ? (
+                        <AccountAgingView 
+                            agingResult={agingResult} 
+                            accountName={accountName} 
+                            asOfDate={agingAsOfDate} 
+                            setAsOfDate={setAgingAsOfDate} 
+                        />
+                    ) : viewMode === 'cashflow' ? (
+                        <AccountCashFlowView 
+                            cashFlowResult={cashFlowResult} 
+                            accountName={accountName} 
+                        />
+                    ) : null}
                 </div>
 
                 {/* Edit Transaction Modal */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db, auth } from './firebase';
 import { doc, updateDoc, getDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -23,7 +23,10 @@ import {
     Key,
     User,
     RefreshCw,
-    FilePlus2
+    FilePlus2,
+    ChevronRight,
+    ChevronDown,
+    PanelLeftClose
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -52,6 +55,35 @@ export default function App() {
 
     const [updateTrigger, setUpdateTrigger] = useState(0);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+        try {
+            const saved = localStorage.getItem('sidebar_collapsed');
+            return saved !== null ? saved === 'true' : true;
+        } catch { return true; }
+    });
+    const [isHovered, setIsHovered] = useState(false);
+    const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+    const userMenuRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+                setUserDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const toggleSidebar = () => {
+        setSidebarCollapsed(prev => {
+            const next = !prev;
+            try { localStorage.setItem('sidebar_collapsed', String(next)); } catch {}
+            return next;
+        });
+    };
+
+    const isExpanded = !sidebarCollapsed || isHovered;
     const [lastUpdatedDate, setLastUpdatedDate] = useState('');
 
     // Helper role checks
@@ -79,18 +111,18 @@ export default function App() {
         return hasTabAccess(item.id);
     });
 
-    // Ensure activeTab stays synchronized with permitted tabs
+    // Ensure activeTab stays synchronized with permitted tabs (by default load 'accounts')
     useEffect(() => {
         if (currentUser && availableTabs.length > 0) {
             if (!activeTab || !availableTabs.some(t => t.id === activeTab)) {
-                if (isSuperAdmin && availableTabs.some(t => t.id === 'users')) {
-                    setActiveTab('users');
+                if (availableTabs.some(t => t.id === 'accounts')) {
+                    setActiveTab('accounts');
                 } else {
                     setActiveTab(availableTabs[0].id);
                 }
             }
         }
-    }, [currentUser, availableTabs, activeTab, isSuperAdmin]);
+    }, [currentUser, availableTabs, activeTab]);
 
     // Fetch last updated date for admin (super or secondary)
     useEffect(() => {
@@ -205,154 +237,220 @@ export default function App() {
         : 'User';
 
     return (
-        <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
+        <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
             
-            {/* TOP NAVIGATION BAR */}
-            <header className="bg-white border-b border-red-100 px-4 md:px-6 py-2.5 flex justify-between items-center shadow-sm z-30">
-                <div className="flex items-center gap-4 lg:gap-6">
-                    {/* LOGO */}
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 flex items-center justify-center shrink-0 overflow-visible">
-                            <img src="/LOGO%20WON.png" alt="Logo" className="w-full h-full object-contain mix-blend-multiply" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight leading-none">Jay Baudhimai Traders</h1>
-                            <p className="text-[9px] md:text-[10px] text-red-600 mt-1 font-bold tracking-widest uppercase leading-none">Accounts Reporting Portal</p>
-                        </div>
-                    </div>
+            {/* RESERVED SPACE FOR DESKTOP SIDEBAR */}
+            <div 
+                className={`hidden md:block shrink-0 transition-all duration-300 ease-in-out ${
+                    sidebarCollapsed ? 'w-[72px]' : 'w-64'
+                }`}
+            />
 
-                    {/* PAGE TITLE (Moved to Nav) */}
-                    <div className="hidden md:block h-6 w-px bg-slate-200 mx-1"></div>
-                    <div className="hidden md:flex flex-col justify-center">
-                        <h2 className="flex text-base lg:text-lg font-bold text-slate-800 items-center gap-2 leading-tight">
-                            {activeTabObj && <activeTabObj.icon className="w-5 h-5 text-red-600" />}
-                            {activeTabObj ? activeTabObj.label : 'Dashboard'}
-                        </h2>
-                        {isAdmin && (
-                            <p className="text-[11px] text-slate-500 font-medium leading-none mt-1">
-                                last updated on : <span className="font-semibold text-slate-700">{lastUpdatedDate || '...'}</span>
-                            </p>
-                        )}
-                    </div>
+            {/* DESKTOP FIXED LEFT SIDEBAR */}
+            <aside 
+                onMouseEnter={() => { if (sidebarCollapsed) setIsHovered(true); }}
+                onMouseLeave={() => { setIsHovered(false); }}
+                className={`hidden md:flex flex-col fixed top-0 bottom-0 left-0 bg-white border-r border-slate-200 z-40 transition-all duration-300 ease-in-out select-none overflow-hidden ${
+                    isExpanded ? 'w-64 shadow-2xl' : 'w-[72px] shadow-sm'
+                }`}
+            >
+                {/* SIDEBAR BRAND HEADER */}
+                <div className="h-16 border-b border-slate-100 px-3 flex items-center justify-between shrink-0 overflow-hidden">
+                    {isExpanded ? (
+                        <>
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                                    <img src="/LOGO%20WON.png" alt="Logo" className="w-full h-full object-contain mix-blend-multiply" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h1 className="text-sm font-black text-slate-900 tracking-tight leading-tight truncate">Jay Baudhimai Traders</h1>
+                                    <p className="text-[9px] text-red-600 font-bold tracking-wider uppercase leading-none mt-0.5 truncate">Accounts Portal</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={toggleSidebar}
+                                title={sidebarCollapsed ? "Pin sidebar" : "Collapse sidebar"}
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors shrink-0 ml-1"
+                            >
+                                {sidebarCollapsed ? <ChevronRight className="w-4 h-4 text-slate-600" /> : <PanelLeftClose className="w-4 h-4" />}
+                            </button>
+                        </>
+                    ) : (
+                        <div className="w-full flex items-center justify-center">
+                            <div className="w-10 h-10 flex items-center justify-center cursor-pointer" onClick={toggleSidebar} title="Click to expand / pin sidebar">
+                                <img src="/LOGO%20WON.png" alt="Logo" className="w-full h-full object-contain mix-blend-multiply" />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                <div className="flex items-center gap-3 lg:gap-5">
-                    {/* DESKTOP NAVIGATION (Compact Section) */}
-                    <nav className="hidden md:flex items-center p-1 bg-slate-100/80 border border-slate-200 rounded-xl shadow-sm gap-0.5">
-                        {availableTabs.map(tab => {
-                            const isActive = activeTab === tab.id;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
-                                        isActive 
-                                        ? 'bg-red-600 text-white shadow-md' 
-                                        : 'text-slate-500 hover:text-slate-900 hover:bg-white'
-                                    }`}
-                                >
-                                    <tab.icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                                    <span className={isActive ? 'inline-block' : 'hidden lg:inline-block'}>{tab.label}</span>
-                                </button>
-                            );
-                        })}
-                    </nav>
-                    {/* DESKTOP RESTRICTED VIEW */}
-                    {currentUser.allowedAccount && (
-                        <div className="hidden md:flex items-center">
-                            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mr-2">View:</span>
-                            <span className="text-xs text-orange-700 bg-orange-100 px-2 py-1 rounded font-semibold max-w-[150px] truncate">
-                                {currentUser.allowedAccount}
-                            </span>
+                {/* SIDEBAR NAVIGATION ITEMS (ONLY NAVBAR, VERTICAL SCROLL DISABLED) */}
+                <nav className="flex-1 overflow-hidden py-3 space-y-1.5 px-2.5">
+                    {availableTabs.map(tab => {
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                title={!isExpanded ? tab.label : undefined}
+                                className={`w-full flex items-center rounded-xl text-xs font-bold transition-all duration-200 ${
+                                    isExpanded ? 'px-3 py-2.5 gap-3' : 'px-0 py-2.5 justify-center'
+                                } ${
+                                    isActive 
+                                        ? 'bg-red-600 text-white shadow-md shadow-red-200' 
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                                }`}
+                            >
+                                <tab.icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                                {isExpanded && <span className="truncate whitespace-nowrap">{tab.label}</span>}
+                            </button>
+                        );
+                    })}
+                </nav>
+            </aside>
+
+            {/* MAIN CONTENT WRAPPER */}
+            <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative">
+                
+                {/* TOP HEADER */}
+                <header className="bg-white border-b border-red-100 px-4 md:px-6 py-2.5 flex justify-between items-center shadow-xs z-30 shrink-0 relative">
+                    <div className="flex items-center gap-3">
+                        {/* Mobile Brand */}
+                        <div className="flex md:hidden items-center gap-2.5">
+                            <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                                <img src="/LOGO%20WON.png" alt="Logo" className="w-full h-full object-contain mix-blend-multiply" />
+                            </div>
+                            <div>
+                                <h1 className="text-sm font-black text-slate-900 tracking-tight leading-tight">Jay Baudhimai Traders</h1>
+                                <p className="text-[8px] text-red-600 font-bold tracking-wider uppercase leading-none">Accounts Portal</p>
+                            </div>
                         </div>
-                    )}
-                    
-                    {/* MOBILE RESTRICTED VIEW */}
-                    {currentUser.allowedAccount && (
-                        <p className="md:hidden text-[10px] text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded inline-block font-semibold mt-0.5">
-                            View: {currentUser.allowedAccount}
-                        </p>
-                    )}
 
-                    {/* MOBILE MENU BUTTON */}
-                    <button 
-                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        className="md:hidden p-2 -mr-2 text-slate-600 hover:text-red-600 focus:outline-none"
-                    >
-                        <User className="w-6 h-6" />
-                    </button>
+                        {/* Desktop Active Tab Title & Timestamp */}
+                        <div className="hidden md:flex flex-col justify-center">
+                            <h2 className="flex text-base lg:text-lg font-bold text-slate-800 items-center gap-2 leading-tight">
+                                {activeTabObj && <activeTabObj.icon className="w-5 h-5 text-red-600" />}
+                                {activeTabObj ? activeTabObj.label : 'Dashboard'}
+                            </h2>
+                            {isAdmin && (
+                                <p className="text-[11px] text-slate-500 font-medium leading-none mt-1">
+                                    last updated on : <span className="font-semibold text-slate-700">{lastUpdatedDate || '...'}</span>
+                                </p>
+                            )}
+                        </div>
+                    </div>
 
-                    {/* DESKTOP USER MENU (Hover Dropdown) */}
-                    <div className="hidden md:block relative group">
-                        <button className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-50 transition-colors focus:outline-none">
-                            <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold shadow-inner">
+                    <div className="flex items-center gap-3 lg:gap-4">
+                        {/* RESTRICTED VIEW BADGE */}
+                        {currentUser.allowedAccount && (
+                            <div className="flex items-center bg-orange-50 border border-orange-200/80 px-2.5 py-1 rounded-lg">
+                                <span className="text-[10px] uppercase tracking-wider text-orange-600 font-bold mr-1.5">View:</span>
+                                <span className="text-xs text-orange-900 font-semibold max-w-[160px] truncate">
+                                    {currentUser.allowedAccount}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* MOBILE MENU BUTTON */}
+                        <button 
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="md:hidden p-2 -mr-1 text-slate-600 hover:text-red-600 focus:outline-none"
+                        >
+                            <User className="w-6 h-6" />
+                        </button>
+
+                        {/* DESKTOP USER MENU & LOGOUT ON TOP */}
+                        <div className="hidden md:flex items-center gap-3">
+                            {/* User Profile Dropdown with Click Toggle */}
+                            <div className="relative" ref={userMenuRef}>
+                                <button 
+                                    onClick={() => setUserDropdownOpen(prev => !prev)}
+                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-slate-100 transition-colors focus:outline-none border border-slate-200/60 hover:border-slate-300 cursor-pointer shadow-2xs"
+                                >
+                                    <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold text-xs shadow-inner shrink-0">
+                                        {currentUser.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="hidden lg:block text-left mr-0.5">
+                                        <p className="text-xs font-bold text-slate-900 max-w-[120px] truncate leading-tight">{currentUser.name}</p>
+                                        <p className="text-[10px] text-slate-500 font-semibold leading-tight">{roleDisplayName}</p>
+                                    </div>
+                                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180 text-red-600' : ''}`} />
+                                </button>
+                                
+                                {/* Dropdown Panel - Always on Top with z-50 */}
+                                {userDropdownOpen && (
+                                    <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200/90 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                                        <div className="p-3.5 border-b border-slate-100 bg-slate-50/80">
+                                            <p className="text-sm font-bold text-slate-900 truncate">{currentUser.name}</p>
+                                            <p className="text-xs text-slate-500 font-medium mt-0.5">{roleDisplayName}</p>
+                                            {currentUser.allowedAccount && (
+                                                <p className="text-[10px] text-orange-700 bg-orange-100 px-2 py-0.5 rounded font-semibold mt-1.5 inline-block truncate max-w-full">
+                                                    View: {currentUser.allowedAccount}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="p-2 space-y-1">
+                                            <button 
+                                                onClick={() => { setShowChangePassword(true); setUserDropdownOpen(false); }}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl transition-colors text-left cursor-pointer"
+                                            >
+                                                <Key className="w-4 h-4 text-slate-500 shrink-0" /> Change Password
+                                            </button>
+                                            <button 
+                                                onClick={() => { setUserDropdownOpen(false); handleLogout(); }}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors text-left cursor-pointer"
+                                            >
+                                                <LogOut className="w-4 h-4 text-red-500 shrink-0" /> Sign Out
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Direct Logout Button on Top Header */}
+                            <button 
+                                onClick={handleLogout}
+                                title="Sign Out"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 transition-all duration-200 shadow-2xs cursor-pointer"
+                            >
+                                <LogOut className="w-3.5 h-3.5" />
+                                <span>Logout</span>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                {/* MOBILE USER MENU DROPDOWN */}
+                {mobileMenuOpen && (
+                    <div className="md:hidden absolute top-[60px] left-0 right-0 bg-white border-b border-slate-200 shadow-lg z-40 p-4">
+                        <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold text-lg">
                                 {currentUser.name.charAt(0).toUpperCase()}
                             </div>
-                            <div className="hidden lg:block text-left mr-1">
-                                <p className="text-sm font-bold text-slate-900 max-w-[120px] truncate leading-tight">{currentUser.name}</p>
-                                <p className="text-xs text-slate-500 font-semibold leading-tight">{roleDisplayName}</p>
-                            </div>
-                        </button>
-                        
-                        {/* Dropdown Panel */}
-                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
-                            <div className="p-4 border-b border-slate-50">
-                                <p className="text-sm font-bold text-slate-900 truncate">{currentUser.name}</p>
-                                <p className="text-xs text-slate-500 font-medium mt-0.5">{roleDisplayName}</p>
-                            </div>
-                            <div className="p-2 space-y-1">
-                                <button 
-                                    onClick={() => setShowChangePassword(true)}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
-                                >
-                                    <Key className="w-4 h-4 text-slate-500" /> Change Password
-                                </button>
-                                <button 
-                                    onClick={handleLogout}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                    <LogOut className="w-4 h-4 text-red-500" /> Sign Out
-                                </button>
+                            <div>
+                                <p className="text-base font-bold text-slate-900">{currentUser.name}</p>
+                                <p className="text-sm text-slate-500 font-medium">{roleDisplayName}</p>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* MOBILE USER MENU DROPDOWN */}
-            {mobileMenuOpen && (
-                <div className="md:hidden absolute top-[60px] left-0 right-0 bg-white border-b border-slate-200 shadow-lg z-40 p-4">
-                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
-                        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold text-lg">
-                            {currentUser.name.charAt(0).toUpperCase()}
+                        <div className="flex flex-col gap-2">
+                            <button 
+                                onClick={() => { setShowChangePassword(true); setMobileMenuOpen(false); }}
+                                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg text-sm font-semibold text-gray-700"
+                            >
+                                <Key className="w-4 h-4 text-gray-500" /> Change Password
+                            </button>
+                            <button 
+                                onClick={handleLogout}
+                                className="w-full flex items-center gap-3 px-4 py-3 bg-red-50 rounded-lg text-sm font-semibold text-red-600"
+                            >
+                                <LogOut className="w-4 h-4 text-red-500" /> Logout
+                            </button>
                         </div>
-                        <div>
-                            <p className="text-base font-bold text-slate-900">{currentUser.name}</p>
-                            <p className="text-sm text-slate-500 font-medium">{roleDisplayName}</p>
-                        </div>
                     </div>
-                    <div className="flex flex-col gap-2">
-                        <button 
-                            onClick={() => { setShowChangePassword(true); setMobileMenuOpen(false); }}
-                            className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg text-sm font-semibold text-gray-700"
-                        >
-                            <Key className="w-4 h-4 text-gray-500" /> Change Password
-                        </button>
-                        <button 
-                            onClick={handleLogout}
-                            className="w-full flex items-center gap-3 px-4 py-3 bg-red-50 rounded-lg text-sm font-semibold text-red-600"
-                        >
-                            <LogOut className="w-4 h-4 text-red-500" /> Logout
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* MAIN CONTENT AREA */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                )}
 
                 {/* SCROLLABLE MAIN PAGE */}
-                <main className="flex-1 overflow-hidden p-3 md:p-4 bg-gray-50 pb-24 md:pb-4 flex flex-col">
+                <main className="flex-1 overflow-hidden p-3 md:p-4 bg-gray-50 pb-24 md:pb-4 flex flex-col min-h-0">
                     
                     {/* Password Change Modal */}
                     {showChangePassword && (
@@ -435,14 +533,14 @@ export default function App() {
                             onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false); }}
                             className={`flex flex-col items-center justify-center w-full py-2 gap-1 rounded-lg ${
                                 activeTab === tab.id 
-                                ? 'text-blue-600' 
+                                ? 'text-red-600' 
                                 : 'text-gray-500 hover:text-gray-900'
                             }`}
                         >
-                            <div className={`p-1.5 rounded-full transition-colors ${activeTab === tab.id ? 'bg-blue-50' : ''}`}>
-                                <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'fill-blue-100/50' : ''}`} />
+                            <div className={`p-1.5 rounded-full transition-colors ${activeTab === tab.id ? 'bg-red-50' : ''}`}>
+                                <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'fill-red-100/50' : ''}`} />
                             </div>
-                            <span className={`text-[10px] font-semibold tracking-wide ${activeTab === tab.id ? 'text-blue-700' : ''}`}>
+                            <span className={`text-[10px] font-semibold tracking-wide ${activeTab === tab.id ? 'text-red-700' : ''}`}>
                                 {tab.label}
                             </span>
                         </button>

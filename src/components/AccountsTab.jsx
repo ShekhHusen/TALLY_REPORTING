@@ -884,8 +884,9 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
                                         className="flex items-center justify-center w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold transition-colors shrink-0 cursor-pointer border border-indigo-200 shadow-2xs"
                                         title="Interest Calculator"
                                     >
-                                        <Calculator className="w-4 h-4 text-indigo-600" />
-                                        <span className="hidden sm:inline">Interest Calc</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chart-no-axes-combined preview-icon"><path d="M12 16v5"/><path d="M16 14.639V21"/><path d="M20 10.656V21"/><path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15"/><path d="M4 18.463V21"/><path d="M8 14.656V21"/></svg>
+                                       
+                                        <span className="hidden sm:inline">Reports</span>
                                     </button>
                                 )}
                                 <button 
