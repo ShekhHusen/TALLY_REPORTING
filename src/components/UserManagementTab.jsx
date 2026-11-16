@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc, query } from 'firebase/firestore';
-import { 
+import {
     Users, 
     X, 
     Pencil, 
@@ -16,23 +16,35 @@ import {
     ArrowRightLeft,
     Clock,
     UploadCloud,
-    Settings
+    Settings,
+    Contact,
+    LayoutDashboard,
+    RefreshCw,
+    FilePlus2
 } from 'lucide-react';
 
 export const ALL_SYSTEM_TABS = [
+    { id: 'dashboard', label: 'Dashboard', desc: 'Account stats, follow-ups & payroll summary', icon: LayoutDashboard },
     { id: 'accounts', label: 'Accounts', desc: 'Ledgers, balances, statements & vouchers', icon: Briefcase },
     { id: 'transactions', label: 'Transactions', desc: 'Voucher entries & transaction search', icon: ArrowRightLeft },
     { id: 'followups', label: 'Follow-ups', desc: 'Customer follow-up logs & reminder schedules', icon: Clock },
+    { id: 'employee', label: 'Employee', desc: 'Employee management, attendance & payroll', icon: Contact },
     { id: 'import', label: 'Import Center', desc: 'Upload Daybook, Accounts & Voucher files', icon: UploadCloud },
+    { id: 'tallysync', label: 'Tally Sync', desc: 'Live read integration: Ledgers & Vouchers from Tally', icon: RefreshCw },
+    { id: 'tallyentry', label: 'Tally Entry', desc: 'Live write integration: Push vouchers directly to Tally', icon: FilePlus2 },
     { id: 'settings', label: 'Fiscal Settings', desc: 'Fiscal year setup & active FY selection', icon: Settings },
     { id: 'users', label: 'User Management', desc: 'View user accounts & team directory', icon: Users },
 ];
 
 export const STANDARD_USER_TABS = [
-    { id: 'accounts', label: 'Accounts', desc: 'Ledgers, balances & statements' },
-    { id: 'transactions', label: 'Transactions', desc: 'Voucher entries & search' },
-    { id: 'followups', label: 'Follow-ups', desc: 'Customer follow-up schedules' },
-    { id: 'import', label: 'Import Center', desc: 'Upload Daybook & Vouchers' },
+    { id: 'dashboard', label: 'Dashboard', desc: 'Account stats, follow-ups & payroll summary', icon: LayoutDashboard },
+    { id: 'accounts', label: 'Accounts', desc: 'Ledgers, balances & statements', icon: Briefcase },
+    { id: 'transactions', label: 'Transactions', desc: 'Voucher entries & search', icon: ArrowRightLeft },
+    { id: 'followups', label: 'Follow-ups', desc: 'Customer follow-up schedules', icon: Clock },
+    { id: 'employee', label: 'Employee', desc: 'Attendance history & pay reports', icon: Contact },
+    { id: 'import', label: 'Import Center', desc: 'Upload Daybook & Vouchers', icon: UploadCloud },
+    { id: 'tallysync', label: 'Tally Sync', desc: 'Sync data from TallyPrime', icon: RefreshCw },
+    { id: 'tallyentry', label: 'Tally Entry', desc: 'Create & push vouchers to TallyPrime', icon: FilePlus2 },
 ];
 
 export const isSuperAdminUser = (u) => Boolean(u && u.role === 'admin' && u.adminType !== 'secondary');
@@ -75,7 +87,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
     const [newStatus, setNewStatus] = useState('active');
     const [newUsername, setNewUsername] = useState('');
     const [newPassword, setNewPassword] = useState('');
-    const [newAllowedTabs, setNewAllowedTabs] = useState(['accounts', 'transactions', 'followups', 'import']);
+    const [newAllowedTabs, setNewAllowedTabs] = useState(['dashboard', 'accounts', 'transactions', 'followups', 'employee', 'import']);
     const [newAllowedAccount, setNewAllowedAccount] = useState('');
     const [creatingSaving, setCreatingSaving] = useState(false);
 
@@ -144,7 +156,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
         } else if (user.allowedTabs && user.allowedTabs.length > 0) {
             setAllowedTabs(user.allowedTabs);
         } else {
-            setAllowedTabs(['accounts', 'transactions', 'followups', 'import']);
+            setAllowedTabs(['dashboard', 'accounts', 'transactions', 'followups', 'employee', 'import']);
         }
         setAllowedAccount(user.allowedAccount || '');
     };
@@ -225,7 +237,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
             const isCreatingSecondary = newRole === 'secondary_admin';
             const computedAllowedTabs = isCreatingSuper
                 ? ALL_SYSTEM_TABS.map(t => t.id)
-                : (newAllowedTabs.length > 0 ? newAllowedTabs : ['accounts', 'transactions', 'followups', 'import']);
+                : (newAllowedTabs.length > 0 ? newAllowedTabs : ['dashboard', 'accounts', 'transactions', 'followups', 'employee', 'import']);
 
             const newUserDoc = {
                 id: newUid,
@@ -263,7 +275,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
             setNewStatus('active');
             setNewUsername('');
             setNewPassword('');
-            setNewAllowedTabs(['accounts', 'transactions', 'followups', 'import']);
+            setNewAllowedTabs(['dashboard', 'accounts', 'transactions', 'followups', 'employee', 'import']);
             setNewAllowedAccount('');
 
             const roleLabel = isCreatingSuper ? 'Super Admin' : isCreatingSecondary ? 'Secondary Admin' : 'User';
@@ -567,13 +579,13 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                         <td className="hidden md:table-cell px-5 py-3 text-[11px] text-slate-600 font-medium">
                                             {isSup ? (
                                                 <span className="text-purple-700 font-bold text-[11px] bg-purple-50 px-2 py-0.5 rounded inline-flex items-center gap-1 border border-purple-100">
-                                                    <ShieldCheck size={13} /> Full Access (All 6 Tabs)
+                                                    <ShieldCheck size={13} /> Full Access (All {ALL_SYSTEM_TABS.length} Tabs)
                                                 </span>
                                             ) : isSec ? (
                                                 <div className="flex flex-col gap-1">
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="text-indigo-700 font-extrabold text-[10px] bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
-                                                            {u.allowedTabs ? u.allowedTabs.length : 4} / 6 Tabs
+                                                            {u.allowedTabs ? u.allowedTabs.length : 4} / {ALL_SYSTEM_TABS.length} Tabs
                                                         </span>
                                                     </div>
                                                     <div className="flex flex-wrap gap-1">
@@ -690,7 +702,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             {role === 'admin' && <Check size={14} className="text-purple-600 stroke-[3]" />}
                                         </div>
                                         <p className="text-[10px] text-slate-500 leading-tight">
-                                            Unrestricted full access to all 6 system tabs.
+                                            Unrestricted full access to all {ALL_SYSTEM_TABS.length} system tabs.
                                         </p>
                                     </button>
 
@@ -743,7 +755,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                     <div className="mt-2.5 p-2.5 bg-purple-50 rounded-xl border border-purple-100 flex items-start gap-2 text-xs text-purple-800 font-medium">
                                         <ShieldCheck size={16} className="text-purple-600 shrink-0 mt-0.5" />
                                         <span>
-                                            <strong>Super Admin Activated:</strong> Unrestricted access to all 6 tabs (Accounts, Transactions, Follow-ups, Import Center, Fiscal Settings, and User Management).
+                                            <strong>Super Admin Activated:</strong> Unrestricted access to all {ALL_SYSTEM_TABS.length} tabs (Accounts, Transactions, Follow-ups, Employee, Import Center, Fiscal Settings, and User Management).
                                         </span>
                                     </div>
                                 )}
@@ -767,14 +779,14 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                                 onClick={() => setAllowedTabs(ALL_SYSTEM_TABS.map(t => t.id))}
                                                 className="px-2 py-1 text-[10px] font-bold bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 shadow-2xs cursor-pointer"
                                             >
-                                                All 6
+                                                All {ALL_SYSTEM_TABS.length}
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => setAllowedTabs(['accounts', 'transactions', 'followups', 'import'])}
+                                                onClick={() => setAllowedTabs(['dashboard', 'accounts', 'transactions', 'followups', 'employee', 'import'])}
                                                 className="px-2 py-1 text-[10px] font-bold bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 shadow-2xs cursor-pointer"
                                             >
-                                                Operational (4)
+                                                Operational (6)
                                             </button>
                                             <button
                                                 type="button"
@@ -875,24 +887,58 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                             {role === 'user' && (
                                 <div className="space-y-4 pt-2 border-t border-slate-200/60">
                                     <div>
-                                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">Allowed Tabs</label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {[
-                                                { id: 'accounts', label: 'Accounts' },
-                                                { id: 'transactions', label: 'Transactions' },
-                                                { id: 'followups', label: 'Follow Ups' },
-                                                { id: 'import', label: 'Import Center' }
-                                            ].map(tab => (
-                                                <label key={tab.id} className="flex items-center gap-2 p-2 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 transition-colors shadow-2xs">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={allowedTabs.includes(tab.id)} 
-                                                        onChange={() => handleTabToggle(tab.id)}
-                                                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
-                                                    />
-                                                    <span className="text-xs font-bold text-slate-700">{tab.label}</span>
-                                                </label>
-                                            ))}
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                                                Allowed Tabs ({allowedTabs.length} of {STANDARD_USER_TABS.length} Allowed)
+                                            </label>
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAllowedTabs(STANDARD_USER_TABS.map(t => t.id))}
+                                                    className="px-2 py-0.5 text-[10px] font-bold bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 shadow-2xs cursor-pointer"
+                                                >
+                                                    Select All
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAllowedTabs([])}
+                                                    className="px-2 py-0.5 text-[10px] font-bold bg-white text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 shadow-2xs cursor-pointer"
+                                                >
+                                                    Clear
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {STANDARD_USER_TABS.map(tab => {
+                                                const isChecked = allowedTabs.includes(tab.id);
+                                                const TabIcon = tab.icon;
+                                                return (
+                                                    <label 
+                                                        key={tab.id} 
+                                                        className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                                                            isChecked 
+                                                                ? 'bg-white border-indigo-400 ring-1 ring-indigo-300/40 shadow-xs text-slate-900' 
+                                                                : 'bg-white/60 border-slate-200 text-slate-500 hover:border-indigo-200'
+                                                        }`}
+                                                    >
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={isChecked} 
+                                                            onChange={() => handleTabToggle(tab.id)}
+                                                            className="w-4 h-4 mt-0.5 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded shrink-0 cursor-pointer"
+                                                        />
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-bold flex items-center gap-1.5 text-slate-800">
+                                                                {TabIcon && <TabIcon size={13} className={isChecked ? 'text-indigo-600' : 'text-slate-400'} />}
+                                                                {tab.label}
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                                                                {tab.desc}
+                                                            </span>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
@@ -1006,7 +1052,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                                 {newRole === 'admin' && <Check size={14} className="text-purple-600 stroke-[3]" />}
                                             </div>
                                             <p className="text-[10px] text-slate-500 leading-tight">
-                                                Full access to all 6 tabs including Settings & Users.
+                                                Full access to all {ALL_SYSTEM_TABS.length} tabs including Settings & Users.
                                             </p>
                                         </button>
 
@@ -1074,14 +1120,14 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                                     onClick={() => setNewAllowedTabs(ALL_SYSTEM_TABS.map(t => t.id))}
                                                     className="px-2 py-1 text-[10px] font-bold bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 shadow-2xs cursor-pointer"
                                                 >
-                                                    All 6
+                                                    All {ALL_SYSTEM_TABS.length}
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setNewAllowedTabs(['accounts', 'transactions', 'followups', 'import'])}
+                                                    onClick={() => setNewAllowedTabs(['dashboard', 'accounts', 'transactions', 'followups', 'employee', 'import'])}
                                                     className="px-2 py-1 text-[10px] font-bold bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 shadow-2xs cursor-pointer"
                                                 >
-                                                    Operational (4)
+                                                    Operational (6)
                                                 </button>
                                                 <button
                                                     type="button"
@@ -1216,24 +1262,58 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                 {newRole === 'user' && (
                                     <div className="space-y-4 pt-2 border-t border-slate-200/60">
                                         <div>
-                                            <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">Allowed Tabs</label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {[
-                                                    { id: 'accounts', label: 'Accounts' },
-                                                    { id: 'transactions', label: 'Transactions' },
-                                                    { id: 'followups', label: 'Follow Ups' },
-                                                    { id: 'import', label: 'Import Center' }
-                                                ].map(tab => (
-                                                    <label key={tab.id} className="flex items-center gap-2 p-2 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 transition-colors shadow-2xs">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={newAllowedTabs.includes(tab.id)} 
-                                                            onChange={() => handleNewTabToggle(tab.id)}
-                                                            className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
-                                                        />
-                                                        <span className="text-xs font-bold text-slate-700">{tab.label}</span>
-                                                    </label>
-                                                ))}
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                                                    Allowed Tabs ({newAllowedTabs.length} of {STANDARD_USER_TABS.length} Allowed)
+                                                </label>
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setNewAllowedTabs(STANDARD_USER_TABS.map(t => t.id))}
+                                                        className="px-2 py-0.5 text-[10px] font-bold bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 shadow-2xs cursor-pointer"
+                                                    >
+                                                        Select All
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setNewAllowedTabs([])}
+                                                        className="px-2 py-0.5 text-[10px] font-bold bg-white text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 shadow-2xs cursor-pointer"
+                                                    >
+                                                        Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {STANDARD_USER_TABS.map(tab => {
+                                                    const isChecked = newAllowedTabs.includes(tab.id);
+                                                    const TabIcon = tab.icon;
+                                                    return (
+                                                        <label 
+                                                            key={tab.id} 
+                                                            className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                                                                isChecked 
+                                                                    ? 'bg-white border-indigo-400 ring-1 ring-indigo-300/40 shadow-xs text-slate-900' 
+                                                                    : 'bg-white/60 border-slate-200 text-slate-500 hover:border-indigo-200'
+                                                            }`}
+                                                        >
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isChecked} 
+                                                                onChange={() => handleNewTabToggle(tab.id)}
+                                                                className="w-4 h-4 mt-0.5 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded shrink-0 cursor-pointer"
+                                                            />
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-bold flex items-center gap-1.5 text-slate-800">
+                                                                    {TabIcon && <TabIcon size={13} className={isChecked ? 'text-indigo-600' : 'text-slate-400'} />}
+                                                                    {tab.label}
+                                                                </span>
+                                                                <span className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                                                                    {tab.desc}
+                                                                </span>
+                                                            </div>
+                                                        </label>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
 
