@@ -392,7 +392,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
     }
 
     return (
-        <div className="flex flex-col min-h-0 flex-1 p-3 sm:p-6 gap-4 sm:gap-6 bg-slate-50/50">
+        <div className="flex flex-col min-h-0 flex-1  sm:p-2 gap-4 sm:gap-6 bg-slate-50/50">
             {/* ALERT / TOAST FEEDBACK NOTIFICATION */}
             {toast && (
                 <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-md border text-sm font-bold animate-in fade-in slide-in-from-top-2 duration-200 ${
@@ -416,9 +416,9 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
             )}
 
             {/* TOP BAR / STATS & ACTION */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-2 sm:p-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                    <div className=" bg-indigo-50 text-indigo-600 rounded-xl">
                         <Users className="w-5 h-5 stroke-[2.5]" />
                     </div>
                     <div>
@@ -428,41 +428,11 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                 {users.length} Total
                             </span>
                         </h2>
-                        <p className="text-xs text-slate-500 font-medium">
-                            Manage user accounts, assign multiple admins, and configure tab restrictions.
-                        </p>
                     </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
-                    <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl text-xs font-bold">
-                        <button
-                            onClick={() => setRoleFilter('all')}
-                            className={`px-3 py-1.5 rounded-lg transition-all ${roleFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                            All ({users.length})
-                        </button>
-                        <button
-                            onClick={() => setRoleFilter('super')}
-                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${roleFilter === 'super' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-700 hover:bg-purple-50'}`}
-                        >
-                            <Shield size={13} />
-                            Super ({superAdminCount})
-                        </button>
-                        <button
-                            onClick={() => setRoleFilter('secondary')}
-                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${roleFilter === 'secondary' ? 'bg-indigo-600 text-white shadow-sm' : 'text-indigo-700 hover:bg-indigo-50'}`}
-                        >
-                            <ShieldCheck size={13} />
-                            Secondary ({secondaryAdminCount})
-                        </button>
-                        <button
-                            onClick={() => setRoleFilter('user')}
-                            className={`px-3 py-1.5 rounded-lg transition-all ${roleFilter === 'user' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                            Users ({standardUserCount})
-                        </button>
-                    </div>
+             
 
                     <button
                         onClick={() => {
@@ -701,9 +671,6 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             </span>
                                             {role === 'admin' && <Check size={14} className="text-purple-600 stroke-[3]" />}
                                         </div>
-                                        <p className="text-[10px] text-slate-500 leading-tight">
-                                            Unrestricted full access to all {ALL_SYSTEM_TABS.length} system tabs.
-                                        </p>
                                     </button>
 
                                     {/* SECONDARY ADMIN (LIMITED TABS) */}
@@ -723,9 +690,6 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             </span>
                                             {role === 'secondary_admin' && <Check size={14} className="text-indigo-600 stroke-[3]" />}
                                         </div>
-                                        <p className="text-[10px] text-indigo-600 font-semibold leading-tight">
-                                            Admin with customizable tab access.
-                                        </p>
                                     </button>
 
                                     {/* STANDARD USER */}
@@ -745,9 +709,6 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             </span>
                                             {role === 'user' && <Check size={14} className="text-slate-600 stroke-[3]" />}
                                         </div>
-                                        <p className="text-[10px] text-slate-500 leading-tight">
-                                            Restricted user with custom tabs or ledger limits.
-                                        </p>
                                     </button>
                                 </div>
 
@@ -769,9 +730,6 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             <label className="block text-xs font-black text-indigo-950 uppercase tracking-wider">
                                                 Secondary Admin Tab Access ({allowedTabs.length} of {ALL_SYSTEM_TABS.length} Allowed)
                                             </label>
-                                            <p className="text-[11px] text-indigo-700 font-medium">
-                                                Choose which specific tabs this secondary admin can view and manage:
-                                            </p>
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
                                             <button
@@ -822,9 +780,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                                             {TabIcon && <TabIcon size={13} className={isChecked ? 'text-indigo-600' : 'text-slate-400'} />}
                                                             {tab.label}
                                                         </span>
-                                                        <span className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                                                            {tab.desc}
-                                                        </span>
+                                                        
                                                     </div>
                                                 </label>
                                             );
@@ -843,6 +799,11 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             placeholder="-- No Restriction (All Accounts) --"
                                             className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                                         />
+                                        <datalist id="userAccountsListEdit">
+                                            {accounts.map(acc => (
+                                                <option key={acc.id} value={acc.name} />
+                                            ))}
+                                        </datalist>
                                     </div>
                                 </div>
                             )}
@@ -932,9 +893,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                                                 {TabIcon && <TabIcon size={13} className={isChecked ? 'text-indigo-600' : 'text-slate-400'} />}
                                                                 {tab.label}
                                                             </span>
-                                                            <span className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                                                                {tab.desc}
-                                                            </span>
+                                                            
                                                         </div>
                                                     </label>
                                                 );
@@ -952,6 +911,7 @@ export default function UserManagementTab({ updateTrigger, currentUser }) {
                                             placeholder="-- No Restriction (All Accounts) --"
                                             className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm font-bold bg-white text-slate-900 shadow-xs"
                                         />
+                                       
                                         <datalist id="userAccountsListEdit">
                                             {accounts.map(acc => (
                                                 <option key={acc.id} value={acc.name} />

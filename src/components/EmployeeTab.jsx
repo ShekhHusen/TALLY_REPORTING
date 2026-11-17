@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import EmployeePaySlipModal from './EmployeePaySlipModal';
 import {
     Users, UserPlus, X, Pencil, Trash2, Search, Check, AlertCircle,
     CalendarCheck2, FileText, Plus, Download, Phone, MapPin, BadgeCheck,
@@ -78,6 +79,9 @@ export default function EmployeeTab({ currentUser }) {
     const [attendanceDate, setAttendanceDate] = useState(todayStr);
     const [attendanceEntries, setAttendanceEntries] = useState([]);
     const [savingAttendance, setSavingAttendance] = useState(false);
+
+    /* ── Pay slip view modal ─────────────────────────────────────── */
+    const [viewingPaySlipSummary, setViewingPaySlipSummary] = useState(null);
 
     /* ── Self-view for employee users ────────────────────────────── */
     const [linkedEmployee, setLinkedEmployee] = useState(null);
@@ -1004,9 +1008,16 @@ export default function EmployeeTab({ currentUser }) {
                                             const payableAmt = s.perDaySalary * payableDays;
                                             return (
                                                 <tr key={s.employeeId} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-4 py-3">
-                                                        <div className="font-bold text-slate-900">{s.employeeName}</div>
-                                                        <div className="text-[10px] text-slate-500 font-medium">
+                                                    <td
+                                                        className="px-4 py-3 cursor-pointer group"
+                                                        onClick={() => setViewingPaySlipSummary(s)}
+                                                        title="Click to view pay slip details"
+                                                    >
+                                                        <div className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
+                                                            <span className="group-hover:underline">{s.employeeName}</span>
+                                                            <Eye size={13} className="text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0" />
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-500 font-medium group-hover:text-slate-600">
                                                             Salary: {fmtCurrency(s.monthlySalary)}
                                                         </div>
                                                     </td>
@@ -1022,14 +1033,24 @@ export default function EmployeeTab({ currentUser }) {
                                                         <span className="text-sm font-black text-emerald-700">{fmtCurrency(payableAmt)}</span>
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
-                                                        <button
-                                                            onClick={() => generatePaySlip(s)}
-                                                            className="inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                                                            title="Download Pay Slip PDF"
-                                                        >
-                                                            <Download size={13} className="stroke-[2.5]" />
-                                                            <span className="hidden sm:inline">PDF</span>
-                                                        </button>
+                                                        <div className="inline-flex items-center gap-1.5">
+                                                            <button
+                                                                onClick={() => setViewingPaySlipSummary(s)}
+                                                                className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                                                                title="View Pay Slip Details"
+                                                            >
+                                                                <Eye size={13} className="stroke-[2.5]" />
+                                                                <span className="hidden sm:inline">View</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => generatePaySlip(s)}
+                                                                className="inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                                                                title="Download Pay Slip PDF"
+                                                            >
+                                                                <Download size={13} className="stroke-[2.5]" />
+                                                                <span className="hidden sm:inline">PDF</span>
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -1400,6 +1421,18 @@ export default function EmployeeTab({ currentUser }) {
                     </div>
                 </div>
             )}
+            {/* ══════════════════════════════════════════════════════
+                PAY SLIP VIEW-ONLY MODAL
+               ══════════════════════════════════════════════════════ */}
+            <EmployeePaySlipModal
+                isOpen={Boolean(viewingPaySlipSummary)}
+                onClose={() => setViewingPaySlipSummary(null)}
+                empSummary={viewingPaySlipSummary}
+                employee={viewingPaySlipSummary ? employees.find(e => e.id === viewingPaySlipSummary.employeeId) : null}
+                selectedMonth={selectedMonth}
+                attendanceRecords={attendanceRecords}
+                onDownloadPdf={viewingPaySlipSummary ? () => generatePaySlip(viewingPaySlipSummary) : undefined}
+            />
         </div>
     );
 }
