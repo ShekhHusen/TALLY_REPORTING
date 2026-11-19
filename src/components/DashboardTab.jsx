@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
 import { fetchFiscalYears, getCurrentFYObject } from '../utils/fiscalYear';
+import EmployeePaySlipModal from './EmployeePaySlipModal';
 import {
     Briefcase, CheckCircle2, Clock, AlertTriangle,
     CalendarCheck2, Calendar, AlertCircle, ArrowUpRight,
-    Users, IndianRupee, TrendingUp, Eye
+    Users, IndianRupee, TrendingUp, Eye,
+    ShieldCheck, EyeOff, CalendarClock, Flame, Layers, Hourglass
 } from 'lucide-react';
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
@@ -19,6 +21,108 @@ const monthDisplay = (m) => {
     return new Date(+y, +mo - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 };
 const fmtCurrency = (n) => 'Rs.' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/* ── Modern Figma-Standard Stat Card Themes ──────────────────── */
+const STAT_CARD_THEMES = {
+    emerald: {
+        border: 'border-slate-200/80 hover:border-emerald-300',
+        topStrip: 'bg-emerald-500',
+        iconBox: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+        valueColor: 'text-slate-900 group-hover:text-emerald-700',
+        badge: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80',
+    },
+    amber: {
+        border: 'border-slate-200/80 hover:border-amber-300',
+        topStrip: 'bg-amber-500',
+        iconBox: 'bg-amber-50 text-amber-600 border border-amber-100',
+        valueColor: 'text-slate-900 group-hover:text-amber-700',
+        badge: 'bg-amber-50 text-amber-700 border border-amber-200/80',
+    },
+    slate: {
+        border: 'border-slate-200/80 hover:border-slate-300',
+        topStrip: 'bg-slate-400',
+        iconBox: 'bg-slate-100 text-slate-600 border border-slate-200',
+        valueColor: 'text-slate-900 group-hover:text-slate-700',
+        badge: 'bg-slate-100 text-slate-600 border border-slate-200/80',
+    },
+    blue: {
+        border: 'border-slate-200/80 hover:border-blue-300',
+        topStrip: 'bg-blue-500',
+        iconBox: 'bg-blue-50 text-blue-600 border border-blue-100',
+        valueColor: 'text-slate-900 group-hover:text-blue-700',
+        badge: 'bg-blue-50 text-blue-700 border border-blue-200/80',
+    },
+    indigo: {
+        border: 'border-slate-200/80 hover:border-indigo-300',
+        topStrip: 'bg-indigo-500',
+        iconBox: 'bg-indigo-50 text-indigo-600 border border-indigo-100',
+        valueColor: 'text-slate-900 group-hover:text-indigo-700',
+        badge: 'bg-indigo-50 text-indigo-700 border border-indigo-200/80',
+    },
+    rose: {
+        border: 'border-slate-200/80 hover:border-rose-300',
+        topStrip: 'bg-rose-500',
+        iconBox: 'bg-rose-50 text-rose-600 border border-rose-100',
+        valueColor: 'text-slate-900 group-hover:text-rose-700',
+        badge: 'bg-rose-50 text-rose-700 border border-rose-200/80',
+    },
+    teal: {
+        border: 'border-slate-200/80 hover:border-teal-300',
+        topStrip: 'bg-teal-500',
+        iconBox: 'bg-teal-50 text-teal-600 border border-teal-100',
+        valueColor: 'text-slate-900 group-hover:text-teal-700',
+        badge: 'bg-teal-50 text-teal-700 border border-teal-200/80',
+    },
+};
+
+function DashboardStatCard({
+    title,
+    value,
+    badge,
+    icon: Icon,
+    colorScheme = 'blue',
+    onClick,
+}) {
+    const theme = STAT_CARD_THEMES[colorScheme] || STAT_CARD_THEMES.blue;
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`group relative bg-white rounded-2xl border ${theme.border} p-3 sm:p-3.5 text-left shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden flex flex-col justify-between`}
+        >
+            {/* Top decorative accent strip */}
+            <div className={`absolute top-0 left-0 right-0 h-1 ${theme.topStrip}`} />
+
+            {/* Header: Label + Icon */}
+            <div className="flex items-center justify-between gap-1.5 pt-1">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 truncate">
+                    {title}
+                </span>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${theme.iconBox}`}>
+                    <Icon size={14} className="stroke-[2.5]" />
+                </div>
+            </div>
+
+            {/* Value */}
+            <div className="flex items-baseline justify-between gap-1 my-1.5">
+                <span className={`text-xl sm:text-2xl font-black tracking-tight ${theme.valueColor} tabular-nums`}>
+                    {value}
+                </span>
+                <ArrowUpRight size={13} className="text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
+            </div>
+
+            {/* Bottom Badge */}
+            {badge && (
+                <div className="pt-1.5 border-t border-slate-100/90 flex items-center justify-between">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center gap-1 ${theme.badge}`}>
+                        {badge}
+                    </span>
+                </div>
+            )}
+        </button>
+    );
+}
 
 export default function DashboardTab({ currentUser, setActiveTab }) {
 
@@ -47,6 +151,9 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
 
     /* ── Linked employee for non-admin users ──────────────────────── */
     const [linkedEmployee, setLinkedEmployee] = useState(null);
+
+    /* ── Pay slip view modal ─────────────────────────────────────── */
+    const [viewingPaySlipSummary, setViewingPaySlipSummary] = useState(null);
 
     /* ══════════════════════════════════════════════════════════════
        DATA FETCHING
@@ -288,10 +395,13 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
        SKELETON LOADER
        ══════════════════════════════════════════════════════════════ */
     const SkeletonCard = () => (
-        <div className="bg-white rounded-2xl border border-slate-200/60 p-5 animate-pulse">
-            <div className="h-4 bg-slate-200 rounded w-24 mb-3"></div>
-            <div className="h-8 bg-slate-200 rounded w-16 mb-2"></div>
-            <div className="h-3 bg-slate-100 rounded w-32"></div>
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-3 sm:p-3.5 animate-pulse flex flex-col justify-between h-[112px]">
+            <div className="flex items-center justify-between">
+                <div className="h-3 bg-slate-200 rounded w-16"></div>
+                <div className="w-7 h-7 rounded-lg bg-slate-100"></div>
+            </div>
+            <div className="h-6 bg-slate-200 rounded w-12 my-1"></div>
+            <div className="h-3.5 bg-slate-100 rounded w-20"></div>
         </div>
     );
 
@@ -310,134 +420,114 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                 </div>
             </div>
 
-            {/* ══════════════════════════════════════════════════════════════
-               SECTION 1: Account Stats
-               ══════════════════════════════════════════════════════════════ */}
-            <section>
-                <div className="flex items-center gap-2 mb-3">
-                    <h3 className="text-base font-black text-slate-800 tracking-tight">Account Overview</h3>
-                </div>
+            {/* ── Account Overview & Follow-ups (1 Row 2 Columns on md and lg) ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 items-start">
 
-                {loadingAccounts ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                        {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+                {/* ══════════════════════════════════════════════════════════════
+                   SECTION 1: Account Stats
+                   ══════════════════════════════════════════════════════════════ */}
+                <section>
+                    <div className="flex items-center gap-2 mb-3">
+                        <h3 className="text-base font-black text-slate-800 tracking-tight">Account Overview</h3>
                     </div>
-                ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
 
-                        {/* All Accounts */}
-                        <button
-                            onClick={() => navigateTo('accounts')}
-                            className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 p-2 md:p-3 text-center group cursor-pointer"
-                        >
-                            
-                            <p className="text-lg md:text-xl font-black text-emerald-700">{accountStats.total}</p>
-                            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">All Accounts</p>
-                        </button>
+                    {loadingAccounts ? (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-3">
+                            {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-3">
+                            <DashboardStatCard
+                                title="Accounts"
+                                value={accountStats.total}
+                                icon={Layers}
+                                colorScheme="blue"
+                                badge="Total Master"
+                                onClick={() => navigateTo('accounts')}
+                            />
+                            <DashboardStatCard
+                                title="Verified"
+                                value={accountStats.verified}
+                                icon={ShieldCheck}
+                                colorScheme="emerald"
+                                badge="Audited"
+                                onClick={() => navigateTo('accounts')}
+                            />
+                            <DashboardStatCard
+                                title="Pending"
+                                value={accountStats.pending}
+                                icon={Hourglass}
+                                colorScheme="amber"
+                                badge="Needs Review"
+                                onClick={() => navigateTo('accounts')}
+                            />
+                            <DashboardStatCard
+                                title="Ignored"
+                                value={accountStats.ignored}
+                                icon={EyeOff}
+                                colorScheme="slate"
+                                badge="Excluded"
+                                onClick={() => navigateTo('accounts')}
+                            />
+                        </div>
+                    )}
+                </section>
 
-                        {/* Verified */}
-                        <button
-                            onClick={() => navigateTo('accounts')}
-                            className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all duration-200 p-2 md:p-3 text-center group cursor-pointer"
-                        >
-                            
-                            <p className="text-lg md:text-xl font-black text-emerald-700">{accountStats.verified}</p>
-                            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Verified</p>
-                        </button>
-
-                        {/* Verification Pending */}
-                        <button
-                            onClick={() => navigateTo('accounts')}
-                            className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-amber-200 transition-all duration-200 p-2 md:p-3 text-center group cursor-pointer"
-                        >
-                            
-                            <p className="text-lg md:text-xl font-black text-amber-700">{accountStats.pending}</p>
-                            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Pending</p>
-                        </button>
-
-                        {/* Ignored */}
-                        <button
-                            onClick={() => navigateTo('accounts')}
-                            className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 p-2 md:p-3 text-center group cursor-pointer"
-                        >
-                            
-                            <p className="text-lg md:text-xl font-black text-slate-600">{accountStats.ignored}</p>
-                            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Ignored</p>
-                        </button>
+                {/* ══════════════════════════════════════════════════════════════
+                   SECTION 2: Follow-ups
+                   ══════════════════════════════════════════════════════════════ */}
+                <section>
+                    <div className="flex items-center gap-2 mb-3">
+                        <h3 className="text-base font-black text-slate-800 tracking-tight">Follow-ups</h3>
                     </div>
-                )}
-            </section>
 
-            {/* ══════════════════════════════════════════════════════════════
-               SECTION 2: Follow-ups
-               ══════════════════════════════════════════════════════════════ */}
-            <section>
-                <div className="flex items-center gap-2 mb-3">
-                    <h3 className="text-base font-black text-slate-800 tracking-tight">Follow-ups</h3>
-                </div>
-
-                {loadingFollowUps ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                        {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-
-                        {/* Active */}
-                        <button
-                            onClick={() => navigateTo('followups')}
-                            className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-200 p-2 md:p-3 text-center group cursor-pointer"
-                        >
-                            
-                            <p className="text-lg md:text-xl font-black text-blue-700">{followUpStats.active}</p>
-                            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Active</p>
-                        </button>
-
-                        {/* Today */}
-                        <button
-                            onClick={() => navigateTo('followups')}
-                            className={`rounded-2xl border shadow-sm hover:shadow-md transition-all duration-200 p-2 md:p-3 text-center group cursor-pointer ${
-                                followUpStats.today > 0 
-                                    ? 'bg-gradient-to-br from-indigo-50 to-white border-indigo-200 hover:border-indigo-300' 
-                                    : 'bg-white border-slate-200/60 hover:border-indigo-200'
-                            }`}
-                        >
-                            
-                            <p className="text-lg md:text-xl font-black text-indigo-700">{followUpStats.today}</p>
-                            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Today</p>
-                        </button>
-
-                        {/* Overdue */}
-                        <button
-                            onClick={() => navigateTo('followups')}
-                            className={`rounded-2xl border shadow-sm hover:shadow-md transition-all duration-200 p-2 md:p-3 text-center group cursor-pointer ${
-                                followUpStats.overdue > 0 
-                                    ? 'bg-gradient-to-br from-red-50 to-white border-red-200 hover:border-red-300' 
-                                    : 'bg-white border-slate-200/60 hover:border-red-200'
-                            }`}
-                        >
-                            
-                            <p className={`text-lg md:text-xl font-black ${followUpStats.overdue > 0 ? 'text-red-700' : 'text-slate-600'}`}>{followUpStats.overdue}</p>
-                            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Overdue</p>
-                        </button>
-
-                        {/* Upcoming */}
-                        <button
-                            onClick={() => navigateTo('followups')}
-                            className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-teal-200 transition-all duration-200 p-2 md:p-3 text-center group cursor-pointer"
-                        >
-                            
-                            <p className="text-lg md:text-xl font-black text-teal-700">{followUpStats.upcoming}</p>
-                            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Upcoming</p>
-                        </button>
-                    </div>
-                )}
-            </section>
+                    {loadingFollowUps ? (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-3">
+                            {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-3">
+                            <DashboardStatCard
+                                title="Active"
+                                value={followUpStats.active}
+                                icon={CalendarCheck2}
+                                colorScheme="blue"
+                                badge="Open Tasks"
+                                onClick={() => navigateTo('followups')}
+                            />
+                            <DashboardStatCard
+                                title="Due Today"
+                                value={followUpStats.today}
+                                icon={Calendar}
+                                colorScheme="indigo"
+                                badge={followUpStats.today > 0 ? 'Action Today' : 'All Clear'}
+                                onClick={() => navigateTo('followups')}
+                            />
+                            <DashboardStatCard
+                                title="Overdue"
+                                value={followUpStats.overdue}
+                                icon={Flame}
+                                colorScheme={followUpStats.overdue > 0 ? 'rose' : 'slate'}
+                                badge={followUpStats.overdue > 0 ? 'Attention' : 'No Overdue'}
+                                onClick={() => navigateTo('followups')}
+                            />
+                            <DashboardStatCard
+                                title="Upcoming"
+                                value={followUpStats.upcoming}
+                                icon={CalendarClock}
+                                colorScheme="teal"
+                                badge="Scheduled"
+                                onClick={() => navigateTo('followups')}
+                            />
+                        </div>
+                    )}
+                </section>
+            </div>
 
             {/* ══════════════════════════════════════════════════════════════
                SECTION 3: Employee Monthly Pay Report
                ══════════════════════════════════════════════════════════════ */}
-            <section>
+            <section >
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                         <Users className="w-5 h-5 text-red-600" />
@@ -445,9 +535,20 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                             Attendance Report
                         </h3>
                     </div>
-                    <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                        {monthDisplay(selectedMonth)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                            {monthDisplay(selectedMonth)}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => navigateTo('employee')}
+                            className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-emerald-700 hover:bg-slate-100 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                            title="Go to Employee Management"
+                        >
+                            <span>Employee Tab</span>
+                            <ArrowUpRight size={13} />
+                        </button>
+                    </div>
                 </div>
 
                 {loadingEmployees ? (
@@ -468,14 +569,11 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                         <p className="text-xs text-slate-400 mt-1">Attendance records will appear here once marked.</p>
                     </div>
                 ) : (
-                    <button
-                        onClick={() => navigateTo('employee')}
-                        className="w-full text-left cursor-pointer group"
-                    >
-                        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 overflow-hidden">
+                    <div className="w-full text-left">
+                        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
 
                             {/* Table Header */}
-                            <div className="hidden md:grid grid-cols-8 gap-2 px-5 py-3 bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            <div className="hidden md:grid grid-cols-9 gap-2 px-5 py-3 bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                 <div className="col-span-2">Employee</div>
                                 <div className="text-center">Present</div>
                                 <div className="text-center">Saturday</div>
@@ -483,22 +581,32 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 <div className="text-center">Unpaid Leave</div>
                                 <div className="text-right">Salary</div>
                                 <div className="text-right">Payable</div>
+                                <div className="text-center">Pay Slip</div>
                             </div>
 
                             {/* Employee Rows */}
                             <div className="divide-y divide-slate-100">
-                                {monthlySummary.map((emp, idx) => {
+                                {monthlySummary.map((emp) => {
                                     const paidDays = emp.present + emp.saturday + emp.paidLeave;
                                     const payable = paidDays * emp.perDaySalary;
                                     return (
-                                        <div key={emp.employeeId} className="px-5 py-3 hover:bg-slate-50/50 transition-colors">
+                                        <div key={emp.employeeId} className="px-5 py-2 hover:bg-slate-50/50 transition-colors">
                                             {/* Desktop */}
-                                            <div className="hidden md:grid grid-cols-8 gap-2 items-center">
-                                                <div className="col-span-2 flex items-center gap-2.5">
-                                                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold text-xs shrink-0">
+                                            <div className="hidden md:grid grid-cols-9 gap-2 items-center">
+                                                <div
+                                                    onClick={() => setViewingPaySlipSummary(emp)}
+                                                    className="col-span-2 flex items-center gap-2.5 cursor-pointer group/emp min-w-0"
+                                                    title="Click to view pay slip details"
+                                                >
+                                                    <div className="w-5 h-5 rounded-full bg-red-100 group-hover/emp:bg-red-200 flex items-center justify-center text-red-700 font-bold text-xs shrink-0 transition-colors shadow-2xs">
                                                         {emp.employeeName?.charAt(0)?.toUpperCase() || '?'}
                                                     </div>
-                                                    <span className="text-sm font-bold text-slate-800 truncate">{emp.employeeName}</span>
+                                                    <div className="truncate">
+                                                        <span className="text-sm font-bold text-slate-800 group-hover/emp:text-emerald-700 group-hover/emp:underline truncate transition-colors flex items-center gap-1.5">
+                                                            <span className="truncate">{emp.employeeName}</span>
+                                                            <Eye size={12} className="opacity-0 group-hover/emp:opacity-100 text-emerald-600 transition-opacity shrink-0" />
+                                                        </span>
+                                                    </div>
                                                 </div>
                                                 <div className="text-center text-sm font-semibold text-emerald-700">{emp.present}</div>
                                                 <div className="text-center text-sm font-semibold text-amber-700">{emp.saturday}</div>
@@ -506,17 +614,47 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                                 <div className="text-center text-sm font-semibold text-rose-700">{emp.unpaidLeave}</div>
                                                 <div className="text-right text-sm font-semibold text-slate-600">{fmtCurrency(emp.monthlySalary)}</div>
                                                 <div className="text-right text-sm font-black text-slate-900">{fmtCurrency(payable)}</div>
+                                                <div className="text-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setViewingPaySlipSummary(emp)}
+                                                        className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                                                        title="View Pay Slip Details"
+                                                    >
+                                                        <Eye size={13} className="stroke-[2.5]" />
+                                                        <span>View</span>
+                                                    </button>
+                                                </div>
                                             </div>
+
                                             {/* Mobile */}
                                             <div className="md:hidden">
-                                                <div className="flex items-center justify-between mb-1.5">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold text-[10px] shrink-0">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div
+                                                        onClick={() => setViewingPaySlipSummary(emp)}
+                                                        className="flex items-center gap-2 cursor-pointer group/emp min-w-0"
+                                                        title="Click to view pay slip details"
+                                                    >
+                                                        <div className="w-7 h-7 rounded-full bg-red-100 group-hover/emp:bg-red-200 flex items-center justify-center text-red-700 font-bold text-[10px] shrink-0 transition-colors">
                                                             {emp.employeeName?.charAt(0)?.toUpperCase() || '?'}
                                                         </div>
-                                                        <span className="text-sm font-bold text-slate-800 truncate max-w-[140px]">{emp.employeeName}</span>
+                                                        <span className="text-sm font-bold text-slate-800 group-hover/emp:text-emerald-700 group-hover/emp:underline truncate max-w-[130px] flex items-center gap-1">
+                                                            <span>{emp.employeeName}</span>
+                                                            <Eye size={11} className="text-slate-400 group-hover/emp:text-emerald-600 shrink-0" />
+                                                        </span>
                                                     </div>
-                                                    <span className="text-sm font-black text-slate-900">{fmtCurrency(payable)}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-black text-slate-900">{fmtCurrency(payable)}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setViewingPaySlipSummary(emp)}
+                                                            className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                                                            title="View Pay Slip Details"
+                                                        >
+                                                            <Eye size={12} className="stroke-[2.5]" />
+                                                            <span>View</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <div className="flex gap-2 text-[10px] font-bold flex-wrap">
                                                     <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{emp.present}P</span>
@@ -535,15 +673,24 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm font-black text-slate-800 uppercase tracking-wider">Total Payable</span>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                     <span className="text-lg font-black text-red-700">{fmtCurrency(totalPayable)}</span>
-                                    <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-red-500 transition-colors" />
                                 </div>
                             </div>
                         </div>
-                    </button>
+                    </div>
                 )}
             </section>
+
+            {/* ── Pay Slip View Modal ── */}
+            <EmployeePaySlipModal
+                isOpen={Boolean(viewingPaySlipSummary)}
+                onClose={() => setViewingPaySlipSummary(null)}
+                empSummary={viewingPaySlipSummary}
+                employee={viewingPaySlipSummary ? employees.find(e => e.id === viewingPaySlipSummary.employeeId) : null}
+                selectedMonth={selectedMonth}
+                attendanceRecords={attendanceRecords}
+            />
         </div>
     );
 }

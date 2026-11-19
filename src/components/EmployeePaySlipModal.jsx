@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect } from 'react';
 import { X, Download, Printer, FileText, CheckCircle2 } from 'lucide-react';
+import { generatePaySlipPdf } from '../utils/paySlipPdf';
 
 /* ── Attendance Color Definitions (matches PDF) ──────────────────── */
 const TYPE_COLORS = {
@@ -101,6 +102,19 @@ export default function EmployeePaySlipModal({
         window.print();
     };
 
+    const handleDownloadPdf = () => {
+        if (onDownloadPdf) {
+            onDownloadPdf();
+        } else {
+            generatePaySlipPdf({
+                empSummary,
+                employee: emp,
+                selectedMonth,
+                attendanceRecords,
+            });
+        }
+    };
+
     return (
         <div
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-150"
@@ -132,16 +146,14 @@ export default function EmployeePaySlipModal({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {onDownloadPdf && (
-                            <button
-                                onClick={onDownloadPdf}
-                                className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
-                                title="Download Pay Slip PDF"
-                            >
-                                <Download size={13} className="stroke-[2.5]" />
-                                <span className="hidden sm:inline">Download PDF</span>
-                            </button>
-                        )}
+                        <button
+                            onClick={handleDownloadPdf}
+                            className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                            title="Download Pay Slip PDF"
+                        >
+                            <Download size={13} className="stroke-[2.5]" />
+                            <span className="hidden sm:inline">Download PDF</span>
+                        </button>
                         <button
                             onClick={handlePrint}
                             className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer border border-slate-700"
@@ -410,16 +422,14 @@ export default function EmployeePaySlipModal({
                         >
                             Close
                         </button>
-                        {onDownloadPdf && (
-                            <button
-                                type="button"
-                                onClick={onDownloadPdf}
-                                className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
-                            >
-                                <Download size={14} className="stroke-[2.5]" />
-                                <span>Download PDF</span>
-                            </button>
-                        )}
+                        <button
+                            type="button"
+                            onClick={handleDownloadPdf}
+                            className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
+                        >
+                            <Download size={14} className="stroke-[2.5]" />
+                            <span>Download PDF</span>
+                        </button>
                     </div>
                 </div>
 
