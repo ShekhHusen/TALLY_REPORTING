@@ -11,6 +11,8 @@ import SettingsTab from './components/SettingsTab';
 import FollowUpsTab from './components/FollowUpsTab';
 import TallySyncTab from './components/TallySyncTab';
 import TallyEntryTab from './components/TallyEntryTab';
+import EmployeeTab from './components/EmployeeTab';
+import DashboardTab from './components/DashboardTab';
 
 import { 
     Users, 
@@ -26,17 +28,21 @@ import {
     FilePlus2,
     ChevronRight,
     ChevronDown,
-    PanelLeftClose
+    PanelLeftClose,
+    Contact,
+    LayoutDashboard
 } from 'lucide-react';
 
 const NAV_ITEMS = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'users', label: 'Users', icon: Users, adminOnly: true },
     { id: 'accounts', label: 'Accounts', icon: Briefcase },
     { id: 'transactions', label: 'Transactions', icon: ArrowRightLeft },
     { id: 'followups', label: 'Follow-ups', icon: Clock },
+    { id: 'employee', label: 'Employee', icon: Contact },
     { id: 'import', label: 'Import', icon: UploadCloud },
-    { id: 'tallysync', label: 'Tally Sync', icon: RefreshCw, adminOnly: true },
-    { id: 'tallyentry', label: 'Tally Entry', icon: FilePlus2, adminOnly: true },
+    { id: 'tallysync', label: 'Tally Sync', icon: RefreshCw },
+    { id: 'tallyentry', label: 'Tally Entry', icon: FilePlus2 },
     { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
 
@@ -115,7 +121,9 @@ export default function App() {
     useEffect(() => {
         if (currentUser && availableTabs.length > 0) {
             if (!activeTab || !availableTabs.some(t => t.id === activeTab)) {
-                if (availableTabs.some(t => t.id === 'accounts')) {
+                if (availableTabs.some(t => t.id === 'dashboard')) {
+                    setActiveTab('dashboard');
+                } else if (availableTabs.some(t => t.id === 'accounts')) {
                     setActiveTab('accounts');
                 } else {
                     setActiveTab(availableTabs[0].id);
@@ -483,6 +491,9 @@ export default function App() {
                     )}
 
                     <div className="max-w-7xl mx-auto w-full flex-1 min-h-0 flex flex-col">
+                        <div style={{ display: (activeTab === 'dashboard' && hasTabAccess('dashboard')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col overflow-y-auto">
+                            {activeTab === 'dashboard' && hasTabAccess('dashboard') && <DashboardTab currentUser={currentUser} setActiveTab={setActiveTab} />}
+                        </div>
                         <div style={{ display: (activeTab === 'users' && hasTabAccess('users')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'users' && hasTabAccess('users') && <UserManagementTab updateTrigger={updateTrigger} currentUser={currentUser} />}
                         </div>
@@ -515,6 +526,9 @@ export default function App() {
                         </div>
                         <div style={{ display: (activeTab === 'followups' && hasTabAccess('followups')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'followups' && hasTabAccess('followups') && <FollowUpsTab currentUser={currentUser} />}
+                        </div>
+                        <div style={{ display: (activeTab === 'employee' && hasTabAccess('employee')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
+                            {activeTab === 'employee' && hasTabAccess('employee') && <EmployeeTab currentUser={currentUser} />}
                         </div>
                         <div style={{ display: (activeTab === 'tallysync' && hasTabAccess('tallysync')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'tallysync' && hasTabAccess('tallysync') && <TallySyncTab currentUser={currentUser} setUpdateTrigger={setUpdateTrigger} />}
