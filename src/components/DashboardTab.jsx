@@ -387,8 +387,8 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
        CLICK HANDLERS (redirect to respective tabs with filters)
        ══════════════════════════════════════════════════════════════ */
 
-    const navigateTo = (tabId) => {
-        if (setActiveTab) setActiveTab(tabId);
+    const navigateTo = (tabId, params = null) => {
+        if (setActiveTab) setActiveTab(tabId, params);
     };
 
     /* ══════════════════════════════════════════════════════════════
@@ -443,7 +443,7 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 icon={Layers}
                                 colorScheme="blue"
                                 badge="Total Master"
-                                onClick={() => navigateTo('accounts')}
+                                onClick={() => navigateTo('accounts', { verificationStatus: 'all', showIgnored: false })}
                             />
                             <DashboardStatCard
                                 title="Verified"
@@ -451,7 +451,7 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 icon={ShieldCheck}
                                 colorScheme="emerald"
                                 badge="Audited"
-                                onClick={() => navigateTo('accounts')}
+                                onClick={() => navigateTo('accounts', { verificationStatus: 'verified', showIgnored: false })}
                             />
                             <DashboardStatCard
                                 title="Pending"
@@ -459,7 +459,7 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 icon={Hourglass}
                                 colorScheme="amber"
                                 badge="Needs Review"
-                                onClick={() => navigateTo('accounts')}
+                                onClick={() => navigateTo('accounts', { verificationStatus: 'unverified', showIgnored: false })}
                             />
                             <DashboardStatCard
                                 title="Ignored"
@@ -467,7 +467,7 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 icon={EyeOff}
                                 colorScheme="slate"
                                 badge="Excluded"
-                                onClick={() => navigateTo('accounts')}
+                                onClick={() => navigateTo('accounts', { verificationStatus: 'ignored', showIgnored: true })}
                             />
                         </div>
                     )}
@@ -493,7 +493,7 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 icon={CalendarCheck2}
                                 colorScheme="blue"
                                 badge="Open Tasks"
-                                onClick={() => navigateTo('followups')}
+                                onClick={() => navigateTo('followups', { status: 'Active' })}
                             />
                             <DashboardStatCard
                                 title="Due Today"
@@ -501,7 +501,7 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 icon={Calendar}
                                 colorScheme="indigo"
                                 badge={followUpStats.today > 0 ? 'Action Today' : 'All Clear'}
-                                onClick={() => navigateTo('followups')}
+                                onClick={() => navigateTo('followups', { status: 'Today' })}
                             />
                             <DashboardStatCard
                                 title="Overdue"
@@ -509,7 +509,7 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 icon={Flame}
                                 colorScheme={followUpStats.overdue > 0 ? 'rose' : 'slate'}
                                 badge={followUpStats.overdue > 0 ? 'Attention' : 'No Overdue'}
-                                onClick={() => navigateTo('followups')}
+                                onClick={() => navigateTo('followups', { status: 'Overdue' })}
                             />
                             <DashboardStatCard
                                 title="Upcoming"
@@ -517,7 +517,7 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                                 icon={CalendarClock}
                                 colorScheme="teal"
                                 badge="Scheduled"
-                                onClick={() => navigateTo('followups')}
+                                onClick={() => navigateTo('followups', { status: 'Upcoming' })}
                             />
                         </div>
                     )}
@@ -541,7 +541,7 @@ export default function DashboardTab({ currentUser, setActiveTab }) {
                         </span>
                         <button
                             type="button"
-                            onClick={() => navigateTo('employee')}
+                            onClick={() => navigateTo('employee', { subTab: 'reports' })}
                             className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-emerald-700 hover:bg-slate-100 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
                             title="Go to Employee Management"
                         >

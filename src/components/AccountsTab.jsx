@@ -22,11 +22,11 @@ const formatCurrency = (num) => {
     return `Rs. ${num < 0 ? '-' : ''}${formatted}`;
 };
 
-export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAccount, currentUser, setCurrentUser }) {
+export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAccount, currentUser, setCurrentUser, navigationParams }) {
     const isRestrictedUser = isRestrictedAccountUser(currentUser, allowedAccount);
     // Top level views: 'directory' | 'details'
     const [view, setView] = useState('directory');
-    const [showIgnored, setShowIgnored] = useState(false);
+    const [showIgnored, setShowIgnored] = useState(() => Boolean(navigationParams?.showIgnored));
     
     // ----------- DIRECTORY VIEW STATE -----------
     const [fyOptions, setFyOptions] = useState([]);
@@ -39,9 +39,20 @@ export default function AccountsTab({ updateTrigger, setUpdateTrigger, allowedAc
     const [selectedGroup, setSelectedGroup] = useState("");
     const [minBalance, setMinBalance] = useState("");
     const [maxBalance, setMaxBalance] = useState("");
-    const [verificationStatus, setVerificationStatus] = useState("all"); 
+    const [verificationStatus, setVerificationStatus] = useState(() => navigationParams?.verificationStatus || "all"); 
     const [skipZeroClosingBalance, setSkipZeroClosingBalance] = useState(false);
     const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+    // Sync with navigation params from dashboard (e.g. clicking Verified / Pending / Ignored)
+    useEffect(() => {
+        if (!navigationParams) return;
+        if (navigationParams.verificationStatus !== undefined) {
+            setVerificationStatus(navigationParams.verificationStatus);
+        }
+        if (navigationParams.showIgnored !== undefined) {
+            setShowIgnored(Boolean(navigationParams.showIgnored));
+        }
+    }, [navigationParams]);
 
     const activeFilterCount = useMemo(() => {
         let count = 0;

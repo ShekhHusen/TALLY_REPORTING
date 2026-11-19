@@ -40,7 +40,7 @@ const monthDisplay = (m) => {
 const fmtCurrency = (n) => 'Rs.' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /* ── Component ──────────────────────────────────────────────────────── */
-export default function EmployeeTab({ currentUser }) {
+export default function EmployeeTab({ currentUser, navigationParams }) {
 
     /* ── Role checks ─────────────────────────────────────────────── */
     const isSuperAdmin = Boolean(currentUser?.role === 'admin' && currentUser?.adminType !== 'secondary');
@@ -48,7 +48,7 @@ export default function EmployeeTab({ currentUser }) {
     const isAdmin = isSuperAdmin || isSecondaryAdmin;
 
     /* ── Sub-tab state ───────────────────────────────────────────── */
-    const [activeSubTab, setActiveSubTab] = useState(isAdmin ? 'employees' : 'attendance');
+    const [activeSubTab, setActiveSubTab] = useState(() => navigationParams?.subTab || (isAdmin ? 'employees' : 'attendance'));
 
     /* ── Employee state ──────────────────────────────────────────── */
     const [employees, setEmployees] = useState([]);
@@ -72,7 +72,17 @@ export default function EmployeeTab({ currentUser }) {
     /* ── Attendance state ────────────────────────────────────────── */
     const [attendanceRecords, setAttendanceRecords] = useState([]);
     const [loadingAttendance, setLoadingAttendance] = useState(false);
-    const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
+    const [selectedMonth, setSelectedMonth] = useState(() => navigationParams?.month || currentMonthStr());
+
+    /* ── Sync navigation parameters when navigating from external tabs ─ */
+    useEffect(() => {
+        if (navigationParams?.subTab) {
+            setActiveSubTab(navigationParams.subTab);
+        }
+        if (navigationParams?.month) {
+            setSelectedMonth(navigationParams.month);
+        }
+    }, [navigationParams]);
 
     /* ── New Attendance modal ────────────────────────────────────── */
     const [showAttendanceModal, setShowAttendanceModal] = useState(false);

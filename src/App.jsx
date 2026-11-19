@@ -54,6 +54,17 @@ export default function App() {
         } catch { return null; }
     });
     const [activeTab, setActiveTab] = useState('');
+    const [tabParams, setTabParams] = useState({});
+
+    const handleNavigateTab = (tabId, params = null) => {
+        if (params) {
+            setTabParams(prev => ({
+                ...prev,
+                [tabId]: { ...params, _ts: Date.now() }
+            }));
+        }
+        setActiveTab(tabId);
+    };
     
     // For updating user's custom password
     const [showChangePassword, setShowChangePassword] = useState(false);
@@ -492,7 +503,7 @@ export default function App() {
 
                     <div className="max-w-7xl mx-auto w-full flex-1 min-h-0 flex flex-col">
                         <div style={{ display: (activeTab === 'dashboard' && hasTabAccess('dashboard')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col overflow-y-auto">
-                            {activeTab === 'dashboard' && hasTabAccess('dashboard') && <DashboardTab currentUser={currentUser} setActiveTab={setActiveTab} />}
+                            {activeTab === 'dashboard' && hasTabAccess('dashboard') && <DashboardTab currentUser={currentUser} setActiveTab={handleNavigateTab} />}
                         </div>
                         <div style={{ display: (activeTab === 'users' && hasTabAccess('users')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'users' && hasTabAccess('users') && <UserManagementTab updateTrigger={updateTrigger} currentUser={currentUser} />}
@@ -511,6 +522,7 @@ export default function App() {
                                     allowedAccount={currentUser.allowedAccount}
                                     currentUser={currentUser}
                                     setCurrentUser={handleSetCurrentUser}
+                                    navigationParams={tabParams.accounts}
                                 />
                             )}
                         </div>
@@ -525,10 +537,20 @@ export default function App() {
                             )}
                         </div>
                         <div style={{ display: (activeTab === 'followups' && hasTabAccess('followups')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
-                            {activeTab === 'followups' && hasTabAccess('followups') && <FollowUpsTab currentUser={currentUser} />}
+                            {activeTab === 'followups' && hasTabAccess('followups') && (
+                                <FollowUpsTab 
+                                    currentUser={currentUser} 
+                                    navigationParams={tabParams.followups} 
+                                />
+                            )}
                         </div>
                         <div style={{ display: (activeTab === 'employee' && hasTabAccess('employee')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
-                            {activeTab === 'employee' && hasTabAccess('employee') && <EmployeeTab currentUser={currentUser} />}
+                            {activeTab === 'employee' && hasTabAccess('employee') && (
+                                <EmployeeTab 
+                                    currentUser={currentUser} 
+                                    navigationParams={tabParams.employee} 
+                                />
+                            )}
                         </div>
                         <div style={{ display: (activeTab === 'tallysync' && hasTabAccess('tallysync')) ? 'flex' : 'none' }} className="flex-1 min-h-0 flex-col">
                             {activeTab === 'tallysync' && hasTabAccess('tallysync') && <TallySyncTab currentUser={currentUser} setUpdateTrigger={setUpdateTrigger} />}

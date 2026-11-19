@@ -12,7 +12,7 @@ import UpdateFollowUpModal from './UpdateFollowUpModal';
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
-export default function FollowUpsTab({ currentUser }) {
+export default function FollowUpsTab({ currentUser, navigationParams }) {
   const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'secondary_admin' || currentUser?.adminType === 'secondary';
   const [followUps, setFollowUps] = useState([]);
   const [filteredFollowUps, setFilteredFollowUps] = useState([]);
@@ -48,9 +48,9 @@ export default function FollowUpsTab({ currentUser }) {
     setIsUpdateModalOpen(true);
   };
   
-  // Filters - Default to 'Today' so today's follow-ups are displayed
+  // Filters - Default to 'Today' so today's follow-ups are displayed unless navigation specifies otherwise
   const [searchAccount, setSearchAccount] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Today'); // Active, Today, Upcoming, Overdue, Pending, Completed, All
+  const [statusFilter, setStatusFilter] = useState(() => navigationParams?.status || 'Today'); // Active, Today, Upcoming, Overdue, Pending, Completed, All
   const [assignedFilter, setAssignedFilter] = useState('All');
   const [dateFrom, setDateFrom] = useState(getTodayStr());
   const [dateTo, setDateTo] = useState(getTodayStr());
@@ -59,6 +59,17 @@ export default function FollowUpsTab({ currentUser }) {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // React to navigation params (e.g., clicking Overdue from dashboard)
+  useEffect(() => {
+    if (navigationParams?.status) {
+      setStatusFilter(navigationParams.status);
+      setCurrentPage(1);
+      if (followUps.length > 0) {
+        applyFilters(followUps, searchAccount, navigationParams.status, assignedFilter, dateFrom, dateTo);
+      }
+    }
+  }, [navigationParams]);
 
   useEffect(() => {
     fetchFollowUps();
